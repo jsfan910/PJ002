@@ -3,18 +3,18 @@ doc: TRACE
 title: 追溯矩陣
 epic: E-001
 version: 0.2
-status: approved       # Gate 1 通過；TC 欄由 qa-lead 於測試計畫卡填
+status: approved       # Gate 1 通過；TC 欄由 qa-lead 於 T-0009 填實，NFR「對應測試」欄與主表「狀態」欄由 qa-lead 於 T-0019 依 Leader 裁決補填
 author: plan-ba
 reviewers: [leader, qa-lead]
-updated: 2026-09-19T07:22:16+08:00
+updated: 2026-09-19T07:45:48+08:00
 ---
 
 # 追溯矩陣：E-001 待辦事項 Web 應用
 
 DoD：無孤兒需求（每個 US 至少一個 UC、一個模組、一個測試案例）；無孤兒測試（每個 TC 對應一個 US）。
 
-**本檔目前狀態（T-0005 r1 定稿後）：`US-ID`、`US 標題`、`優先級`、`UC-ID`、`SD 模組`、`API 端點` 六欄為事實且已由 plan-ba 反向核對定稿；唯一未定稿欄位為 `TC-ID`。**
-欄位填寫責任：`UC-ID` 由 plan-sa（T-0003）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/02_系統分析書_SA.md` 第 1 章；`SD 模組`、`API 端點` 由 plan-sd（T-0004）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/03_系統設計書_SD.md` 第 3 章模組表與第 5 章 API 摘要、`docs/specs/04_API規格.yaml`；**`TC-ID` 留空，由 qa-lead 於測試計畫卡填**（本檔不代填，也不得以空白推論為「無對應」）。
+**本檔目前狀態（T-0019 後）：主表八欄全部定稿** —— `US-ID`、`US 標題`、`優先級`、`UC-ID`、`SD 模組`、`API 端點` 六欄由 plan-ba 於 T-0005 r1 反向核對定稿；`TC-ID` 欄由 qa-lead 於 T-0009 r1 填實；`狀態` 欄與下方「非功能需求追溯」表的 `對應測試` 欄由 qa-lead 於 **T-0019** 依 Leader 裁決（2026-09-19T07:40:06+08:00 對 T-0009 的裁決第 1、2 項）補填。**無未定稿欄位。**
+欄位填寫責任：`UC-ID` 由 plan-sa（T-0003）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/02_系統分析書_SA.md` 第 1 章；`SD 模組`、`API 端點` 由 plan-sd（T-0004）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/03_系統設計書_SD.md` 第 3 章模組表與第 5 章 API 摘要、`docs/specs/04_API規格.yaml`；**`TC-ID` 由 qa-lead 於測試計畫卡（T-0009 r1）填實**，來源 `docs/specs/20_測試案例.md`（本檔不代填，也不得以空白推論為「無對應」）。
 plan-ba 已於 T-0005 r1 反向審核覆蓋度並定稿，審核過程與證據見 `docs/reports/20260919-0637-覆蓋度審核-E001.md`。
 未填欄位一律標 `—`（待補），不得留空以免誤判為「已確認無對應」。
 
@@ -22,19 +22,19 @@ plan-ba 已於 T-0005 r1 反向審核覆蓋度並定稿，審核過程與證據�
 
 | US-ID | US 標題 | 優先級 | UC-ID | SD 模組 | API 端點 | TC-ID | 狀態 |
 |---|---|---|---|---|---|---|---|
-| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | TC-001 ~ TC-011、TC-088、TC-096 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | TC-012 ~ TC-018、TC-093、TC-094、TC-097 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | TC-019 ~ TC-029、TC-098 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | TC-030 ~ TC-037、TC-099 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | TC-038 ~ TC-047、TC-100 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | TC-048 ~ TC-058、TC-101 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | TC-059 ~ TC-064、TC-102 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | TC-065 ~ TC-069、TC-091、TC-103 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | TC-070 ~ TC-077、TC-085 ~ TC-087、TC-092、TC-104 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | TC-078 ~ TC-084、TC-089、TC-090、TC-095、TC-105 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-011 | 使用者註冊 | P1 | UC-012 | BE-10、BE-11、BE-12 | `POST /api/v1/auth/register` | TC-106 ~ TC-111（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-012 | 使用者登入與登出 | P1 | UC-013 | BE-10、BE-11、BE-13 | `POST /api/v1/auth/login`（登出為用戶端清除 JWT，**無端點**，O-006） | TC-112 ~ TC-117（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-013 | 使用者資料隔離 | P1 | UC-014 | BE-13、BE-05、BE-06、BE-12 | 全部 `/api/v1/todos*` 端點（JWT 授權橫切；跨使用者回 404，O-001） | TC-118 ~ TC-123（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | TC-001 ~ TC-011、TC-088、TC-096 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | TC-012 ~ TC-018、TC-093、TC-094、TC-097 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | TC-019 ~ TC-029、TC-098 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | TC-030 ~ TC-037、TC-099 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | TC-038 ~ TC-047、TC-100 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | TC-048 ~ TC-058、TC-101 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | TC-059 ~ TC-064、TC-102 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | TC-065 ~ TC-069、TC-091、TC-103 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | TC-070 ~ TC-077、TC-085 ~ TC-087、TC-092、TC-104 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | TC-078 ~ TC-084、TC-089、TC-090、TC-095、TC-105 | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-011 | 使用者註冊 | P1 | UC-012 | BE-10、BE-11、BE-12 | `POST /api/v1/auth/register` | TC-106 ~ TC-111（Gate 2 後） | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-012 | 使用者登入與登出 | P1 | UC-013 | BE-10、BE-11、BE-13 | `POST /api/v1/auth/login`（登出為用戶端清除 JWT，**無端點**，O-006） | TC-112 ~ TC-117（Gate 2 後） | UC／模組／端點／TC 全欄已定稿（T-0019） |
+| US-013 | 使用者資料隔離 | P1 | UC-014 | BE-13、BE-05、BE-06、BE-12 | 全部 `/api/v1/todos*` 端點（JWT 授權橫切；跨使用者回 404，O-001） | TC-118 ~ TC-123（Gate 2 後） | UC／模組／端點／TC 全欄已定稿（T-0019） |
 
 合計：13 則 US（P0 十則、P1 三則），與 `docs/specs/01_需求規格書_SRS.md` 第 3 章一致。
 UC 合計 14 則（US-010 因「部署驗收」與「存活監測」兩種角色與觸發條件不同而拆為 UC-010、UC-011），與 `docs/specs/02_系統分析書_SA.md` 第 1 章一致；62 條 AC 全數被 UC 覆蓋，對照見該書附錄 A。
@@ -72,18 +72,18 @@ SD 模組合計 21 個（後端 13 含 P1 四個、前端 4、DevOps 4），API 
 
 ## 非功能需求追溯
 
-`設計對策` 欄由 plan-sd 於 T-0004 補（完整內容見 `docs/specs/03_系統設計書_SD.md` 第 7 章，此處只列落點）；`對應測試` 欄與主表 `TC-ID` 欄同，**留空由 qa-lead 於測試計畫卡填**，plan-ba 不代填。
+`設計對策` 欄由 plan-sd 於 T-0004 補（完整內容見 `docs/specs/03_系統設計書_SD.md` 第 7 章，此處只列落點）；`對應測試` 欄與主表 `TC-ID` 欄同由 qa-lead 填（plan-ba 不代填）：**已於 T-0019 依 Leader 裁決（對 T-0009 的裁決第 1 項）補填**，來源為 `docs/specs/20_測試案例.md` 第 8 章「NFR → TC 覆蓋對照」，八條 NFR 各至少一條可量測案例。
 
 | NFR-ID | 類別 | 設計對策落點（SD 第 7 章） | 驗證責任 | 對應測試 |
 |---|---|---|---|---|
-| NFR-001 | 效能 | BE-01 連線池、BE-06 索引 `(created_at DESC, id DESC)`、OPS-04 監測兼保溫；量測**先暖身 10 秒** | qa-lead（負載測試） | — |
-| NFR-002 | 安全 | 平台 HTTPS ＋ 301（ADR-0003）、BE-03 剝除內部細節、FE-04 全面 `textContent`、ADR-0004 不啟用 CORS | qa-cr + qa-lead | — |
-| NFR-003 | 可用性 | BE-07 `/health` 豁免且不查 DB、Render health check 零停機輪替、OPS-04 每 5 分鐘取樣 3 次；**Gate 2 採 24 小時**（O-009） | dev-ops + qa-lead | — |
-| NFR-004 | 相容性 | FE-01 無框架、ES2020、flexbox 單一斷點、最小點擊區 44×44 | qa-at | — |
-| NFR-005 | 可維運性 | BE-03 唯一錯誤出口、pino `reqId` 與回應 `requestId` **為同一值** | qa-cr | — |
-| NFR-006 | 資料持久性 | **由架構保證**：Neon 與運算實例分離；migration forward-only（ADR-0002） | qa-lead | — |
-| NFR-007 | 容量 | 不分頁（BR-027）、排序索引、FE-04 `DocumentFragment` 單次插入 | qa-lead | — |
-| NFR-008 | 可安裝性 | OPS-01 `docker compose up`、`.env.example`、README 提供 Git Bash 與 PowerShell 兩種寫法 | qa-at | — |
+| NFR-001 | 效能 | BE-01 連線池、BE-06 索引 `(created_at DESC, id DESC)`、OPS-04 監測兼保溫；量測**先暖身 10 秒** | qa-lead（負載測試） | TC-085、TC-086 |
+| NFR-002 | 安全 | 平台 HTTPS ＋ 301（ADR-0003）、BE-03 剝除內部細節、FE-04 全面 `textContent`、ADR-0004 不啟用 CORS | qa-cr + qa-lead | TC-079、TC-087、TC-088、TC-110、TC-116 |
+| NFR-003 | 可用性 | BE-07 `/health` 豁免且不查 DB、Render health check 零停機輪替、OPS-04 每 5 分鐘取樣 3 次；**Gate 2 採 24 小時**（O-009） | dev-ops + qa-lead | TC-089、TC-090 |
+| NFR-004 | 相容性 | FE-01 無框架、ES2020、flexbox 單一斷點、最小點擊區 44×44 | qa-at | TC-091 |
+| NFR-005 | 可維運性 | BE-03 唯一錯誤出口、pino `reqId` 與回應 `requestId` **為同一值** | qa-cr | TC-092 |
+| NFR-006 | 資料持久性 | **由架構保證**：Neon 與運算實例分離；migration forward-only（ADR-0002） | qa-lead | TC-093 |
+| NFR-007 | 容量 | 不分頁（BR-027）、排序索引、FE-04 `DocumentFragment` 單次插入 | qa-lead | TC-094 |
+| NFR-008 | 可安裝性 | OPS-01 `docker compose up`、`.env.example`、README 提供 Git Bash 與 PowerShell 兩種寫法 | qa-at | TC-095 |
 
 ## 孤兒檢查
 
