@@ -1,10 +1,10 @@
 ---
 id: E-001
 title: 待辦事項 Web 應用（Phase 1 試跑範例）
-status: planning        # planning | gate1 | developing | testing | gate2 | done
+status: gate1            # planning | gate1 | developing | testing | gate2 | done
 owner: leader
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T05:28:50+08:00
+updated: 2026-09-19T06:58:45+08:00
 ---
 
 # E-001 待辦事項 Web 應用
