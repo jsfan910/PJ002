@@ -77,8 +77,8 @@ SD 模組合計 21 個（後端 13 含 P1 四個、前端 4、DevOps 4），API 
 | NFR-ID | 類別 | 設計對策落點（SD 第 7 章） | 驗證責任 | 對應測試 |
 |---|---|---|---|---|
 | NFR-001 | 效能 | BE-01 連線池、BE-06 索引 `(created_at DESC, id DESC)`、OPS-04 監測兼保溫；量測**先暖身 10 秒** | qa-lead（負載測試） | TC-085、TC-086 |
-| NFR-002 | 安全 | 平台 HTTPS ＋ 301（ADR-0003）、BE-03 剝除內部細節、FE-04 全面 `textContent`、ADR-0004 不啟用 CORS | qa-cr + qa-lead | TC-079、TC-087、TC-088、TC-110、TC-116 |
-| NFR-003 | 可用性 | BE-07 `/health` 豁免且不查 DB、Render health check 零停機輪替、OPS-04 每 5 分鐘取樣 3 次；**Gate 2 採 24 小時**（O-009） | dev-ops + qa-lead | TC-089、TC-090 |
+| NFR-002 | 安全 | HTTPS 由 Cloud Run 終止並將 HTTP 301 導向 HTTPS（ADR-0005）、BE-03 剝除內部細節、FE-04 全面 `textContent`、ADR-0004 不啟用 CORS | qa-cr + qa-lead | TC-079、TC-087、TC-088、TC-110、TC-116 |
+| NFR-003 | 可用性 | BE-07 `/health` 豁免且不查 DB、Cloud Run revision 零停機切流量、OPS-04 每 5 分鐘取樣 3 次；**Gate 2 採 24 小時**（O-009） | dev-ops + qa-lead | TC-089、TC-090 |
 | NFR-004 | 相容性 | FE-01 無框架、ES2020、flexbox 單一斷點、最小點擊區 44×44 | qa-at | TC-091 |
 | NFR-005 | 可維運性 | BE-03 唯一錯誤出口、pino `reqId` 與回應 `requestId` **為同一值** | qa-cr | TC-092 |
 | NFR-006 | 資料持久性 | **由架構保證**：Neon 與運算實例分離；migration forward-only（ADR-0002） | qa-lead | TC-093 |
