@@ -87,3 +87,10 @@ updated: 2026-09-19T07:17:55+08:00
 
 - 使用者回覆「Gate 1 通過，開始開發」。規格 01～06、ADR 凍結；traceability 為 approved（TC 欄待填）。
 - 開發階段啟動：T-0008 dev-tl 拆 WBS → Leader 依 WBS 建開發卡 → 分批平行派工。
+
+### 2026-09-19T07:29:49+08:00 — 規格變更（使用者裁決）：雲端平台改 GCP Cloud Run + Neon Free
+
+- 使用者裁決：部署由 Render Free 改為 GCP Cloud Run；資料庫維持 Neon Free（ADR-0002 不變）。
+- 理由：冷啟動 1–3 秒優於 30–50 秒；Cloud Run revision 回滾優於 Render；費用維持 0（min instances = 0）。
+- 處理：T-0010 規格變更請求（plan-sd）。ADR-0003 標 superseded by ADR-0005；06 部署設計改寫；SD 對應段落同步。dev-ops 骨架卡等 T-0010 done 才開。
+- 使用者需準備：GCP 專案 + 計費帳戶、啟用 Cloud Run 與 Artifact Registry API；憑證自行放 GitHub secrets（建議 Workload Identity Federation）。
