@@ -100,3 +100,4 @@
 
 - **Bash 指令不得含 ASCII 單引號 `'`**：本環境的 Bash 工具會在含單引號的指令上以「unexpected EOF while looking for matching」失敗（含 heredoc 之外的 `printf '…'`、`$'\t'`）。多檔案、含引號的內容改用 Write 工具寫成腳本再 `bash script.sh`。（2026-09-19，Phase 0 建 agent 定義時連續失敗 3 次後確認）
 - **Bash 裡不要呼叫 `python3`／`python`**：本機未安裝 Python，`python3` 會被 Windows 應用程式執行別名接管而無限等待，整條指令卡到逾時。文字處理一律用 sed／awk／grep，或 Write 工具。（2026-09-19，Leader 裁決寫入時卡 120 秒後以 taskkill 終止）
+- **Agent 的 git 只准 append：禁止 `--amend`、`reset`、`rebase`、`checkout -- <file>`**。平行作業時 HEAD 可能已是別人的 commit，amend／reset 會把別人的提交移出分支。commit 訊息打錯就再開一個修正 commit；只 `git add` 自己卡的 outputs，永不 `add -A`。（2026-09-19，T-0006 amend 撞掉平行的 T-0007 commit，Leader 以工作區比對後重提交復原）

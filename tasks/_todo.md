@@ -6,8 +6,7 @@
 
 ## 進行中
 
-- T-0006 SRS 小修 S-1/S-2/S-3 ｜ plan-ba/opus ｜ r1 ｜ 06:55 派工
-- T-0007 SD/API 小修 D-1/D-2 ｜ plan-sd/opus ｜ r1 ｜ 06:55 派工（與 T-0006 平行，outputs 不重疊）
+（無）
 
 ## 審核中
 

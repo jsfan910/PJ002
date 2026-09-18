@@ -5,7 +5,7 @@ epic: E-001
 team: plan
 role: plan-ba
 model: opus
-status: review
+status: done
 round: 1
 depends_on: [T-0005]
 inputs:
@@ -22,7 +22,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T06:52:15+08:00
-updated: 2026-09-19T06:54:15+08:00
+updated: 2026-09-19T06:57:18+08:00
 blocked_reason: null
 ---
 
@@ -44,3 +44,4 @@ Leader 執行 git diff HEAD~1 -- docs/specs/01_需求規格書_SRS.md，確認�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | done | 三項 acceptance 逐條核對：已裁決 11、≤ 20 次、AC-009-5 備註存在；diff 僅 SRS 29 行 | worklog/handoff/20260919-工作交接.md |
