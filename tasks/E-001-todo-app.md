@@ -115,3 +115,12 @@ updated: 2026-09-19T07:17:55+08:00
 | 5 | **開 T-0019 同步 Cloud Run**：測試計畫 6.1、R-4，TC-079／084／089 | 依 T-0010 完成後的 06 與 ADR-0005 改寫；T-0019 depends_on T-0010 |
 | 6 | 接受：staging 未就緒的 TC 記「阻擋（環境未就緒）」不記「不通過」 | 使用者提供 GCP 專案與 GitHub repo 後由 T-0018 部署 |
 | 7 | 不另開規格變更 | AC-009-5 已於 T-0006 加備註指向特殊驗證表 |
+
+### 2026-09-19T07:43:43+08:00 — 對 T-0010 四項的裁決
+
+| # | 裁決 |
+|---|---|
+| 1 | 授權 plan-sd 於 T-0010 追加一個修正 commit：SD 第 151、295、330 行 Render 字樣改 Cloud Run |
+| 2 | 保溫維持每 5 分鐘（與 NFR-003 監測同頻）；每 10 分鐘僅作私有倉庫節流備案 |
+| 3 | 04_API規格.yaml 的 staging servers 佔位符同次修正改為 Cloud Run 形式（https://todo-app-staging-<hash>-<region>.run.app，dev-ops 部署後回填實值） |
+| 4 | 不建立 infra/render.yaml；T-0018 outputs 只有 infra/cloudrun-service.yaml |

@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: todo
+status: in_progress
 round: 1
 depends_on: [T-0010]
 inputs:
@@ -44,7 +44,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0011-project-skeleton
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T07:39:05+08:00
+updated: 2026-09-19T07:43:43+08:00
 blocked_reason: null
 ---
 

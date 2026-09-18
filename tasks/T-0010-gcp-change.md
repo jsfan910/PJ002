@@ -5,7 +5,7 @@ epic: E-001
 team: plan
 role: plan-sd
 model: opus
-status: review
+status: done
 round: 1
 depends_on: [T-0007]
 inputs:
@@ -35,7 +35,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T07:29:49+08:00
-updated: 2026-09-19T07:40:30+08:00
+updated: 2026-09-19T07:43:43+08:00
 blocked_reason: null
 ---
 
@@ -60,3 +60,4 @@ Leader：grep -c Render docs/specs/06_部署架構與CICD.md 應為 0（歷史�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | done | 9/9 通過；ADR-0005 accepted、ADR-0003 superseded、06 v0.2、SD v0.3。裁決：授權補修 SD 三處與 API servers 佔位符（同卡追加 commit）；保溫每 5 分鐘；不建 render.yaml | worklog/handoff/20260919-工作交接.md |
