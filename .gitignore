@@ -1,0 +1,20 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Claude 本機設定（個人權限設定不入版控）
+.claude/settings.local.json
+
+# 依專案技術棧再補（由 dev-tl 於 WBS 階段增修）
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+dist/
+build/
+coverage/

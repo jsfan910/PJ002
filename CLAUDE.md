@@ -1,0 +1,101 @@
+# AGENTS.md
+
+## 語言規則
+
+- 全程使用繁體中文回覆。
+
+## 產出規則
+
+- 所有產出文件，若使用者未指定存放位置，一律放在 `docs/` 目錄。
+- 所有產出文件，若沒有特別說明，檔名一律加上當天日期（例如 `需求規格書_20260731.md`）。
+- 產出的文件，若只需要保留一份最新的事實，將已被取代之舊版文件放入 `docs/archive/` 文件封存目錄。（登錄檔 `docs/archive/_index.md`）
+- 例外：`docs/specs/` 下的規格文件與 `docs/templates/` 下的模板為「唯一最新事實」，檔名**不加日期**，以 frontmatter `version`/`updated` 記錄版本；舊版走封存。
+
+## 文件地圖
+
+- 計畫書：`docs/團隊協作計畫書_20260919.md`（團隊、文件、流程、模型等級的完整定義；本檔「協作協定」是其摘要）
+- 任務卡：`tasks/`（待辦任務清單 `tasks/_todo.md`，已完成任務清單 `tasks/_done.md`，事實來源為各卡 frontmatter）
+- 工作紀錄與交接：`worklog/handoff/yyyymmdd-HHmm-T####-r{n}-{role}.md`（開工寫 A 段、收尾寫 B 段）
+- 規格文件：`docs/specs/`（01 SRS、01a 澄清、02 SA、03 SD、04 API、05 DB、06 部署、07 測試計畫、10 WBS、20 測試案例、24 缺陷、adr/、traceability.md）
+- 模板：`docs/templates/`（任務卡、交接、升級單、Gate 報告、各規格與報告）
+- 報告：`docs/reports/yyyymmdd-HHmm-{主題}.md`（給決策者閱讀，不是事實來源）
+- 角色定義：`.claude/agents/{role}.md`；流程技能：`.claude/skills/{dispatch,handoff,review-round,takeover}/`
+- 文件封存：`docs/archive/*`（已被取代之舊版文件，登錄檔 `docs/archive/_index.md`）。 **該目錄僅供歷史查閱，禁止作為引用之依據。**
+
+## 協作協定（摘要；完整版見計畫書第 6、7 章）
+
+### 角色與模型（平衡模式）
+
+| 團隊 | 角色 | 模型 |
+|---|---|---|
+| Leader | leader（主 session） | Fable 5.1 |
+| 規劃 | plan-ba / plan-sa / plan-sd | Opus 5 |
+| 開發 | dev-tl | Opus 5 |
+| 開發 | dev-be / dev-fe / dev-ops | Sonnet 5 |
+| 測試 | qa-lead / qa-cr | Opus 5 |
+| 測試 | qa-at | Sonnet 5 |
+| 測試 | qa-uat | Haiku 4.5 |
+
+任務卡進入第 3 輪時模型自動升一級（haiku→sonnet→opus→fable）。
+
+### 任務卡狀態機
+
+`todo → in_progress → review → done`；`review → rework`（round +1）→ `in_progress`；任何狀態可 → `blocked`（填 `blocked_reason`）。`round` 達 3 仍未過 → `blocked` + 升級單（`docs/reports/yyyymmdd-HHmm-升級-T####.md`，五段式）。
+
+### 寫入權責
+
+| 路徑 | 可寫入者 |
+|---|---|
+| `tasks/T-*.md` 的 `status`/`round`/`updated` | 該卡 assignee、reviewer、Leader |
+| `tasks/_todo.md`、`tasks/_done.md` | 只有 Leader |
+| `docs/specs/*` | 規劃團隊對應角色；Gate 1 後凍結，變更走「規格變更請求」任務卡 |
+| `src/*` | 開發團隊，每卡一分支 `task/T-####-slug`，合併只由 dev-tl |
+| `worklog/handoff/*` | 每檔只由其產生者寫 |
+
+兩張 `in_progress` 的卡 `outputs` 不得重疊；只有 `depends_on` 全 `done` 的卡可啟動。
+
+### 每個角色的固定程序
+
+- 開工：讀任務卡 → 讀 `inputs` → 建交接檔填 A 段 → 卡 `status: in_progress`。
+- 收尾：實際執行驗收指令並貼真實輸出 → 填 B 段（空欄寫「無」）→ 卡 `status: review|blocked` → commit `T-####: 摘要` → 回報五行（狀態｜產出路徑｜交接檔路徑｜需裁決事項｜下一步）。
+- 審核：重跑驗證、逐條判 acceptance、寫審核紀錄表、決定 done / rework / blocked。
+- 禁止：成員直接對使用者發問；成員寫看板；宣稱完成而無執行輸出；改 `outputs` 以外的檔案。
+
+### 使用者介入點
+
+只有三個：① 計畫書 ② Gate 1 規格包 ③ Gate 2 可運行程式 + 測試報告；外加升級單。其餘團隊內解決。
+
+## 回報規則
+
+- 每次執行完一批工作後，對話裡只講三件事，其餘一律外移成 md 檔。
+- **對話裡只寫**（順序固定，缺一不可）：
+    1. **結論** —— 簡單條列，一句話，做完了什麼、成或不成。
+    2. **重點摘要** —— 只寫「會改變你判斷或下一步」的事。包含：我自己的錯誤、與先前說法相反的事實、範圍或前提的變動。**沒有就寫「無」。**
+    3. **需要你裁決的項目** ——
+        -  每項固定五段：
+        <br>① **核心爭議**（用一句話明確指出「具體卡關點」以及「實質影響」是什麼，先講結論與後果，不用術語。）；
+        <br>② **證據觀點**（簡單陳述考量的觀點、規範或證據）；
+        <br>③ **選項**（最多 3 個，各寫「做法／代價」）；
+        <br>④ **我的建議 ＋ 一句理由**；
+        <br>⑤ **推翻成本**（選錯了要付什麼、還能不能回頭）。
+        <br>**沒有就寫「無」。**
+    4. **完整說明之檔案連結** —— markdown 連結，供閱讀。
+- 報告檔位置：一律 `docs/reports/`。命名：`yyyymmdd-HHmm-{主題}.md`，日期在最前面**（時間取實查系統時間）。
+- 報告檔是**給決策者閱讀的檢視**，不是事實來源，不得成為機器判準的輸入。
+
+## 收工總結規則
+
+- 當使用者輸入「收工」兩個字時，將當天的工作做一份總結紀錄。
+- 以 Markdown 檔形式存放於 `worklog/daily_summary/`。檔名： `yyyymmdd-工作總結.md` ，日期在最前面**（時間取實查系統時間）。
+- 一天一個檔案：若當天檔案已存在，則接續補寫於同一檔案，不另建新檔。
+- 收工時必須同時做第二件事：把「可重複使用」的經驗沉澱到本檔「工作鐵則」。判準是「下一次還會用到嗎」，已存在的鐵則若被再次驗證，於該條後補一筆日期與案例即可，不另立新條。
+- 收工時必須同時做第三件事：把「未完成」的工作交接出去。判準是「換一個人明天早上只讀這一段，能不能開工？」 不能就是還沒交接完。
+    - 以 Markdown 檔形式存放於 `worklog/handoff/`。檔名：`yyyymmdd-工作交接.md`，日期在最前面**（時間取實查系統時間）**。
+    - 日報側只留一行指路：`本日交接見 worklog/handoff/yyyymmdd-工作交接.md 那一份）` —— **不複寫內容**（複寫即第二份真相）。
+    - 與任務卡層級交接檔（`worklog/handoff/yyyymmdd-HHmm-T####-r{n}-{role}.md`）的關係：每日交接是 Leader 的總覽，指向當日各任務卡交接檔；任務卡交接檔是各角色的事實紀錄。兩者並存，不互相複寫。
+
+---
+
+## 工作鐵則
+
+- **Bash 指令不得含 ASCII 單引號 `'`**：本環境的 Bash 工具會在含單引號的指令上以「unexpected EOF while looking for matching」失敗（含 heredoc 之外的 `printf '…'`、`$'\t'`）。多檔案、含引號的內容改用 Write 工具寫成腳本再 `bash script.sh`。（2026-09-19，Phase 0 建 agent 定義時連續失敗 3 次後確認）

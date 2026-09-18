@@ -1,0 +1,43 @@
+# docs/specs/04_API規格.yaml — OpenAPI 3.1
+# DoD：可通過 lint（例：npx @redocly/cli lint）；每端點有請求／回應範例與錯誤碼。
+openapi: 3.1.0
+info:
+  title: "{Epic 名稱} API"
+  version: 0.1.0
+  description: 對應 SD 第 5 章。每個 operationId 對應一個 UC-ID（寫在 description）。
+servers:
+  - url: http://localhost:8000
+    description: dev
+  - url: https://staging.example.com
+    description: staging
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: 健康檢查
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: { "status": "ok" }
+components:
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "E_VALIDATION" }
+        message: { type: string }
+        details: { type: object }
+  responses:
+    BadRequest:
+      description: 輸入驗證失敗
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: 未認證
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
