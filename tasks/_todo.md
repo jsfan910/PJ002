@@ -6,11 +6,11 @@
 
 ## 進行中
 
-- T-0002 需求規格書 SRS、需求澄清紀錄、追溯矩陣初版 ｜ plan-ba/opus ｜ r1 ｜ 2026-09-19T05:30 派工
+- T-0004 系統設計書、OpenAPI、資料庫設計、部署架構、ADR ｜ plan-sd/opus ｜ r1 ｜ 2026-09-19 06:00 派工（同一 agent 先審 T-0003）
 
 ## 審核中
 
-（無）
+- T-0003 系統分析書 SA ｜ plan-sa/opus ｜ r1 ｜ reviewer plan-sd
 
 ## 阻塞
 
@@ -18,6 +18,4 @@
 
 ## 待辦
 
-- T-0003 系統分析書 SA ｜ plan-sa/opus ｜ r1 ｜ 依賴 T-0002
-- T-0004 系統設計書、OpenAPI、資料庫設計、部署架構、ADR ｜ plan-sd/opus ｜ r1 ｜ 依賴 T-0003
-- T-0005 反向審核 SD 覆蓋度、追溯矩陣定稿 ｜ plan-ba/opus ｜ r1 ｜ 依賴 T-0004
+- T-0005 反向審核 SD 覆蓋度、追溯矩陣定稿、01a 狀態同步、NFR-003 改寫 ｜ plan-ba/opus ｜ r1 ｜ 依賴 T-0004
