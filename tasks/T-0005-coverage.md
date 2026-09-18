@@ -1,0 +1,48 @@
+---
+id: T-0005
+title: 反向審核 SD 覆蓋度、追溯矩陣定稿
+epic: E-001
+team: plan
+role: plan-ba
+model: opus
+status: todo
+round: 1
+depends_on: [T-0004]
+inputs:
+  - docs/specs/01_需求規格書_SRS.md
+  - docs/specs/03_系統設計書_SD.md
+  - docs/specs/04_API規格.yaml
+  - docs/specs/traceability.md
+outputs:
+  - docs/specs/traceability.md
+  - docs/reports/yyyymmdd-HHmm-覆蓋度審核-E001.md（時間取實查）
+acceptance:
+  - 逐 US 對照 SD 模組表與 API 端點：每個 P0/P1 US 都有對應，否則列出缺口
+  - traceability.md 孤兒檢查「無對應 UC 的 US」「無對應模組/API 的 US」皆為「無」（TC 欄留給 qa-lead）
+  - 覆蓋度審核報告列出：檢查了幾個 US、缺口清單（無則寫無）、對 SRS 或 SD 的修正建議
+reviewer: leader
+branch: null
+created: 2026-09-19T05:28:50+08:00
+updated: 2026-09-19T05:28:50+08:00
+blocked_reason: null
+---
+
+## 目標
+
+以需求方視角確認設計沒有漏掉任何使用者故事，並定稿追溯矩陣（TC 欄除外）。發現缺口時不自行改 SD，寫進報告交 Leader 建修正卡。
+
+## 背景與限制
+
+- Epic：tasks/E-001-todo-app.md（範圍、限制、成功指標以該檔為準）
+- 本卡為 Phase 1 試跑；文件卡直接 commit 到 main。
+- 必須遵守：CLAUDE.md「協作協定」、角色檔 .claude/agents/plan-ba.md 的通用協定。
+- 檔名不加日期（docs/specs 例外規則），版本寫 frontmatter。
+
+## 驗收方式
+
+Leader 讀覆蓋度審核報告與 traceability.md；抽查 2 個 P0 US 從 SRS 追到 API 端點。
+
+## 審核紀錄
+
+| 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
+|---|---|---|---|---|
