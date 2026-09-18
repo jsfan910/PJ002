@@ -5,7 +5,7 @@ epic: E-001
 team: plan
 role: plan-ba
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0004]
 inputs:
@@ -17,7 +17,7 @@ outputs:
   - docs/specs/01_需求規格書_SRS.md（僅 NFR-003 量測期改寫）
   - docs/specs/01a_需求澄清紀錄.md（狀態欄同步）
   - docs/specs/traceability.md
-  - docs/reports/yyyymmdd-HHmm-覆蓋度審核-E001.md（時間取實查）
+  - docs/reports/20260919-0637-覆蓋度審核-E001.md
 acceptance:
   - 逐 US 對照 SD 模組表與 API 端點：每個 P0/P1 US 都有對應，否則列出缺口
   - traceability.md 孤兒檢查「無對應 UC 的 US」「無對應模組/API 的 US」皆為「無」（TC 欄留給 qa-lead）
@@ -28,7 +28,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T05:28:50+08:00
+updated: 2026-09-19T06:47:19+08:00
 blocked_reason: null
 ---
 
