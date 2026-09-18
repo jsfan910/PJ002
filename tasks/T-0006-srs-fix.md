@@ -5,7 +5,7 @@ epic: E-001
 team: plan
 role: plan-ba
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0005]
 inputs:
@@ -22,7 +22,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T06:52:15+08:00
-updated: 2026-09-19T06:52:15+08:00
+updated: 2026-09-19T06:54:15+08:00
 blocked_reason: null
 ---
 
