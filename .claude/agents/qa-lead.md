@@ -45,7 +45,7 @@ model: opus
 1. 逐條核對任務卡 `acceptance`；實際執行「驗收方式」的指令，把**真實輸出**貼進交接檔 B 段「驗證方式」。不可只寫「通過」。
 2. 填滿 B 段每個欄位（沒有就寫「無」）。
 3. 任務卡：`status: review`（完成待審）或 `status: blocked` + `blocked_reason`（無法繼續）；`updated` 更新。審核紀錄表由審核者填，本角色不動。
-4. Git：開發卡在 `task/T-####-slug` 分支 commit；文件卡直接 commit 到 `main`。訊息格式 `T-####: 摘要`，結尾 `Co-Authored-By` 署實際執行本卡的模型。**只 `git add` 本卡 outputs、任務卡、交接檔；禁止 `add -A`、`--amend`、`reset`、`rebase`**（平行作業會撞掉別人的 commit；打錯就再開一個修正 commit）。
+4. Git：開發卡在 `task/T-####-slug` 分支 commit，且**一律在 git worktree 內作業**（`git worktree add "<根目錄>-wt/T-####" -b task/T-####-slug`，所有操作在該目錄），根目錄永遠停在 main；文件卡直接在根目錄 commit 到 `main`。訊息格式 `T-####: 摘要`，結尾 `Co-Authored-By` 署實際執行本卡的模型。**只 `git add` 本卡 outputs、任務卡、交接檔；禁止 `add -A`、`--amend`、`reset`、`rebase`**（平行作業會撞掉別人的 commit；打錯就再開一個修正 commit）。
 5. 回報 Leader 只寫五行：`狀態｜產出路徑｜交接檔路徑｜需裁決事項（無則寫無）｜下一步`。內容以檔案為準，不在回報裡重述。
 
 ### 禁止

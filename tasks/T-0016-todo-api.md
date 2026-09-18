@@ -49,13 +49,13 @@ blocked_reason: null
 - WBS §0 硬前提第 6 條：所有指令可在 Windows 11 Git Bash 或 PowerShell 執行。
 - WBS §0 硬前提第 7 條：只用官方外掛並釘選版本；package.json 由 T-0011 單一擁有，後續卡需要新套件先向 dev-tl 提出。
 - WBS §0 硬前提第 8 條與 §5：src/app.ts 五個錨點順序固定，每卡只在自己的錨點插入一行。
-- 分支：從 main 切 `task/T-0016-todo-api`；只在分支 commit；合併由 dev-tl 執行。禁止 add -A、--amend、reset、rebase。
+- 分支：以 git worktree 建立（`git worktree add "C:/Users/excal/Projects/Claude/soft-dev-team-260919-wt/{id}" -b task/{id}-{slug}`），所有操作在該 worktree 內；分支名 `task/T-0016-todo-api`；只在分支 commit；合併由 dev-tl 執行。禁止 add -A、--amend、reset、rebase。
 - 模型：sonnet（Leader 依平衡模式指定）。
 - 必須遵守：CLAUDE.md「協作協定」、角色檔 .claude/agents/dev-be.md 的通用協定。
 
 ## 驗收方式
 
-審核者（dev-tl）checkout 分支 `task/T-0016-todo-api`，實際重跑 WBS §1.6 的驗收指令與本卡 acceptance 逐條核對；以 `git diff main...HEAD --stat` 確認只動 outputs。
+審核者（dev-tl）在該卡的 worktree（或自建 worktree）checkout 分支 `task/T-0016-todo-api`，實際重跑 WBS §1.6 的驗收指令與本卡 acceptance 逐條核對；以 `git diff main...HEAD --stat` 確認只動 outputs。
 
 ## 審核紀錄
 
