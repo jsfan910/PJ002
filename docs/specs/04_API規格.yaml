@@ -15,7 +15,7 @@ info:
   title: E-001 待辦事項 Web 應用 API
   version: 0.1.1
   summary: 待辦事項的 REST API，供單頁前端與非瀏覽器用戶端共用。
-  description: |
+  description: 【Gate 1 通過 2026-09-19，已凍結；變更走規格變更請求任務卡】|
     對應 `docs/specs/03_系統設計書_SD.md` 第 5 章、`docs/specs/02_系統分析書_SA.md` 第 2 章使用案例。
 
     **認證**

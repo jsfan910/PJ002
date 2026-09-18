@@ -2,11 +2,11 @@
 
 事實來源是各任務卡 frontmatter；本檔由 Leader 以 `/dispatch` 重新彙整。引言區（本段到第一個 `## ` 之前）只放一行指向當日交接檔。
 
-> 本日交接見 `worklog/handoff/20260919-工作交接.md`。**E-001 規劃階段完成，Gate 1 報告已提交使用者審核：`docs/reports/20260919-0657-Gate1-E001.md`。通過後由 Leader 凍結規格並建 dev-tl WBS 卡。**
+> 本日交接見 `worklog/handoff/20260919-工作交接.md`。Gate 1 已通過（2026-09-19），規格凍結，開發階段進行中。
 
 ## 進行中
 
-（無）
+- T-0008 開發計畫 WBS ｜ dev-tl/opus ｜ r1 ｜ 07:05 派工
 
 ## 審核中
 

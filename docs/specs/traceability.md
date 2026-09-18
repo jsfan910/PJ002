@@ -3,7 +3,7 @@ doc: TRACE
 title: 追溯矩陣
 epic: E-001
 version: 0.2
-status: review
+status: approved       # Gate 1 通過；TC 欄由 qa-lead 於測試計畫卡填
 author: plan-ba
 reviewers: [leader, qa-lead]
 updated: 2026-09-19T06:52:00+08:00

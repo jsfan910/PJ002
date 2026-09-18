@@ -3,7 +3,7 @@ doc: DEPLOY
 title: 部署架構與 CI/CD
 epic: E-001
 version: 0.1
-status: draft
+status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
 updated: 2026-09-19T06:03:40+08:00

@@ -3,7 +3,7 @@ doc: SRS
 title: 需求規格書
 epic: E-001
 version: 0.3
-status: draft          # draft | review | approved | frozen（Gate 1 通過後 frozen）
+status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-ba
 reviewers: [plan-sa, leader]
 updated: 2026-09-19T06:53:37+08:00

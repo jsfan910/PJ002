@@ -1,10 +1,10 @@
 ---
 id: E-001
 title: 待辦事項 Web 應用（Phase 1 試跑範例）
-status: gate1            # planning | gate1 | developing | testing | gate2 | done
+status: developing        # planning | gate1 | developing | testing | gate2 | done
 owner: leader
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T06:58:45+08:00
+updated: 2026-09-19T07:17:55+08:00
 ---
 
 # E-001 待辦事項 Web 應用
@@ -82,3 +82,8 @@ updated: 2026-09-19T06:58:45+08:00
 | O-009 / NFR-003 | **Gate 2 採 24 小時採樣**（每 5 分鐘一次，成功率 ≥ 99%）；連續 7 天為正式環境目標，不作 Gate 2 門檻 | 時程不允許 7 天。plan-ba 於 T-0005 把 NFR-003 量測方式改寫為「Gate 2：24 小時；正式：7 天」 |
 | O-001～O-004、O-006～O-008 | **接受 plan-sa 保守假設為預設** | plan-sd 可在 ADR 說明理由後改採其他做法；未寫 ADR 即視為採預設。特別：O-004 前端與 API 同源；O-007 UUID |
 | O-010 | 同前次裁決 | 01a 狀態欄由 plan-ba 於 T-0005 同步 |
+
+### 2026-09-19T07:17:55+08:00 — Gate 1 通過（使用者裁決）
+
+- 使用者回覆「Gate 1 通過，開始開發」。規格 01～06、ADR 凍結；traceability 為 approved（TC 欄待填）。
+- 開發階段啟動：T-0008 dev-tl 拆 WBS → Leader 依 WBS 建開發卡 → 分批平行派工。
