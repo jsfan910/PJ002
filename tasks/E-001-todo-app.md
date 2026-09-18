@@ -94,3 +94,12 @@ updated: 2026-09-19T07:17:55+08:00
 - 理由：冷啟動 1–3 秒優於 30–50 秒；Cloud Run revision 回滾優於 Render；費用維持 0（min instances = 0）。
 - 處理：T-0010 規格變更請求（plan-sd）。ADR-0003 標 superseded by ADR-0005；06 部署設計改寫；SD 對應段落同步。dev-ops 骨架卡等 T-0010 done 才開。
 - 使用者需準備：GCP 專案 + 計費帳戶、啟用 Cloud Run 與 Artifact Registry API；憑證自行放 GitHub secrets（建議 Workload Identity Federation）。
+
+### 2026-09-19T07:39:07+08:00 — 對 WBS（T-0008）未決事項的裁決
+
+| # | 裁決 | 說明 |
+|---|---|---|
+| D-01 | **`.env.example` 可含僅限本機 compose 的明顯佔位值**（如 `dev`／`postgres`），staging／prod 值一律只存在平台 secrets | NFR-008「複製即可用」與 06 §4「只含名稱」的衝突以此解；T-0011 憑證掃描排除 `.env.example`，但掃描仍須確認佔位值非真實憑證 |
+| D-02 | 接受 | `eslint.config.js` 未列於 SD §8.1 屬目錄樹未窮舉，不走規格變更 |
+| D-03 | 接受 | ESM；由 T-0011 決定並寫進 README，前端測試檔 `*.test.mjs` |
+| 建卡 | 依 WBS §6 建 T-0011～T-0018，模型依平衡模式（dev-be/fe/ops 用 Sonnet），reviewer dev-tl | T-0011、T-0018 依賴 T-0010 |
