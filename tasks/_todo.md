@@ -6,7 +6,6 @@
 
 ## 進行中
 
-- T-0009 測試計畫、測試案例、TC 欄 ｜ qa-lead/opus ｜ r1 ｜ 07:06 派工
 - T-0010 規格變更：雲端改 Cloud Run ｜ plan-sd/opus ｜ r1 ｜ 07:12 派工
 
 ## 審核中
@@ -18,6 +17,8 @@
 （無）
 
 ## 待辦（開發批次，依 WBS §2）
+
+- T-0019 測試計畫同步 Cloud Run＋追溯補欄 ｜ qa-lead/opus ｜ 依賴 T-0010（與 T-0011 平行）
 
 - 批次 1：T-0011 專案骨架＋CI＋/health＋README ｜ dev-ops/sonnet ｜ 依賴 T-0010
 - 批次 2（平行）：T-0012 錯誤處理器 ｜ dev-be/sonnet；T-0013 資料層 ｜ dev-be/sonnet；T-0014 前端版面與 API client ｜ dev-fe/sonnet ｜ 皆依賴 T-0011
