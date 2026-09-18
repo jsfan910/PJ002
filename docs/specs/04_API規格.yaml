@@ -13,7 +13,7 @@ openapi: 3.1.0
 
 info:
   title: E-001 待辦事項 Web 應用 API
-  version: 0.1.1
+  version: 0.1.2
   summary: 待辦事項的 REST API，供單頁前端與非瀏覽器用戶端共用。
   description: 【Gate 1 通過 2026-09-19，已凍結；變更走規格變更請求任務卡】|
     對應 `docs/specs/03_系統設計書_SD.md` 第 5 章、`docs/specs/02_系統分析書_SA.md` 第 2 章使用案例。
@@ -56,12 +56,19 @@ servers:
       port:
         default: "8080"
         description: 由環境變數 `PORT` 決定，預設 8080。
-  - url: https://{serviceName}.onrender.com
-    description: staging（Render Web Service；實際名稱由使用者於部署時決定）
+  - url: https://todo-app-staging-{hash}-{region}.run.app
+    description: >-
+      staging（GCP Cloud Run；ADR-0005）。此處為**佔位符**：`*.run.app` 網址在服務首次部署成功前不存在，
+      **由 dev-ops 首次部署後回填實值**（同時回填 `06_部署架構與CICD.md` 第 1 章環境清單與 GitHub
+      repository variable `STAGING_BASE_URL`）。回填前，CI 的 verify 與監測工作流一律讀
+      `STAGING_BASE_URL`，不得寫死網址。
     variables:
-      serviceName:
-        default: e001-todo-app
-        description: Render 服務名稱，由使用者建立服務時自行決定
+      hash:
+        default: xxxxxxxxxx
+        description: Cloud Run 自動產生的服務雜湊，無法事先決定；由 dev-ops 首次部署後回填實值
+      region:
+        default: de
+        description: 區域代碼。部署區域為 `asia-east1`（ADR-0005），其對應代碼由平台決定；由 dev-ops 首次部署後回填實值
 
 tags:
   - name: health
@@ -90,7 +97,7 @@ paths:
         **本端點是全系統唯一豁免 Basic Auth 的路徑**（BR-017、Leader 裁決 O-005）。
         回應為固定字面值，**不查詢資料庫**、不回傳版本號、commit、環境變數或任何內部細節：
         它回答的是「這個程序活著且能回應 HTTP」，而不是「整個系統健康」。
-        這正是 Render 零停機輪替與 NFR-003 需要的語意 —— 資料庫短暫抖動不應觸發整個服務被判定為死亡。
+        這正是 Cloud Run 零停機輪替與 NFR-003 需要的語意 —— 資料庫短暫抖動不應觸發整個服務被判定為死亡。
       tags:
         - health
       security: []
