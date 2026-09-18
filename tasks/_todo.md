@@ -6,11 +6,11 @@
 
 ## 進行中
 
-- T-0004 系統設計書、OpenAPI、資料庫設計、部署架構、ADR ｜ plan-sd/opus ｜ r1 ｜ 2026-09-19 06:00 派工（同一 agent 先審 T-0003）
+- （無）
 
 ## 審核中
 
-- T-0003 系統分析書 SA ｜ plan-sa/opus ｜ r1 ｜ reviewer plan-sd
+- T-0004 系統設計書、OpenAPI、資料庫設計、部署架構、ADR ｜ plan-sd/opus ｜ r1 ｜ reviewer plan-sa（審核中）
 
 ## 阻塞
 
