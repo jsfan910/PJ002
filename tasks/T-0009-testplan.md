@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-lead
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0007]
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T07:18:48+08:00
-updated: 2026-09-19T07:18:48+08:00
+updated: 2026-09-19T07:35:42+08:00
 blocked_reason: null
 ---
 

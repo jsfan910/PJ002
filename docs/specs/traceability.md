@@ -6,7 +6,7 @@ version: 0.2
 status: approved       # Gate 1 通過；TC 欄由 qa-lead 於測試計畫卡填
 author: plan-ba
 reviewers: [leader, qa-lead]
-updated: 2026-09-19T06:52:00+08:00
+updated: 2026-09-19T07:22:16+08:00
 ---
 
 # 追溯矩陣：E-001 待辦事項 Web 應用
@@ -22,19 +22,19 @@ plan-ba 已於 T-0005 r1 反向審核覆蓋度並定稿，審核過程與證據�
 
 | US-ID | US 標題 | 優先級 | UC-ID | SD 模組 | API 端點 | TC-ID | 狀態 |
 |---|---|---|---|---|---|---|---|
-| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-011 | 使用者註冊 | P1 | UC-012 | BE-10、BE-11、BE-12 | `POST /api/v1/auth/register` | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-012 | 使用者登入與登出 | P1 | UC-013 | BE-10、BE-11、BE-13 | `POST /api/v1/auth/login`（登出為用戶端清除 JWT，**無端點**，O-006） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
-| US-013 | 使用者資料隔離 | P1 | UC-014 | BE-13、BE-05、BE-06、BE-12 | 全部 `/api/v1/todos*` 端點（JWT 授權橫切；跨使用者回 404，O-001） | —（qa-lead 於測試計畫卡填） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | TC-001 ~ TC-011、TC-088、TC-096 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | TC-012 ~ TC-018、TC-093、TC-094、TC-097 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | TC-019 ~ TC-029、TC-098 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | TC-030 ~ TC-037、TC-099 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | TC-038 ~ TC-047、TC-100 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | TC-048 ~ TC-058、TC-101 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | TC-059 ~ TC-064、TC-102 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | TC-065 ~ TC-069、TC-091、TC-103 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | TC-070 ~ TC-077、TC-085 ~ TC-087、TC-092、TC-104 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | TC-078 ~ TC-084、TC-089、TC-090、TC-095、TC-105 | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-011 | 使用者註冊 | P1 | UC-012 | BE-10、BE-11、BE-12 | `POST /api/v1/auth/register` | TC-106 ~ TC-111（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-012 | 使用者登入與登出 | P1 | UC-013 | BE-10、BE-11、BE-13 | `POST /api/v1/auth/login`（登出為用戶端清除 JWT，**無端點**，O-006） | TC-112 ~ TC-117（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
+| US-013 | 使用者資料隔離 | P1 | UC-014 | BE-13、BE-05、BE-06、BE-12 | 全部 `/api/v1/todos*` 端點（JWT 授權橫切；跨使用者回 404，O-001） | TC-118 ~ TC-123（Gate 2 後） | UC／模組／端點已定稿（T-0005 r1）；待 TC |
 
 合計：13 則 US（P0 十則、P1 三則），與 `docs/specs/01_需求規格書_SRS.md` 第 3 章一致。
 UC 合計 14 則（US-010 因「部署驗收」與「存活監測」兩種角色與觸發條件不同而拆為 UC-010、UC-011），與 `docs/specs/02_系統分析書_SA.md` 第 1 章一致；62 條 AC 全數被 UC 覆蓋，對照見該書附錄 A。
@@ -96,8 +96,8 @@ T-0003 r1 補齊 UC 欄使前兩項成立；T-0004 r1 補齊模組與端點欄�
 | 2 | **無對應 US 的 UC** | **無**。SA 第 1 章的 14 則 UC 與本表引用的 UC 集合 `diff` 為空（`UC-SET-IDENTICAL-OK`），無憑空新增的使用案例 | ✅ 通過（T-0005 r1 重跑確認） |
 | 3 | **無對應模組／端點的 US** | **無**。13 則 US 的 `SD 模組` 與 `API 端點` 兩欄皆無一為空或 `—`；進一步以 SD 第 3 章「對應 UC」欄反查（範圍寫法 `UC-00a~UC-00b` 已展開），**13 則 US 全部至少有一個模組明載其 UC，缺口數 0** | ✅ 通過（T-0005 r1 重跑確認） |
 | 4 | **無對應 US 的模組** | **無**。SD 第 3 章定義 21 個模組，本表引用 21 個，`comm` 雙向差集皆為空（既無捏造模組，亦無孤兒模組） | ✅ 通過（T-0005 r1 重跑確認） |
-| 5 | 無對應 TC 的 US | 13 則全部尚無 TC（`TC-ID` 欄為 `—`，由 qa-lead 於測試計畫卡填） | ⏳ 尚未成立，**不屬 Gate 1 判準** |
-| 6 | 無對應 US 的 TC | 本輪無 TC 可檢查 | ⏳ 尚未成立，**不屬 Gate 1 判準** |
+| 5 | **無對應 TC 的 US** | **無**。13 則 US 的 `TC-ID` 欄全數有實值，無一為 `—`（`grep -c "^| US-.*—" ` 結果為 0）。逐則對照：US-001 十三條、US-002 十條、US-003 十二條、US-004 九條、US-005 十一條、US-006 十二條、US-007 七條、US-008 七條、US-009 十三條、US-010 十一條、US-011 六條、US-012 六條、US-013 六條，合計 123 條 | ✅ 通過（T-0009 r1 由 qa-lead 填實後重跑確認） |
+| 6 | **無對應 US 的 TC** | **無**。`docs/specs/20_測試案例.md` 的 TC 集合（TC-001 ~ TC-123，`grep -cE "^\| TC-[0-9]{3} "` = 123）與本表 `TC-ID` 欄展開後的集合 `diff` 為空（`TC-SET-IDENTICAL-OK`）；每個 TC 恰好被一則 US 引用，無重複引用、無孤兒 TC | ✅ 通過（T-0009 r1 由 qa-lead 填實後重跑確認） |
 
 **Gate 1 判準（孤兒檢查三項）結論：第 1、2、3 項皆為「無」，第 4 項為附加檢查亦為「無」。四項全數通過。**
 
