@@ -8,7 +8,6 @@
 
 - T-0011 專案骨架＋CI＋/health＋README ｜ dev-ops/sonnet ｜ r1 ｜ 07:45 派工（批次 1）
 - T-0019 測試計畫同步 Cloud Run＋追溯補欄 ｜ qa-lead/opus ｜ r1 ｜ 07:45 派工
-- T-0010 補修 commit（SD 三處、API servers）｜ plan-sd/opus ｜ 已 done，追加修正中
 
 ## 審核中
 
