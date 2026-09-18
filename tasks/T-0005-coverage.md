@@ -20,6 +20,7 @@ acceptance:
   - 逐 US 對照 SD 模組表與 API 端點：每個 P0/P1 US 都有對應，否則列出缺口
   - traceability.md 孤兒檢查「無對應 UC 的 US」「無對應模組/API 的 US」皆為「無」（TC 欄留給 qa-lead）
   - 覆蓋度審核報告列出：檢查了幾個 US、缺口清單（無則寫無）、對 SRS 或 SD 的修正建議
+  - docs/specs/01a_需求澄清紀錄.md 所有 Q 項狀態更新為「已裁決（Leader）」並引用 tasks/E-001-todo-app.md 裁決紀錄
 reviewer: leader
 branch: null
 created: 2026-09-19T05:28:50+08:00

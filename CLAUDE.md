@@ -57,7 +57,7 @@
 ### 每個角色的固定程序
 
 - 開工：讀任務卡 → 讀 `inputs` → 建交接檔填 A 段 → 卡 `status: in_progress`。
-- 收尾：實際執行驗收指令並貼真實輸出 → 填 B 段（空欄寫「無」）→ 卡 `status: review|blocked` → commit `T-####: 摘要` → 回報五行（狀態｜產出路徑｜交接檔路徑｜需裁決事項｜下一步）。
+- 收尾：實際執行驗收指令並貼真實輸出 → 填 B 段（空欄寫「無」）→ 卡 `status: review|blocked` → commit `T-####: 摘要`（Co-Authored-By 署實際執行模型）→ 回報五行（狀態｜產出路徑｜交接檔路徑｜需裁決事項｜下一步）。
 - 審核：重跑驗證、逐條判 acceptance、寫審核紀錄表、決定 done / rework / blocked。
 - 禁止：成員直接對使用者發問；成員寫看板；宣稱完成而無執行輸出；改 `outputs` 以外的檔案。
 
