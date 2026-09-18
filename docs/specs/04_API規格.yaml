@@ -1,0 +1,829 @@
+# docs/specs/04_API規格.yaml — OpenAPI 3.1
+# DoD：可通過 lint（npx @redocly/cli lint）；每端點有請求／回應範例與錯誤碼。
+# 對應 docs/specs/03_系統設計書_SD.md 第 5 章。每個 operationId 的 description 首行標註對應的 UC-ID。
+#
+# 硬約束（Leader 裁決，見 tasks/E-001-todo-app.md#Leader 裁決紀錄）：
+#   Q-008 / O-005：Basic Auth 擋整站，GET /health 為唯一未保護路徑
+#   O-001：刪除成功 204；（P1）跨使用者存取 404
+#   O-002：完成狀態變更為「設定目標狀態」（冪等），非 toggle
+#   O-003：狀態篩選在後端做
+#   O-004：前端與 API 同源，不啟用 CORS
+#   O-007：識別碼採 UUID
+openapi: 3.1.0
+
+info:
+  title: E-001 待辦事項 Web 應用 API
+  version: 0.1.0
+  summary: 待辦事項的 REST API，供單頁前端與非瀏覽器用戶端共用。
+  description: |
+    對應 `docs/specs/03_系統設計書_SD.md` 第 5 章、`docs/specs/02_系統分析書_SA.md` 第 2 章使用案例。
+
+    **認證**
+    - P0：全站 HTTP Basic Auth（BR-016，Leader 裁決 Q-008），涵蓋頁面與全部 API。
+    - **唯一未保護路徑為 `GET /health`**（BR-017，Leader 裁決 O-005）：監測排程器不持有憑證，
+      不豁免則 AC-010-5 與 NFR-003 永遠不通過。
+    - P1：Basic Auth 由 JWT 取代（BR-020、BR-021，access token 24 小時、無 refresh token）。
+      `/api/v1/auth/register` 與 `/api/v1/auth/login` 為公開端點。
+
+    **同源部署**
+    前端與 API 由同一個服務供應（Leader 裁決 O-004），因此**不回應任何 CORS 標頭**，
+    自然滿足「不得使用萬用字元 `*`」（BR-015、AC-009-5）。
+
+    **共通約定**
+    - 時間一律為 UTC 的 RFC 3339 / ISO 8601 字串（BR-004）；本地時區轉換只發生在前端。
+    - 識別碼一律為 UUID（O-007）。路徑參數非 UUID 格式回 `400`；格式合法但查無資料回 `404`。
+    - 所有錯誤回應為同一個結構 `Error`（BR-014、AC-009-4），`requestId` 與伺服器日誌的 `reqId` 為同一值。
+    - 錯誤回應**不含堆疊追蹤、SQL 或內部檔案路徑**（BR-026、NFR-002②）。
+  contact:
+    name: plan-sd（規劃團隊・系統設計師）
+    url: https://github.com/example/e-001-todo-app
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: "{scheme}://{host}:{port}"
+    description: dev（`docker compose up` 後的本機位址，預設 `http://localhost:8080`；供離線驗證）
+    variables:
+      scheme:
+        default: http
+        enum:
+          - http
+        description: 本機不使用 TLS；HTTPS 由 staging 的平台層提供（BR-025）。
+      host:
+        default: localhost
+        description: 本機主機名稱。於 docker compose 內部互連時為服務名稱 `app`。
+      port:
+        default: "8080"
+        description: 由環境變數 `PORT` 決定，預設 8080。
+  - url: https://{serviceName}.onrender.com
+    description: staging（Render Web Service；實際名稱由使用者於部署時決定）
+    variables:
+      serviceName:
+        default: e001-todo-app
+        description: Render 服務名稱，由使用者建立服務時自行決定
+
+tags:
+  - name: health
+    description: 存活監測。此分類下的端點**不受任何認證保護**（UC-011）。
+  - name: todos
+    description: 待辦事項的建立、查詢、更新、刪除與狀態篩選（UC-001 ~ UC-007、UC-009）。
+  - name: auth
+    description: （P1）使用者註冊與登入（UC-012、UC-013）。登出為用戶端清除憑證，無對應端點（Leader 裁決 O-006）。
+
+# 預設安全需求。兩個方案為「或」關係，代表本規格同時涵蓋 P0 與 P1 兩個階段：
+#   P0 實際生效的是 basicAuth（全站共享帳密，Leader 裁決 Q-008）；
+#   P1 上線時整段改為 bearerAuth（BR-020），且兩者的切換必須在同一次部署完成（SD 第 9 章 SD-01）。
+# 任一時點只有其中一個方案在服務上生效，不會同時接受兩種憑證。
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: 健康檢查（唯一未保護路徑）
+      description: |
+        UC-011 監測服務存活。
+
+        **本端點是全系統唯一豁免 Basic Auth 的路徑**（BR-017、Leader 裁決 O-005）。
+        回應為固定字面值，**不查詢資料庫**、不回傳版本號、commit、環境變數或任何內部細節：
+        它回答的是「這個程序活著且能回應 HTTP」，而不是「整個系統健康」。
+        這正是 Render 零停機輪替與 NFR-003 需要的語意 —— 資料庫短暫抖動不應觸發整個服務被判定為死亡。
+      tags:
+        - health
+      security: []
+      responses:
+        "200":
+          description: 服務存活。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+              examples:
+                ok:
+                  summary: 正常
+                  value:
+                    status: ok
+
+  /api/v1/todos:
+    get:
+      operationId: listTodos
+      summary: 查詢待辦清單（可帶狀態篩選）
+      description: |
+        UC-002 檢視待辦清單、UC-006 依狀態篩選、UC-007 檢視建立時間。
+
+        - 排序固定為建立時間由新到舊（BR-005）。次要排序鍵為 `id`，
+          使同一時間戳的多筆資料順序仍為**決定性**（NFR-007 的 500 筆情境可寫死斷言）。
+        - 篩選在**後端**完成（Leader 裁決 O-003）；前端可對已取得集合做即時過濾以求反應速度，
+          但事實來源為本端點。
+        - 結果為空時回傳空陣列（不是 404）；前端據此顯示空狀態提示（BR-028）。
+        - 本輪**不分頁、不搜尋**（BR-027，範圍外）。
+        - P1 起先以 JWT 身分過濾，再套狀態篩選（BR-022，順序不可顛倒）。
+      tags:
+        - todos
+      parameters:
+        - $ref: "#/components/parameters/StatusFilter"
+      responses:
+        "200":
+          description: 查詢成功，回傳符合篩選條件的待辦集合（可能為空陣列）。
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Todo"
+              examples:
+                twoItems:
+                  summary: 兩筆待辦（新到舊）
+                  value:
+                    - id: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+                      title: 寫系統設計書
+                      isCompleted: false
+                      createdAt: "2026-09-19T05:29:41.482Z"
+                    - id: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      title: 買牛奶
+                      isCompleted: true
+                      createdAt: "2026-09-18T22:10:03.117Z"
+                empty:
+                  summary: 此篩選下沒有待辦（BR-028）
+                  value: []
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      operationId: createTodo
+      summary: 新增待辦
+      description: |
+        UC-001 新增待辦。
+
+        - 標題去除前後空白後長度必須為 1 ~ 200（BR-001、BR-002，Leader 裁決 Q-001）。
+          注意 `"   "`（全空白）必須被擋下 —— schema 的 `minLength` 擋不掉它，
+          業務層須在 `trim()` 之後再驗一次。
+        - 識別碼與建立時間由**伺服器**產生，用戶端送出的 `id` / `createdAt` 一律忽略（BR-003、BR-012）。
+        - 新建立的待辦完成狀態恆為 `false`（BR-006）。
+        - **不存在** `completedAt`（Leader 裁決 Q-006）、`description`（Q-002）等欄位。
+      tags:
+        - todos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTodoRequest"
+            examples:
+              normal:
+                summary: 一般建立
+                value:
+                  title: 寫系統設計書
+      responses:
+        "201":
+          description: 建立成功，回傳新建立的待辦。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+              examples:
+                created:
+                  summary: 建立成功
+                  value:
+                    id: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+                    title: 寫系統設計書
+                    isCompleted: false
+                    createdAt: "2026-09-19T05:29:41.482Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/todos/{todoId}:
+    parameters:
+      - $ref: "#/components/parameters/TodoId"
+
+    get:
+      operationId: getTodoById
+      summary: 查詢單筆待辦
+      description: |
+        UC-009 以 REST API 完成全部待辦操作（AC-009-1 明列「查詢單筆」）、UC-007 檢視建立時間。
+
+        - 識別碼不存在回 `404`（BR-009）。
+        - P1 起，該筆若不屬於當前使用者，同樣回 `404`（**不是 403**，Leader 裁決 O-001：
+          不洩漏「該識別碼是否存在」）。實作上以 `WHERE id = $1 AND owner_id = $2` 單一查詢完成，
+          不存在「先查到再判斷權限」的中間狀態。
+      tags:
+        - todos
+      responses:
+        "200":
+          description: 查詢成功。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+              examples:
+                found:
+                  summary: 查得一筆
+                  value:
+                    id: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+                    title: 寫系統設計書
+                    isCompleted: false
+                    createdAt: "2026-09-19T05:29:41.482Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    patch:
+      operationId: updateTodo
+      summary: 更新待辦標題或完成狀態
+      description: |
+        UC-003 編輯待辦標題、UC-005 切換完成／未完成。
+
+        **本端點同時服務兩個使用案例**，body 的兩個欄位皆為選填，但**至少要有一個**，否則回 `400`。
+
+        - `isCompleted` 是**設定目標狀態**，不是 toggle（Leader 裁決 O-002）。
+          送 `{"isCompleted": true}` 對已完成的待辦重送仍為已完成 —— **冪等**，
+          因此前端的失敗重試可以無腦重送，不會反覆翻轉。**系統不提供 toggle 語意的端點。**
+        - `createdAt` 永不改變（BR-003）；`completedAt` 不存在、不寫入（BR-007）。
+        - `id`、`createdAt`、`ownerId` 等欄位即使被夾帶在 body 中也**一律忽略**
+          （BR-012，實作為 JSON Schema 的 `additionalProperties: false` 搭配 Fastify `removeAdditional: true`，
+          是「移除」而非「拒絕」，符合 BR-012 的「忽略」用語）。
+        - 前端在收到成功回應後，須依 BR-011 以**目前生效的篩選**重新計算清單：
+          在「未完成」篩選下把某筆設為已完成時，該筆即自畫面移除。
+      tags:
+        - todos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTodoRequest"
+            examples:
+              renameOnly:
+                summary: 只改標題（UC-003）
+                value:
+                  title: 寫系統設計書（修訂版）
+              completeOnly:
+                summary: 設為已完成（UC-005，設定目標狀態，冪等）
+                value:
+                  isCompleted: true
+              reopenOnly:
+                summary: 設回未完成（UC-005）
+                value:
+                  isCompleted: false
+      responses:
+        "200":
+          description: 更新成功，回傳更新後的待辦。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+              examples:
+                updated:
+                  summary: 已設為完成，createdAt 不變
+                  value:
+                    id: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+                    title: 寫系統設計書
+                    isCompleted: true
+                    createdAt: "2026-09-19T05:29:41.482Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      operationId: deleteTodo
+      summary: 刪除待辦
+      description: |
+        UC-004 刪除待辦。
+
+        - **硬刪除**：資料不保留、不可復原，無軟刪除旗標（BR-008，Leader 裁決 Q-003）。
+        - 成功回 **`204 No Content`，無回應本文**（Leader 裁決 O-001；AC-009-3 的
+          「200 或 204」已收斂為單一值，測試可寫死斷言）。
+        - 二次確認提示是**前端**的責任（BR-008、AC-004-2），API 不做確認語意。
+        - 識別碼不存在回 `404`，且**不得因此建立任何資料、不得回 5xx**（BR-009）。
+      tags:
+        - todos
+      responses:
+        "204":
+          description: 刪除成功。無回應本文。
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/auth/register:
+    post:
+      operationId: registerUser
+      summary: （P1）使用者註冊
+      description: |
+        UC-012 使用者註冊。**P1 功能，P0 階段不部署。**
+
+        - 帳號識別為 Email 格式且全系統唯一；**不寄送驗證信**（BR-024，Leader 裁決 Q-009）。
+        - 密碼長度 >= 8 字元，不強制大小寫與符號（BR-024）。
+        - 密碼以 bcrypt（cost 12）單向雜湊儲存，**資料庫中不得有明文**（BR-018、NFR-002③）。
+        - Email 已被註冊時回 `409`（語意為衝突而非輸入格式錯誤）。
+        - 任何註冊失敗的訊息皆不得洩漏系統內部細節（BR-026、AC-011-5）。
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              normal:
+                summary: 一般註冊
+                value:
+                  email: alice@example.com
+                  password: correct-horse-battery
+      responses:
+        "201":
+          description: 註冊成功。回應**不含**密碼或其雜湊值。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+              examples:
+                created:
+                  summary: 建立成功
+                  value:
+                    id: 0f8fad5b-d9cb-469f-a165-70867728950e
+                    email: alice@example.com
+                    createdAt: "2026-09-19T06:01:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email 已被註冊（BR-024）。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                taken:
+                  summary: 重複的 Email
+                  value:
+                    code: E_EMAIL_TAKEN
+                    message: Email is already registered
+                    requestId: req-2b91ad
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/auth/login:
+    post:
+      operationId: loginUser
+      summary: （P1）使用者登入
+      description: |
+        UC-013 使用者登入與登出。**P1 功能，P0 階段不部署。**
+
+        - 成功回傳 JWT access token，有效期 **24 小時**，**不提供 refresh token**
+          （BR-021，Leader 裁決 Q-010）。過期即需重新登入。
+        - 失敗時**不得區分**「帳號不存在」與「密碼錯誤」，一律回 `401` 與同一則訊息
+          （BR-019、AC-012-2；避免帳號列舉）。
+        - **登出沒有對應端點**：Leader 裁決 O-006 為不需伺服器端撤銷清單，
+          登出即用戶端清除所持有的 JWT（AC-012-5）。
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              normal:
+                summary: 一般登入
+                value:
+                  email: alice@example.com
+                  password: correct-horse-battery
+      responses:
+        "200":
+          description: 登入成功，回傳 access token。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              examples:
+                ok:
+                  summary: 取得 token
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjhmYWQ1YiJ9.PLACEHOLDER
+                    expiresAt: "2026-09-20T06:01:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: 帳號或密碼錯誤。訊息刻意統一，不區分兩種情況（BR-019）。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalid:
+                  summary: 統一的失敗訊息
+                  value:
+                    code: E_UNAUTHORIZED
+                    message: Invalid email or password
+                    requestId: req-5c40e2
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: |
+        P0 階段的全站共享帳密（BR-016，Leader 裁決 Q-008）。
+        帳密由使用者自行放入平台 secrets（環境變數 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`），
+        **不得寫入倉庫**。未帶或帶錯憑證回 `401` 並附 `WWW-Authenticate: Basic realm="staging"`。
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        （P1）登入後取得的 access token，有效期 24 小時、無 refresh token（BR-021）。
+        P1 上線時由本方案取代 `basicAuth`，且**兩者的切換必須在同一次部署完成**，
+        否則中間會出現完全不設防的視窗（見 SD 第 9 章 SD-01）。
+
+  parameters:
+    TodoId:
+      name: todoId
+      in: path
+      required: true
+      description: 待辦的識別碼（UUID，Leader 裁決 O-007）。非 UUID 格式回 `400`，格式合法但查無資料回 `404`。
+      schema:
+        type: string
+        format: uuid
+      example: 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+
+    StatusFilter:
+      name: status
+      in: query
+      required: false
+      description: |
+        狀態篩選（BR-010，Leader 裁決 Q-007）。固定三值，預設 `all`。
+        非這三個值一律回 `400`（UC-006 例外流程 E4）。
+        篩選**不保存、不寫入網址**，重新整理後回到 `all` —— 該行為由前端負責，本參數只描述單次查詢。
+      schema:
+        type: string
+        enum:
+          - all
+          - active
+          - completed
+        default: all
+      example: active
+
+  schemas:
+    Todo:
+      type: object
+      title: 待辦事項
+      description: |
+        對應 SA 第 3.1 節的領域實體 `Todo`。
+        **刻意不存在的欄位**：`description`、`completedAt`、`dueDate`、`priority`、`tags`、`deletedAt`
+        （Leader 裁決 Q-002 / Q-003 / Q-006）。`updatedAt` 存在於資料庫但**不進本契約**（O-008）。
+      required:
+        - id
+        - title
+        - isCompleted
+        - createdAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 系統產生，不可重用，對使用者唯讀（AC-001-4、O-007）。
+          examples:
+            - 3f2504e0-4f89-41d3-9a0c-0305e82c3301
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 去除前後空白後長度 1 ~ 200（BR-001、BR-002）。顯示時一律逸出（BR-013）。
+          examples:
+            - 寫系統設計書
+        isCompleted:
+          type: boolean
+          description: 完成狀態，僅兩態，無第三態（BR-006）。新建立時恆為 `false`。
+          examples:
+            - false
+        createdAt:
+          type: string
+          format: date-time
+          description: |
+            建立時間，UTC 的 RFC 3339 / ISO 8601 字串（BR-004）。
+            **建立後永不變更**（BR-003、不變量 I-2）。
+            本地時區轉換與 `yyyy-mm-dd HH:mm` 格式化只發生在前端，API 不提供本地化字串。
+          examples:
+            - "2026-09-19T05:29:41.482Z"
+
+    CreateTodoRequest:
+      type: object
+      title: 建立待辦的請求
+      required:
+        - title
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: |
+            待辦標題。伺服器會在 `trim()` 之後再驗一次長度，
+            因此全為空白字元的字串（例如 `"   "`）會被擋下並回 `400`（BR-001）。
+          examples:
+            - 寫系統設計書
+
+    UpdateTodoRequest:
+      type: object
+      title: 更新待辦的請求
+      description: |
+        兩個欄位皆為選填，但**至少要有一個**，否則回 `400`（`E_VALIDATION`）。
+        其餘欄位（`id`、`createdAt`、`ownerId`）即使被夾帶也一律忽略（BR-012）。
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 新標題（UC-003）。同樣在 `trim()` 之後驗證長度。
+          examples:
+            - 寫系統設計書（修訂版）
+        isCompleted:
+          type: boolean
+          description: |
+            **目標**完成狀態（UC-005，Leader 裁決 O-002）。這是設定值而非切換，
+            因此本操作為冪等，重送不會反覆翻轉。
+          examples:
+            - true
+
+    HealthStatus:
+      type: object
+      title: 健康檢查回應
+      description: |
+        固定字面值。**刻意不含**版本號、commit SHA、資料庫狀態、環境變數或任何內部資訊 ——
+        本端點是全系統唯一對全網公開的路徑，回傳越多，資訊洩漏面越大（BR-017、BR-026）。
+      required:
+        - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          const: ok
+          description: 恆為字串 `ok`。
+          examples:
+            - ok
+
+    User:
+      type: object
+      title: 使用者（P1）
+      description: 對應 SA 第 3.1 節的領域實體 `User`。回應**永遠不含** `passwordHash`（BR-018）。
+      required:
+        - id
+        - email
+        - createdAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          examples:
+            - 0f8fad5b-d9cb-469f-a165-70867728950e
+        email:
+          type: string
+          format: email
+          description: 全系統唯一；不寄驗證信，僅作唯一識別（BR-024）。
+          examples:
+            - alice@example.com
+        createdAt:
+          type: string
+          format: date-time
+          examples:
+            - "2026-09-19T06:01:00.000Z"
+
+    RegisterRequest:
+      type: object
+      title: 註冊請求（P1）
+      required:
+        - email
+        - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          examples:
+            - alice@example.com
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: 長度 >= 8，不強制大小寫與符號（BR-024，Leader 裁決 Q-009）。以 bcrypt cost 12 雜湊後儲存。
+          examples:
+            - correct-horse-battery
+
+    LoginRequest:
+      type: object
+      title: 登入請求（P1）
+      required:
+        - email
+        - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          examples:
+            - alice@example.com
+        password:
+          type: string
+          minLength: 1
+          examples:
+            - correct-horse-battery
+
+    LoginResponse:
+      type: object
+      title: 登入回應（P1）
+      required:
+        - token
+        - expiresAt
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          description: JWT access token。有效期 24 小時，無 refresh token（BR-021）。
+          examples:
+            - eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjhmYWQ1YiJ9.PLACEHOLDER
+        expiresAt:
+          type: string
+          format: date-time
+          description: token 到期時刻（UTC）。用戶端據此提前導向重新登入。
+          examples:
+            - "2026-09-20T06:01:00.000Z"
+
+    Error:
+      type: object
+      title: 統一錯誤物件
+      description: |
+        所有錯誤回應共用的結構（BR-014、AC-009-4、NFR-005）。
+        **不得含堆疊追蹤、SQL 或內部檔案路徑**（BR-026、NFR-002②）。
+      required:
+        - code
+        - message
+        - requestId
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: 可辨識的錯誤代碼，對應 SD 第 6.1 節的錯誤碼表。
+          enum:
+            - E_VALIDATION
+            - E_UNAUTHORIZED
+            - E_NOT_FOUND
+            - E_EMAIL_TAKEN
+            - E_INTERNAL
+          examples:
+            - E_VALIDATION
+        message:
+          type: string
+          description: |
+            人類可讀的簡短說明。`E_INTERNAL` 時**恆為固定字面值** `Internal Server Error`，
+            不隨實際例外變動（BR-026）。
+          examples:
+            - title must not be empty after trimming
+        details:
+          type: object
+          description: |
+            僅出現在 4xx，且只含欄位名稱與違反的規則，**不回射使用者輸入原文**
+            （避免把注入字串原樣送回）。5xx 一律無此欄位。
+          additionalProperties: true
+          examples:
+            - field: title
+              rule: minLength
+        requestId:
+          type: string
+          description: |
+            與伺服器 pino 日誌的 `reqId` 為**同一個值**（NFR-005 的「可關聯的請求識別碼」）。
+            使用者回報錯誤時提供此值，維運可直接在日誌中定位該次請求。
+          examples:
+            - req-7f3a2c
+
+  responses:
+    BadRequest:
+      description: |
+        輸入驗證失敗（BR-001、BR-002、BR-010、BR-012）。
+        常見情況：標題為空或去空白後為空、標題超過 200 字、`status` 非三個合法值、
+        路徑參數非 UUID 格式、PATCH body 沒有任何可更新欄位。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            emptyTitle:
+              summary: 標題為空或全為空白字元
+              value:
+                code: E_VALIDATION
+                message: title must not be empty after trimming
+                details:
+                  field: title
+                  rule: minLength
+                requestId: req-7f3a2c
+            titleTooLong:
+              summary: 標題超過 200 字元
+              value:
+                code: E_VALIDATION
+                message: title must be at most 200 characters
+                details:
+                  field: title
+                  rule: maxLength
+                requestId: req-81b0de
+            badStatus:
+              summary: status 非三個合法值
+              value:
+                code: E_VALIDATION
+                message: status must be one of all, active, completed
+                details:
+                  field: status
+                  rule: enum
+                requestId: req-4a12f9
+
+    Unauthorized:
+      description: |
+        未認證（BR-016、BR-020）。
+        P0：未帶或帶錯 Basic Auth 憑證，回應同時附 `WWW-Authenticate: Basic realm="staging"`。
+        P1：未帶、無效或已過期的 JWT。**回應不含任何待辦資料**。
+      headers:
+        WWW-Authenticate:
+          description: P0 階段回傳，觸發瀏覽器的原生認證提示（UC-010 主要流程第 1 步）。
+          schema:
+            type: string
+          example: Basic realm="staging"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            missingCredentials:
+              summary: 未帶憑證
+              value:
+                code: E_UNAUTHORIZED
+                message: Authentication required
+                requestId: req-0c9e33
+
+    NotFound:
+      description: |
+        找不到資源（BR-009）。對不存在的識別碼執行讀取／更新／刪除一律回本狀態碼，
+        且**不得因此建立新資料、不得回 5xx**。
+
+        P1 起，跨使用者存取（A 以自己的憑證存取 B 的待辦）**同樣回 404 而非 403**
+        （Leader 裁決 O-001：不洩漏「該識別碼是否存在」），且該筆資料不得被改動（BR-023）。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            notFound:
+              summary: 識別碼不存在（或 P1 不屬於當前使用者）
+              value:
+                code: E_NOT_FOUND
+                message: Todo not found
+                requestId: req-9df402
+
+    InternalServerError:
+      description: |
+        伺服器內部錯誤。回應本文**不含堆疊追蹤、SQL 或內部檔案路徑**（BR-026、NFR-002②），
+        `message` 為固定字面值。完整的錯誤與堆疊只寫入伺服器端的結構化日誌
+        （含時間、路徑、方法、錯誤訊息與 `reqId`，BR-014、NFR-005）。
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            internal:
+              summary: 固定訊息，不洩漏細節
+              value:
+                code: E_INTERNAL
+                message: Internal Server Error
+                requestId: req-b71c5a
