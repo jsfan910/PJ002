@@ -6,6 +6,8 @@
 
 ## 進行中
 
+- T-0027 staging 首次部署、回填、回滾演練、監測 ｜ dev-ops/sonnet ｜ r1 ｜ 待 main 推送成功後派工
+
 （無）
 
 ## 審核中
@@ -14,7 +16,7 @@
 
 ## 阻塞
 
-- E-001 staging 補驗（部署、回滾演練、24h 採樣、8 條 TC、staging UAT、測試總結 r2）｜ 阻塞原因：待使用者提供 GCP／GitHub 一次性設定（README「部署與 secrets」）
+（無）
 
 ## 待辦（Gate 2 後）
 

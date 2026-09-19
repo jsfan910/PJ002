@@ -247,3 +247,10 @@ updated: 2026-09-19T14:06:43+08:00
 
 - T-0020～T-0023 全部 done。Epic status → gate2。Gate 2 報告：docs/reports/20260919-1410-Gate2-E001.md。
 - 等待使用者：① Gate 2 判定 ② 是否現在開 P1 ③ staging 一次性設定與 GitHub repo。
+
+### 2026-09-19T15:50:02+08:00 — staging 設定就緒，進入部署補驗
+
+- 使用者：GCP 與 GitHub 一次性設定完成；repo https://github.com/jsfan910/PJ002；GCP 專案 pj002-509106、專案編號 538912330059、區域 asia-east1。
+- Leader 加 remote origin 並推送 main（觸發 deploy-staging.yml）。建 T-0027（dev-ops）做首次部署驗證、回填、回滾演練、監測啟動。
+- 後續：T-0028（qa-at r3 staging 重跑 + qa-uat r3 staging UAT，24 小時採樣判讀）→ T-0029（qa-lead 測試總結 r2）→ Gate 2 報告 r2。
+- 使用者設定過程沉澱的 README 修正（cmd/PowerShell 用 gcloud.cmd、佔位符、<(echo) 改寫檔、secret 用檔案避免換行）納入 T-0027 outputs。
