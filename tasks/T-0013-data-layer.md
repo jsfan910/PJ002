@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0011]
 inputs:
@@ -34,7 +34,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0013-data-layer
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:35:46+08:00
+updated: 2026-09-19T08:50:01+08:00
 blocked_reason: null
 ---
 
@@ -61,3 +61,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 本機 Docker 可用，先 `compose down -v` 清卷再重建，整合測試對真實 Postgres 實跑 8/8（skipped 0）、migrate 首次套用→二次 no-op 冪等；lint/build exit 0、unit 15/15；001 DDL 與 05 §3 逐字一致並以 `psql \d todos` 反向驗證（UUID 主鍵、`idx_todos_created_at_desc`、CHECK、觸發器全到位）；repository SQL 與 05 §3 代表性查詢相符、`${` 零命中（附對照組排除 grep 假陰性）；`pool max: 5`；假設與決策 6 條全接受。`npm run migrate` 逐字執行失敗已複現，依 Leader 裁決 T-0013-② 由 dev-tl 於批次 2 收尾修 package.json，非本卡缺陷。已合併 main | worklog/handoff/20260919-0847-T0013-r1-dev-tl.md |
