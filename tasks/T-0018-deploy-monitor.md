@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0010, T-0011, T-0015, T-0016]
 inputs:
@@ -37,7 +37,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0018-deploy-monitor
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T11:40:00+08:00
+updated: 2026-09-19T11:42:00+08:00
 blocked_reason: null
 ---
 
@@ -64,3 +64,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | prettier／actionlint（官方映像，三個 workflow 零 finding）全過；WBS §1.8 十一條驗收指令逐條重跑符合；階段順序逐字對上 06 §3.2（auth→migrate→build&push→deploy→verify）、verify 覆寫 10s/300s、deploy 用 SHA 標籤；monitor 每 5 分鐘、不帶憑證、無查詢字串；WIF 為主且無長期金鑰；憑證掃描僅 4 處結構性假陽性（`id-token: write`、`--set-secrets` 參照語法），無真實專案 ID 或憑證值；06 僅動指定三處、變更紀錄未動；`docker build` 成功、compose 起後 `/health` 無憑證 200、`/api/v1/todos` 無憑證 401／帶憑證 200；**README 方式一與方式二各在乾淨 shell 以字面 8080 埠實測（Git Bash 12s／8s，PowerShell 11.0s／8.8s）皆 200**。6 條假設與決策全部接受。遠端部署與 24 小時採樣屬被憑證阻擋的最後一步，列「遠端待驗」5 項交 Leader 追蹤，不列為不通過。三項交 Leader 追認見交接檔。已合併 main（22018da） | worklog/handoff/20260919-1133-T0018-r1-dev-tl.md |
