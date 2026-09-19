@@ -1,10 +1,10 @@
 ---
 id: E-001
 title: 待辦事項 Web 應用（Phase 1 試跑範例）
-status: testing           # planning | gate1 | developing | testing | gate2 | done
+status: gate2             # planning | gate1 | developing | testing | gate2 | done
 owner: leader
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T11:45:41+08:00
+updated: 2026-09-19T14:06:43+08:00
 ---
 
 # E-001 待辦事項 Web 應用
@@ -236,3 +236,14 @@ updated: 2026-09-19T11:45:41+08:00
 ### 2026-09-19T13:17:08+08:00 — UAT r2（T-0022）結果
 
 - P0 十則 10/10 通過（本機替代環境）；D-FE-001 判定為「阻擋（工具）」非缺陷；staging 就緒後重跑列 Gate 2 後待辦。
+
+### 2026-09-19T14:06:43+08:00 — 對測試總結（T-0023）三項的裁決；Gate 2 報告提交
+
+| # | 裁決 |
+|---|---|
+| A | Gate 2 判定建議「阻擋（環境未就緒），待使用者完成 staging 一次性設定後補驗」，報告首行載明 0 條不通過、0 開放 S1/S2；最終判定交使用者（Gate 2 報告第 3 章①） |
+| B | NFR-004 Firefox 兩組維持原裁決：Gate 2 後於非沙盒環境補跑 |
+| C | 追認 unit 層 11 條 TC 以 CR 檢查清單 + 套件全綠佐證；「補 TC-ID 標註」列 P1 |
+
+- T-0020～T-0023 全部 done。Epic status → gate2。Gate 2 報告：docs/reports/20260919-1410-Gate2-E001.md。
+- 等待使用者：① Gate 2 判定 ② 是否現在開 P1 ③ staging 一次性設定與 GitHub repo。

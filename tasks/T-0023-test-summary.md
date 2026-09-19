@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-lead
 model: opus
-status: review
+status: done
 round: 1
 depends_on: [T-0020, T-0021, T-0022]
 inputs:
@@ -27,7 +27,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T14:00:00+08:00
+updated: 2026-09-19T14:06:43+08:00
 blocked_reason: null
 ---
 
@@ -49,3 +49,4 @@ Leader：核對退出準則表無空格；抽查 2 個缺陷可重現。
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | done | 退出準則 12 項每格有數字；缺陷 15 筆登錄完整；裁決 A 採建議、B 維持、C 追認列 P1 | worklog/handoff/20260919-工作交接.md |

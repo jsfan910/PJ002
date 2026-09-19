@@ -2,35 +2,23 @@
 
 事實來源是各任務卡 frontmatter；本檔由 Leader 以 `/dispatch` 重新彙整。引言區（本段到第一個 `## ` 之前）只放一行指向當日交接檔。
 
-> 本日交接見 `worklog/handoff/20260919-工作交接.md`。Gate 1 已通過；P0 開發 8 卡全部合併（main df4071b）；測試階段進行中。staging 實際部署待使用者提供 GitHub repo 與 GCP 設定（README「部署與 secrets」）。
+> 本日交接見 `worklog/handoff/20260919-工作交接.md`。**E-001 Gate 2 報告已提交使用者（`docs/reports/20260919-1410-Gate2-E001.md`）：本機範圍全達標、staging 阻擋，等使用者判定與 staging 設定。**
 
 ## 進行中
 
-- T-0023 缺陷清單＋測試總結 ｜ qa-lead/opus ｜ r1 ｜ 13:30 派工
-
 （無）
-（無）
-
-（無）
-
 
 ## 審核中
-
-- T-0020 r2 CR（5a346b1，阻擋 0）｜ reviewer qa-lead（T-0023）
-- T-0022 r2 UAT（10/10）｜ reviewer qa-lead（T-0023）
-- T-0021 r2 AT（e1547eb，0 fail）｜ reviewer qa-lead（T-0023）
-
-（無）
-
-（無）
-
 
 （無）
 
 ## 阻塞
 
-（無）
+- E-001 staging 補驗（部署、回滾演練、24h 採樣、8 條 TC、staging UAT、測試總結 r2）｜ 阻塞原因：待使用者提供 GCP／GitHub 一次性設定（README「部署與 secrets」）
 
-## 待辦
+## 待辦（Gate 2 後）
 
-- （待使用者）staging 首次部署後：API servers 回填小卡、回滾演練、NFR-003 24 小時採樣
+- P1：US-011～US-013 多使用者帳號（依 WBS §8，開卡前 Leader 依使用者裁決②決定時機）
+- P1 併卡：CR N-1 runMigrations 互斥鎖（與 002 migration 同卡）；unit 層 TC-ID 標註（測試總結裁決 C）
+- Firefox 相容性兩組於非沙盒環境補跑（NFR-004）
+- staging 首次部署後回填 API 規格 servers（T-0018 裁決①）
