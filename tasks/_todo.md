@@ -6,13 +6,15 @@
 
 ## 進行中
 
+- 批次 3：T-0015 Basic Auth／靜態託管 ｜ dev-be/sonnet ｜ r1 ｜ 09:05 派工（worktree）
+
 （無）
 
 （無）
 
 ## 審核中
 
-- T-0012（ef455ae）、T-0013（7e0a086）、T-0014（eb5988c）｜ reviewer dev-tl ｜ 08:50 依序初審合併中
+（無）
 
 （無）
 
@@ -25,6 +27,5 @@
 ## 待辦（開發批次，依 WBS §2）
 
 
-- 批次 3：T-0015 Basic Auth／靜態託管 ｜ dev-be/sonnet ｜ 依賴 T-0011, T-0012, T-0014
 - 批次 4：T-0016 待辦 API ｜ dev-be/sonnet ｜ 依賴 T-0012, T-0013, T-0015
 - 批次 5（平行）：T-0017 前端狀態與呈現 ｜ dev-fe/sonnet ｜ 依賴 T-0014, T-0016；T-0018 staging 部署與監測 ｜ dev-ops/sonnet ｜ 依賴 T-0010, T-0011, T-0015, T-0016
