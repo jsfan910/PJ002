@@ -89,7 +89,7 @@ npm start                       # 另開一個終端機視窗執行下一步
 | 單元測試（後端 `*.test.ts` ＋ 前端 `*.test.mjs`，需先 `npm run build`） | `npm run build && npm run test:unit` |
 | 整合測試（需先 `npm run build`，見下方限制） | `npm run test:integration` |
 | Migration（**需先 `npm run build`**，腳本讀 `dist/db/migrate.js`） | `npm run build && npm run migrate` |
-| 驗證 `/health`（尚未實作，由 T-0018 補上） | `npm run verify:health` |
+| 驗證 `/health`（輪詢至 200 或逾時；可用 `BASE_URL`／`POLL_INTERVAL_SECONDS`／`POLL_TIMEOUT_SECONDS` 覆寫，本機預設 `http://localhost:8080`／2 秒／60 秒） | `npm run verify:health` |
 | 本機 Docker 建置 | `docker build -t todo-app:dev .` |
 | 本機一行帶起 app＋db | `docker compose up -d` |
 
@@ -102,17 +102,37 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 ## 目錄結構
 
-（對應 `docs/specs/03_系統設計書_SD.md` 第 8 章；本卡建立的部分如下，其餘由後續卡補上）
+（對應 `docs/specs/03_系統設計書_SD.md` 第 8 章；以下為 P0 全部八張開發卡 T-0011～T-0018 合併後的現況）
 
 ```
 .
-├── .github/workflows/ci.yml     # lint → unit → build → integration（本卡）
+├── .github/workflows/
+│   ├── ci.yml                     # lint → unit → build → integration（不推送）
+│   ├── deploy-staging.yml         # CI 於 main 全綠後：auth(WIF) → migrate → build&push → deploy → verify
+│   └── monitor-health.yml         # cron */5，連續取樣 3 次 /health（不帶憑證），結果上傳 artifact
+├── infra/cloudrun-service.yaml    # Cloud Run 服務宣告（文件化 IaC，機密以 Secret Manager 參照）
+├── scripts/
+│   ├── verify-health.ts           # npm run verify:health 的實作（輪詢 /health 至 200）
+│   ├── deploy-staging.sh          # deploy-staging.yml 的本機等效（Git Bash）
+│   └── rollback-staging.sh        # 06 §5.1 回滾程序的本機等效（Git Bash）
+├── migrations/001_create_todos.sql
 ├── src/
-│   ├── server.ts                 # 啟動、監聽 $PORT、優雅關機
+│   ├── server.ts                  # 啟動、監聽 $PORT、優雅關機
 │   ├── app.ts                     # Fastify 組裝＋五個註冊錨點（順序固定，見檔內註解）
 │   ├── config.ts                  # 一次驗證 P0 全部環境變數
-│   └── routes/health.ts           # GET /health（唯一未保護路徑）
-├── tests/integration/health.test.ts
+│   ├── db/                        # pool.ts、migrate.ts
+│   ├── plugins/                   # error-handler.ts、basic-auth.ts、static.ts
+│   ├── repositories/todo-repository.ts
+│   ├── routes/                    # health.ts、todos.ts
+│   ├── schemas/                   # error-schema.ts、todo-schema.ts
+│   └── services/todo-service.ts   # 業務規則唯一落點
+├── public/
+│   ├── index.html                 # 單頁骨架（11 個穩定 data-testid）＋ todo-view.js 進入點
+│   ├── styles.css
+│   └── assets/                    # api-client.js、todo-store.js、todo-view.js
+├── tests/
+│   ├── unit/                      # *.test.ts（後端）＋ *.test.mjs（前端）
+│   └── integration/               # *.test.ts
 ├── Dockerfile                     # 多階段，node:22-alpine 非 root，監聽 $PORT
 ├── docker-compose.yml             # 本機 app + postgres:16-alpine
 ├── .env.example                   # 只有本機 compose 用的明顯佔位值，無真實憑證
