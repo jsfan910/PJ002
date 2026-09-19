@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0011]
 inputs:
@@ -24,6 +24,7 @@ outputs:
   - src/db/migrate.ts
   - src/repositories/todo-repository.ts
   - tests/integration/todo-repository.test.ts
+  - tests/unit/todo-repository.test.ts（原卡未列，本輪新增，見交接檔「需要 Leader 裁決的事」）
 acceptance:
   - WBS §1.3「驗收方式草案」的每條指令實際執行且結果符合，指令與真實輸出貼交接檔
   - npm run lint 與相關測試全綠；不改本卡 outputs 以外的檔案（git diff --stat 佐證）
@@ -33,7 +34,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0013-data-layer
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:21:44+08:00
+updated: 2026-09-19T08:35:46+08:00
 blocked_reason: null
 ---
 
