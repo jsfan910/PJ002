@@ -5,8 +5,8 @@ epic: E-001
 team: qa
 role: qa-cr
 model: opus
-status: review
-round: 1
+status: in_progress
+round: 2
 depends_on: [T-0017, T-0018]
 inputs:
   - docs/specs/03_系統設計書_SD.md#6
@@ -29,7 +29,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T11:59:16+08:00
+updated: 2026-09-19T13:00:08+08:00
 blocked_reason: null
 ---
 
@@ -53,3 +53,4 @@ qa-lead：核對報告檢查清單無空項；抽查 3 個阻擋級或建議級�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | rework→r2 | CR 退回阻擋 2／建議 11 已由 T-0024～T-0026 修正合併（main 4b96b20）；r2 只複審修正處與 startup-migrate 回歸 | worklog/handoff/20260919-工作交接.md |

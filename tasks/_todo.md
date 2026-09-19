@@ -6,6 +6,9 @@
 
 ## 進行中
 
+- T-0020 r2 CR 複審修正處 ｜ qa-cr/opus ｜ 13:00 派工
+- T-0022 r2 UAT 前端三則重跑 ｜ qa-uat/haiku ｜ 13:00 派工
+
 （無）
 
 
@@ -13,8 +16,8 @@
 
 - T-0021 AT 分支（86361f0）｜ dev-tl 合併中（安裝 Playwright）
 
-- T-0020 Code Review（f0e8789，結論退回：阻擋 2、建議 11）｜ reviewer qa-lead（於 T-0023 彙整）
-- T-0022 UAT r1（API 7 過、前端 3 阻擋待重現）｜ reviewer qa-lead（於 T-0023 彙整）
+（無）
+
 
 （無）
 
