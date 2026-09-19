@@ -8,13 +8,13 @@
 
 （無）
 
-- T-0021 自動化測試＋README 實測 ｜ qa-at/sonnet ｜ r1 ｜ 11:40 派工（worktree）
 
 ## 審核中
 
 - T-0024（72558b2）、T-0025（4328d36）、T-0026（f9c9196）｜ reviewer dev-tl ｜ 12:35 依序初審合併中
 
 - T-0020 Code Review（f0e8789，結論退回：阻擋 2、建議 11）｜ reviewer qa-lead（於 T-0023 彙整）
+- T-0021 AT r1（86361f0，本機全過、staging 4 阻擋）｜ 待 dev-tl 合併分支後 r2 重跑
 - T-0022 UAT r1（API 7 過、前端 3 阻擋待重現）｜ reviewer qa-lead（於 T-0023 彙整）
 
 （無）

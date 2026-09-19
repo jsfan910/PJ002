@@ -207,3 +207,9 @@ updated: 2026-09-19T11:45:41+08:00
 
 - T-0026 review（06b35b8）；T-0024 review（0963818，追加授權 Dockerfile runtime 補 COPY migrations 一行，等待補交）；T-0025 review（4328d36）。
 - 裁決：`.github/workflows/ci.yml` lint job 在 `npm run lint` 前補 `npm run build`，由 dev-tl 合併三張修正卡的收尾 commit 一併修。
+
+### 2026-09-19T12:32:40+08:00 — 對自動化測試（T-0021 r1）的裁決
+
+- 結果（修正前 main）：integration 85 過／0 敗／4 阻擋（staging）；e2e Chromium+Edge 136/136；perf NFR-001、NFR-007 PASS；README 方式一 27 秒、方式二 6 秒、0 卡點。
+- 裁決：`@playwright/test` 1.63.0 正式列入 devDependencies，dev-tl 合併 T-0021 時安裝並鎖版；Firefox 於非沙盒環境補跑列為 Gate 2 後待辦；TC-080/084/090 需人工部署觸發，待 staging。
+- 修正卡（T-0024～T-0026）合併後：dev-tl 合併 T-0021 → qa-at r2 對最終 main 重跑三類測試 → qa-uat r2 重跑前端三則 → qa-cr r2 複審修正處 → qa-lead T-0023。
