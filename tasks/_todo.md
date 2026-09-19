@@ -2,13 +2,12 @@
 
 事實來源是各任務卡 frontmatter；本檔由 Leader 以 `/dispatch` 重新彙整。引言區（本段到第一個 `## ` 之前）只放一行指向當日交接檔。
 
-> 本日交接見 `worklog/handoff/20260919-工作交接.md`。**Phase 2（E-002 框架 v1.1）四卡完成合併；T-0036 匯出乾淨範本進行中。** E-001：Gate 1 通過；P0 開發與本機測試全部完成；staging 已部署（https://todo-app-dpevsdhdva-de.a.run.app）；Gate 2 報告 r1 已提交，staging 補驗進行中，NFR-003 需 24 小時採樣。
+> 本日交接見 `worklog/handoff/20260919-工作交接.md`。**Phase 2（E-002 框架 v1.1）完成：五卡 done，乾淨範本在 framework-template/。** E-001：Gate 1 通過；P0 開發與本機測試全部完成；staging 已部署（https://todo-app-dpevsdhdva-de.a.run.app）；Gate 2 報告 r1 已提交，staging 補驗進行中，NFR-003 需 24 小時採樣。
 
 ## 進行中
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0036 | 匯出乾淨框架範本 | leader 代理 / opus | 1 | 18:30 | E-002 |
 
 ## 審核中
 
