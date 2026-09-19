@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>待辦事項</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!--
+      單頁前端骨架（FE-01 ui-shell，WI-04／T-0014）。
+      對應 US-008：新增、清單、篩選、載入中指示、錯誤訊息區全部在同一頁（AC-008-1）。
+      本檔只建立版面骨架與穩定 data-testid，不含任何狀態或呈現邏輯（狀態管理與呈現由
+      T-0017／WI-07 的 public/assets/todo-store.js、public/assets/todo-view.js 補上，
+      並負責把清單項目、空狀態與載入／錯誤區的顯示狀態接上本骨架）。
+      全專案禁止動態寫入 HTML 本文（BR-013）；後續補上的邏輯一律以 textContent 寫入使用者輸入。
+    -->
+    <div class="page" data-testid="app-shell">
+      <header class="page__header">
+        <h1 class="page__title">待辦事項</h1>
+      </header>
+
+      <main class="page__main">
+        <!-- 新增表單（UC-001） -->
+        <form class="add-form" data-testid="add-todo-form" autocomplete="off">
+          <label class="visually-hidden" for="add-todo-input">新增待辦標題</label>
+          <input
+            class="add-form__input"
+            type="text"
+            id="add-todo-input"
+            name="title"
+            data-testid="add-todo-input"
+            placeholder="輸入待辦事項標題"
+            maxlength="200"
+            required
+          />
+          <button class="add-form__submit" type="submit" data-testid="add-todo-submit">
+            新增
+          </button>
+        </form>
+
+        <!-- 篩選控制（UC-006，BR-010：預設「全部」，不寫網址、不持久化） -->
+        <fieldset class="filter" data-testid="filter-controls">
+          <legend class="visually-hidden">篩選待辦</legend>
+          <button
+            type="button"
+            class="filter__option"
+            data-testid="filter-option-all"
+            data-filter-value="all"
+            aria-pressed="true"
+          >
+            全部
+          </button>
+          <button
+            type="button"
+            class="filter__option"
+            data-testid="filter-option-active"
+            data-filter-value="active"
+            aria-pressed="false"
+          >
+            未完成
+          </button>
+          <button
+            type="button"
+            class="filter__option"
+            data-testid="filter-option-completed"
+            data-filter-value="completed"
+            aria-pressed="false"
+          >
+            已完成
+          </button>
+        </fieldset>
+
+        <!-- 載入中指示（BR-030） -->
+        <p class="status-region loading-indicator" data-testid="loading-indicator" hidden>
+          載入中…
+        </p>
+
+        <!-- 錯誤訊息區（BR-029，AC-008-3） -->
+        <p class="status-region error-message" data-testid="error-message" role="alert" hidden></p>
+
+        <!-- 清單容器（UC-002／UC-007，內容含空狀態提示 BR-028，由 T-0017 動態填入） -->
+        <ul class="todo-list" data-testid="todo-list" aria-live="polite"></ul>
+      </main>
+    </div>
+  </body>
+</html>
