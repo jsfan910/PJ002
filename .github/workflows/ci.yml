@@ -28,6 +28,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # lint 需先 build：T-0025（CR S-4）新增的 tsconfig.test.json 讓 `npm run lint`
+      # 一併對 tests/**/*.ts 跑 tsc --noEmit，而多數測試檔以 ../../dist/ 匯入編譯
+      # 產物（與 unit job 同一原因），dist/ 不存在時會是 TS2307 Cannot find module。
+      # Leader 裁決 2026-09-19T12:22:24+08:00（與 T-0012-① 同案）。
+      - run: npm run build
       - run: npm run lint
       - run: npx --yes @redocly/cli lint docs/specs/04_API規格.yaml
 

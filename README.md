@@ -18,6 +18,11 @@
 
 ### 方式一：Docker Compose（推薦，一行帶起 app + PostgreSQL）
 
+**Migration 會在容器啟動時自動套用**（T-0024，CR B-2；`05_資料庫設計.md` §3 第 4 條、NFR-008）：
+`src/server.ts` 在 `app.listen` 之前呼叫 migration runner，**不需要另外下任何 migrate 指令**，
+起來之後待辦 API 即可直接使用。若資料庫連不上，服務會記錄原因並以非 0 結束（不會帶著壞掉的
+資料庫繼續監聽），請看 `docker compose logs app`。
+
 **Git Bash**
 
 ```bash
@@ -38,7 +43,22 @@ Invoke-WebRequest -UseBasicParsing http://localhost:8080/health | Select-Object 
 (Invoke-WebRequest -UseBasicParsing http://localhost:8080/health).Content
 ```
 
-### 方式二：本機 Node（不需 Docker；health 端點不查資料庫，可獨立驗證）
+### 方式二：本機 Node（app 不跑在 Docker 裡，但**需要一個連得到的 PostgreSQL**）
+
+**T-0024（CR B-2）後的重要前提**：服務在 `app.listen` 之前會自動套用 migration，
+因此 `npm start` 需要 `DATABASE_URL` **指向一個從宿主機連得到的 PostgreSQL**。
+`.env.example` 內的 `DATABASE_URL=postgres://dev:dev@db:5432/todo` 中的 `db` 是
+**docker compose 網路內部的主機名**，在宿主機上解析不到——直接照抄會得到
+`getaddrinfo ENOTFOUND db`、記錄「啟動時套用 migration 失敗，服務不會啟動監聽」
+後以 exit code 1 結束（已實測）。請先備妥資料庫並改寫這個變數，例如：
+
+```bash
+docker compose up -d db                                   # 只起資料庫（或用任何本機 Postgres）
+export DATABASE_URL="postgres://dev:dev@localhost:${POSTGRES_HOST_PORT:-5432}/todo"
+```
+
+（`POSTGRES_HOST_PORT` 見「環境變數」章節；未設定時預設 5432。）`/health` 本身仍不查資料庫，
+但**啟動流程**需要資料庫，這是 `05_資料庫設計.md` §3 第 4 條與 NFR-008 的明文要求。
 
 **本卡（T-0018）補充**：`src/config.ts` 直接讀 `process.env`，不使用 `dotenv` 套件，
 `.env` 檔**不會被 `npm start` 自動載入**——`cp .env.example .env` 只是複製檔案，
@@ -52,6 +72,8 @@ cp .env.example .env
 npm ci
 npm run build
 set -a; . ./.env; set +a        # 把 .env 逐行載入目前 shell 的環境變數
+docker compose up -d db         # 起資料庫（啟動時會自動套用 migration，見上方前提）
+export DATABASE_URL="postgres://dev:dev@localhost:${POSTGRES_HOST_PORT:-5432}/todo"   # 蓋掉 .env 內 compose 專用的 db:5432
 npm start                       # 另開一個終端機視窗執行下一步
 curl -sS http://localhost:8080/health
 ```
@@ -73,6 +95,10 @@ npm run build
   $name, $value = $_ -split '=', 2
   Set-Item -Path "env:$name" -Value $value
 }
+docker compose up -d db         # 起資料庫（啟動時會自動套用 migration，見上方前提）
+# 蓋掉 .env 內 compose 專用的 db:5432（宿主機解析不到）
+$hostPort = if ($env:POSTGRES_HOST_PORT) { $env:POSTGRES_HOST_PORT } else { "5432" }
+$env:DATABASE_URL = "postgres://dev:dev@localhost:$hostPort/todo"
 npm start                       # 另開一個終端機視窗執行下一步
 (Invoke-WebRequest -UseBasicParsing http://localhost:8080/health).Content
 ```
@@ -100,7 +126,7 @@ npm start                       # 另開一個終端機視窗執行下一步
 - 同一原因，**`npm run migrate` 前也必須先 `npm run build`**：`src/db/migrate.ts` 以 `.js` 規格匯入 `../config.js`，直接執行 `.ts` 會 `ERR_MODULE_NOT_FOUND`。`migrate` 腳本已改為讀 `dist/db/migrate.js`（與 `npm start` 同模式，Leader 裁決 T-0013-②）。部署時的順序固定為 **build → migrate → deploy**（06 §3）。
 - 同一原因，`npm run test:unit` 也需先 `npm run build`（部分單元測試檔匯入 `dist/`）；`.github/workflows/ci.yml` 的 `unit` job 已於 `test:unit` 前加一步 `npm run build`（Leader 裁決 T-0012-①）。
 - **`npm run dev` 已拆成兩個 script**（T-0025，CR S-11）：原 `node --watch src/server.ts` 必然失敗，同一 `ERR_MODULE_NOT_FOUND` 原因——`src/server.ts` 以 `.js` 規格匯入，Node 的型別剝除不會對應回 `.ts`。本專案未安裝 `concurrently`／`npm-run-all`（package.json 為單一擁有者，新增相依需先向 dev-tl 提出），因此開發模式改為**兩個終端機分別執行**：終端機一 `npm run dev:build`（`tsc -w`，持續編譯到 `dist/`）；終端機二等第一次編譯完成後執行 `npm run dev:run`（`node --watch dist/server.js`，`dist/` 變動時自動重啟）。兩者都需先設好環境變數（同「方式二：本機 Node」章節）。
-- **`npm run lint` 現在也需要先 `npm run build`**（T-0025，CR S-4）：新增的 `tsconfig.test.json` 讓 `lint` 一併對 `tests/**/*.ts` 執行 `tsc --noEmit`，而多數整合測試與部分單元測試以 `../../dist/...` 匯入編譯產物（見上面兩點的同一原因），`dist/` 不存在時會是 `TS2307 Cannot find module`。本文件與 `scripts/deploy-staging.sh` 的既有順序（`npm ci && npm run build` 在前）不受影響；**`.github/workflows/ci.yml` 的 `lint` job 目前是 `npm ci` 後直接 `npm run lint`、尚未加 `npm run build`**，此缺口已寫入本卡（T-0025）交接檔「需要 Leader 裁決的事」，因 `ci.yml` 不在本卡 `outputs` 範圍，需由 dev-tl 另行補一步 `npm run build`（比照 `unit`／`integration` 兩個 job 已有的做法，Leader 裁決 T-0012-①同案）。
+- **`npm run lint` 現在也需要先 `npm run build`**（T-0025，CR S-4）：新增的 `tsconfig.test.json` 讓 `lint` 一併對 `tests/**/*.ts` 執行 `tsc --noEmit`，而多數整合測試與部分單元測試以 `../../dist/...` 匯入編譯產物（見上面兩點的同一原因），`dist/` 不存在時會是 `TS2307 Cannot find module`。本文件與 `scripts/deploy-staging.sh` 的既有順序（`npm ci && npm run build` 在前）不受影響；`.github/workflows/ci.yml` 的 `lint` job 已於 `npm run lint` 前補上 `npm run build`（與 `unit`／`integration` 兩個 job 做法一致，Leader 裁決 2026-09-19T12:22:24+08:00，同 T-0012-① 案）。
 
 ## 目錄結構
 
