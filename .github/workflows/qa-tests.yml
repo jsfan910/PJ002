@@ -1,0 +1,175 @@
+# qa-tests.yml（T-0021，qa-at）。新檔，不改 ci.yml；併入時機與是否採用由 dev-tl 決定。
+#
+# 三個 job：
+#   - integration-qa：對照 20_測試案例.md 的 P0 integration TC（tests/integration/qa/**），
+#     用 postgres:16-alpine service container，push/PR 觸發，與 ci.yml 的 integration 階段
+#     互相獨立（本檔不覆蓋、不取代 ci.yml，避免與既有 pipeline 衝突）。
+#   - e2e：Playwright（Chromium，至少一組；本機臨時安裝 @playwright/test，見
+#     tests/e2e/playwright.config.ts 檔頭），只 workflow_dispatch 手動觸發
+#     （需下載瀏覽器二進位檔，不適合每次 push 都跑）。
+#   - perf：NFR-001／NFR-007 效能腳本，只 workflow_dispatch 手動觸發（長時間執行，
+#     不適合塞進一般 CI 節流）。
+#
+# 憑證一律讀 GitHub secrets／repository variables，不寫死；staging 相關步驟
+# 只在 STAGING_BASE_URL 這個 variable 有值時才啟用（見 07_測試計畫.md §6.1）。
+
+name: QA Tests (T-0021)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "是否執行 e2e（Playwright）"
+        type: boolean
+        default: true
+      run_perf:
+        description: "是否執行 perf（NFR-001／NFR-007）"
+        type: boolean
+        default: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  integration-qa:
+    name: integration (tests/integration/qa)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: "ci"
+          POSTGRES_PASSWORD: "ci"
+          POSTGRES_DB: "todo"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d todo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: "test"
+      PORT: "8080"
+      DATABASE_URL: "postgres://ci:ci@localhost:5432/todo"
+      BASIC_AUTH_USER: "ci"
+      BASIC_AUTH_PASSWORD: "ci"
+      LOG_LEVEL: "silent"
+      CORS_ALLOWED_ORIGINS: ""
+      BASE_URL: "http://localhost:8080"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run migrate
+      - name: 啟動服務（背景）並等待 /health
+        run: |
+          node dist/server.js &
+          npx --yes wait-on http://localhost:8080/health --timeout 30000
+      - name: 執行 tests/integration/qa（依序，避免共用資料庫互相干擾）
+        run: node --test --test-concurrency=1 "tests/integration/qa/**/*.qa.test.ts"
+
+  e2e:
+    name: e2e (Playwright)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.run_e2e == true || inputs.run_e2e == 'true')
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: "ci"
+          POSTGRES_PASSWORD: "ci"
+          POSTGRES_DB: "todo"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d todo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: "test"
+      PORT: "8080"
+      DATABASE_URL: "postgres://ci:ci@localhost:5432/todo"
+      BASIC_AUTH_USER: "ci"
+      BASIC_AUTH_PASSWORD: "ci"
+      LOG_LEVEL: "silent"
+      CORS_ALLOWED_ORIGINS: ""
+      BASE_URL: "http://localhost:8080"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run migrate
+      - name: 啟動服務（背景）並等待 /health
+        run: |
+          node dist/server.js &
+          npx --yes wait-on http://localhost:8080/health --timeout 30000
+      - name: 臨時安裝 @playwright/test（不落地 package.json／package-lock.json）
+        run: npm install --no-save --no-package-lock @playwright/test
+      - name: 安裝 Chromium（至少一組，NFR-004 R-5：最新版即可）
+        run: npx playwright install --with-deps chromium
+      - name: 執行 e2e（Chromium，兩種尺寸）
+        run: npx playwright test -c tests/e2e/playwright.config.ts --project=chromium-1280x800 --project=chromium-390x844
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  perf:
+    name: perf (NFR-001／NFR-007)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.run_perf == true || inputs.run_perf == 'true')
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: "ci"
+          POSTGRES_PASSWORD: "ci"
+          POSTGRES_DB: "todo"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d todo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: "test"
+      PORT: "8080"
+      DATABASE_URL: "postgres://ci:ci@localhost:5432/todo"
+      BASIC_AUTH_USER: "ci"
+      BASIC_AUTH_PASSWORD: "ci"
+      LOG_LEVEL: "silent"
+      CORS_ALLOWED_ORIGINS: ""
+      BASE_URL: "http://localhost:8080"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run migrate
+      - name: 啟動服務（背景）並等待 /health
+        run: |
+          node dist/server.js &
+          npx --yes wait-on http://localhost:8080/health --timeout 30000
+      - name: NFR-001（TC-085／TC-086，暖身 10 秒＋正式 60 秒）
+        run: node tests/perf/tc085-tc086-nfr001.perf.mjs
+      - name: NFR-007（TC-094，500 筆容量）
+        run: node tests/perf/tc094-nfr007-capacity.perf.mjs
