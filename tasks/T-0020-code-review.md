@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-cr
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0017, T-0018]
 inputs:
@@ -18,7 +18,7 @@ inputs:
   - worklog/handoff/（T-0011～T-0018 各卡開發者與 dev-tl 交接檔的「假設與決策」「下一步建議」）
   - src/**、public/**、tests/**、migrations/**、Dockerfile、.github/workflows/**、infra/**
 outputs:
-  - docs/reports/yyyymmdd-HHmm-CR-E001.md
+  - docs/reports/20260919-1146-CR-E001.md
 acceptance:
   - 報告依模板：每個發現有檔案:行號、嚴重度（阻擋／建議）、說明、修正建議
   - 檢查清單每項打勾或說明不適用（API 規格符合、DB 設計符合、錯誤處理、安全、測試品質、無硬編碼密鑰、遵守 ADR）
@@ -29,7 +29,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T11:45:41+08:00
+updated: 2026-09-19T11:59:16+08:00
 blocked_reason: null
 ---
 
