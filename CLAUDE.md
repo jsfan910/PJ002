@@ -34,7 +34,9 @@
 | 開發 | dev-be / dev-fe / dev-ops | Sonnet 5 |
 | 測試 | qa-lead / qa-cr | Opus 5 |
 | 測試 | qa-at | Sonnet 5 |
-| 測試 | qa-uat | Haiku 4.5 |
+| 測試 | qa-uat | Sonnet 5 |
+
+Haiku 適用範圍：格式檢查與彙整；**不指派給需要操作外部工具（瀏覽器、雲端 CLI、容器）的角色**。
 
 任務卡進入第 3 輪時模型自動升一級（haiku→sonnet→opus→fable）。
 
@@ -59,6 +61,8 @@
 - 開工：讀任務卡 → 讀 `inputs` → 建交接檔填 A 段 → 卡 `status: in_progress`。
 - 收尾：實際執行驗收指令並貼真實輸出 → 填 B 段（空欄寫「無」）→ 卡 `status: review|blocked` → commit `T-####: 摘要`（Co-Authored-By 署實際執行模型）→ 回報五行（狀態｜產出路徑｜交接檔路徑｜需裁決事項｜下一步）。
 - 審核：重跑驗證、逐條判 acceptance、寫審核紀錄表、決定 done / rework / blocked。
+- **規格優先於 Leader 提示詞**：派工提示詞與凍結規格（`docs/specs/*`）衝突時，**依規格執行**，並在交接檔「假設與決策」註明衝突點與依據路徑，由 Leader 追認。提示詞只指向任務卡與規格路徑，不重述規格內容。
+- **Leader 裁量：失敗原因為工具操作而非能力時，可於第 2 輪升級模型**（不必等第 3 輪），並記錄於該卡「審核紀錄」表。
 - 禁止：成員直接對使用者發問；成員寫看板；宣稱完成而無執行輸出；改 `outputs` 以外的檔案。
 
 ### 使用者介入點
@@ -98,8 +102,27 @@
 
 ## 工作鐵則
 
+分四類：**環境**（工具與 shell 的坑）／**git**（平行作業的提交紀律）／**流程**（派工與驗收的判準）／**安全**（憑證與機密）。每條後括號內為日期與觸發案例；同一條被再次驗證時於該條後補一筆日期與案例，不另立新條。
+
+### 環境
+
 - **Bash 指令不得含 ASCII 單引號 `'`**：本環境的 Bash 工具會在含單引號的指令上以「unexpected EOF while looking for matching」失敗（含 heredoc 之外的 `printf '…'`、`$'\t'`）。多檔案、含引號的內容改用 Write 工具寫成腳本再 `bash script.sh`。（2026-09-19，Phase 0 建 agent 定義時連續失敗 3 次後確認）
 - **Bash 裡不要呼叫 `python3`／`python`**：本機未安裝 Python，`python3` 會被 Windows 應用程式執行別名接管而無限等待，整條指令卡到逾時。文字處理一律用 sed／awk／grep，或 Write 工具。（2026-09-19，Leader 裁決寫入時卡 120 秒後以 taskkill 終止）
+- **PowerShell 管線會吃掉字串尾端換行，且 `Format-Hex` 看不出來**：把值寫進檔案或注入 secret 時，用 `--data-file`／`--out-file` 這類「檔案進、檔案出」的參數，或改用 Git Bash `wc -c` 計位元組驗證長度，不要用管線接 `Format-Hex` 判斷有沒有換行。另：cmd 不認單引號；文件裡的佔位符要含尖括號以免被整段複製貼上。（2026-09-19，T-0027 staging 部署 verify 401，誤判 secret 含 3 個換行，最後以 Git Bash 位元組計數 9/9/147 證偽）
+
+### git
+
 - **Agent 的 git 只准 append：禁止 `--amend`、`reset`、`rebase`、`checkout -- <file>`**。平行作業時 HEAD 可能已是別人的 commit，amend／reset 會把別人的提交移出分支。commit 訊息打錯就再開一個修正 commit；只 `git add` 自己卡的 outputs，永不 `add -A`。（2026-09-19，T-0006 amend 撞掉平行的 T-0007 commit，Leader 以工作區比對後重提交復原）
 - **開發卡（有 branch 的卡）一律在 git worktree 內作業，不在專案根目錄切分支**：`git worktree add "<根目錄>-wt/T-####" -b task/T-####-slug`，所有檔案操作、npm、docker、測試、commit 都在該 worktree 內；根目錄永遠停在 main 供文件卡與 Leader 使用。合併由 dev-tl 在根目錄 `git merge --no-ff task/...`，合併後 `git worktree remove`。（2026-09-19，T-0011 派工時發現根目錄切分支會讓平行文件卡的 commit 落到錯的分支）
 - **多行 commit 訊息一律寫進檔案再 `git commit -F <file>`**：Bash 工具是 Git Bash，PowerShell here-string（`@'…'@`）會把 `@` 當成訊息首行；`-m` 多行又受單引號限制。（2026-09-19，T-0016 收尾 commit 首行誤植 `@`，因禁止 amend 以空 commit 更正）
+
+### 流程
+
+- **GitHub Actions 的 `schedule` cron 不可靠，不得作為可用性採樣的唯一來源**：排程可能長時間零次觸發。可用性（NFR）採樣一律以**平台原生 uptime check**（如 GCP Cloud Monitoring，每 5 分鐘打 `/health`）為主要資料來源，CI 排程降為備援；**採樣起算時間以 uptime check 建立時間為準**並記入 Epic 裁決紀錄。（2026-09-19，monitor-health.yml `*/5` 連續 2 小時 12 分零次自動執行，改建 uptime check 後 NFR-003 起算改為 17:55:07）
+- **Haiku 不指派給需要操作外部工具的角色**：瀏覽器、雲端 CLI、容器等操作，以及「這次失敗是工具限制還是產品缺陷」的判讀，一律 Sonnet 以上。Haiku 只做格式檢查與彙整。（2026-09-19，qa-uat/haiku 兩輪把自動化瀏覽器的認證快取限制誤判為阻擋級缺陷：T-0022 r1 前端 3 則、T-0029 r1 前端 8/10；換 Sonnet 後各一次 10/10 通過）
+- **多個 QA agent 平行對同一個 staging 操作時，必須錯開時段或做資料隔離**：只動自己建立的資料，否則會互相刪除造成假失敗；測試計畫須載明環境獨占時段。（2026-09-19，T-0028 與 T-0029 同時對 staging 操作互相刪資料，之後改為錯開時段）
+
+### 安全
+
+- **Secret 以 `latest` 注入時，首個 revision 可能解析到錯的值**：釘具體版本號而非 `latest`；並在部署後 `verify` 失敗時自動再建一個 revision 重試一次，再判失敗。（2026-09-19，T-0027 首次部署 revision 00001 帶憑證 verify 401，secret 位元組經驗證乾淨、IAM 與 env 對應皆正確，以 `gcloud run services update --update-secrets` 重建 revision 後即 200）
+- **agent 不讀取、不索取、不寫入任何憑證值**：需要憑證的驗證步驟（例如查資料層比對）留給有權限的角色或使用者執行，並在交接檔註明「因安全規則未執行，留待補驗」。使用者若曾把帳密貼入對話，驗收後提醒輪換。（2026-09-19，T-0031 dev-ops 依此規則未讀 Secret Manager，TC-080 資料層比對留給 qa-at 補驗）
