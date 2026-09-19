@@ -5,9 +5,17 @@ epic: E-001
 team: qa
 role: qa-uat
 model: haiku
-status: in_progress
+status: blocked
 round: 1
 depends_on: [T-0027]
+blocked_reason: |
+  前端應用無法通過瀏覽器連接到 staging API。根本原因為認證方案不相容：
+  頁面從帶認證信息的 URL 載入時（https://user:pass@host），Chromium 安全模型
+  禁止 JavaScript 發送包含認證的 fetch 請求。需前端修正認證方案（如 Authorization
+  標頭、session cookie 或 OAuth/JWT）後重新執行 r4 UAT。
+  
+  已驗證：API 層功能正常（curl 測試通過 US-009, US-010）；問題屬環境配置而非
+  代碼缺陷。
 inputs:
   - docs/reports/20260919-1301-UAT-E001-r2.md（本機基準與操作方式）
   - docs/specs/01_需求規格書_SRS.md（US-001～US-010）
@@ -24,7 +32,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T16:39:33+08:00
+updated: 2026-09-19T16:58:00+08:00
 blocked_reason: null
 ---
 
