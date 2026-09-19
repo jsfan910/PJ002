@@ -20,7 +20,7 @@ description: Leader 專用。依 Epic 說明或 WBS 建立任務卡、檢查依�
    - `outputs` 與所有 `status ∈ {in_progress, review, rework}` 的卡無交集，有交集就改依賴或合併卡；
    - `acceptance` 每條可驗（有指令或檢查清單）；
    - `model` 依 CLAUDE.md 模型表；`created`/`updated` 取實查系統時間。
-4. **更新看板** `tasks/_todo.md`：依 frontmatter 重新彙整「進行中／審核中／阻塞／待辦」四段（每卡一行：`- T-#### {title} ｜ {role}/{model} ｜ r{round} ｜ {updated}`）。引言區（第一個 `## ` 之前）只放一行指向當日交接檔 `worklog/handoff/yyyymmdd-工作交接.md`，不放內容。
+4. **更新看板** `tasks/_todo.md`：依 frontmatter 重新彙整「進行中／審核中／阻塞／待辦」四張表格（欄位：卡號｜標題｜角色／模型｜回合｜派工時間｜備註）。引言區（第一個 `## ` 之前）只放一行指向當日交接檔 `worklog/handoff/yyyymmdd-工作交接.md`，不放內容。
 5. **啟動**（方式 A）：對每張 `depends_on` 全 `done` 且 `status: todo` 的卡，以 Agent 工具啟動對應 `.claude/agents/{role}.md`，`run_in_background: true`，無依賴者同一則訊息一起啟動。提示詞固定三行：
    ```
    任務卡：tasks/T-####-{slug}.md

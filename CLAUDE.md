@@ -47,7 +47,7 @@
 | 路徑 | 可寫入者 |
 |---|---|
 | `tasks/T-*.md` 的 `status`/`round`/`updated` | 該卡 assignee、reviewer、Leader |
-| `tasks/_todo.md`、`tasks/_done.md` | 只有 Leader |
+| `tasks/_todo.md`、`tasks/_done.md` | 只有 Leader。兩檔皆為表格；`_done.md` 每列含「派工時間」（該卡第 1 輪交接檔 A 段開工時間）與「完成時間」（判 done 時的 `updated`），供工時統計與時間軸 |
 | `docs/specs/*` | 規劃團隊對應角色；Gate 1 後凍結，變更走「規格變更請求」任務卡 |
 | `src/*` | 開發團隊，每卡一分支 `task/T-####-slug`，合併只由 dev-tl |
 | `worklog/handoff/*` | 每檔只由其產生者寫 |

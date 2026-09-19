@@ -14,7 +14,7 @@ description: 審核者（任務卡 reviewer 角色）或 Leader 使用。對 sta
 3. **實際執行**驗收方式的每條指令（開發卡先 checkout 分支）。輸出貼進自己的交接檔 B 段。
 4. 逐條判定 `acceptance`：通過／不通過（附證據）。對交接檔「假設與決策」逐條表態：接受／不接受（附理由）。
 5. 判定：
-   - 全部通過 → 任務卡 `status: done`，`updated` 更新；審核紀錄表加一列 `r{n} | {reviewer} | done | 摘要 | 交接檔路徑`。開發卡由 dev-tl 合併並更新 CHANGELOG。
+   - 全部通過 → 任務卡 `status: done`，`updated` 更新；審核紀錄表加一列 `r{n} | {reviewer} | done | 摘要 | 交接檔路徑`。Leader 於 `tasks/_done.md` 追加一列：`| 卡號 | 標題 | 角色 | 派工時間（r1 交接檔 A 段開工時間） | 完成時間（updated） | 回合 | 審核／備註 |`。開發卡由 dev-tl 合併並更新 CHANGELOG。
    - 有不通過 且 `round < 3` → `status: rework`，`round` +1；審核紀錄表加一列，摘要必須列出「具體要改哪裡」；Leader 重派（`/dispatch T-####`）。
    - 有不通過 且 `round == 3` → `status: blocked`，`blocked_reason: 3輪未過`；依 `docs/templates/escalation.md` 寫 `docs/reports/yyyymmdd-HHmm-升級-T####.md`（五段齊全），路徑寫進審核紀錄表；交 Leader。
    - 第 3 輪重派時，`model` 自動升一級（haiku→sonnet→opus→fable）並在卡「背景與限制」註明。
