@@ -18,12 +18,13 @@ try { mainSha = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).tri
 
 const phaseOrder = Object.fromEntries((cfg.phases || []).map((p, i) => [p.key, i + 1]));
 const phaseLabel = Object.fromEntries((cfg.phases || []).map((p) => [p.key, p.label]));
-const phaseOf = (c) => (cfg.phaseById || {})[c.id] || (cfg.phaseByTeam || {})[c.team] || c.team;
+// phase 優先序：任務卡 frontmatter 的 phase → 設定檔 phaseById → phaseByTeam → team
+const phaseOf = (c) => c.phase || (cfg.phaseById || {})[c.id] || (cfg.phaseByTeam || {})[c.team] || c.team;
 
 const src = readFileSync(cardsPath, "utf8").trim().split(/\r?\n/).filter(Boolean);
 const cards = [];
 for (const line of src) {
-  const [id, title, team, role, status, round, deps, created, updated, rounds] = line.split("|");
+  const [id, title, team, role, status, phase, round, deps, created, updated, rounds] = line.split("|");
   const segs = [];
   for (const part of (rounds || "").split(";").filter(Boolean)) {
     const [key, times] = part.split("=");
@@ -32,7 +33,7 @@ for (const line of src) {
     if (!m) continue;
     if (s) segs.push({ round: Number(m[1]), who: m[2], start: s, end: e || null, review: m[2] !== role });
   }
-  cards.push({ id, title, team, role, status, round: Number(round), deps: deps.replace(/[\[\]]/g, "").split(",").map((s) => s.trim()).filter(Boolean), created: created.replace(/\+\d\d:\d\d$/, ""), updated: updated.replace(/\+\d\d:\d\d$/, ""), segs });
+  cards.push({ id, title, team, role, status, phase: (phase || "").trim() || null, round: Number(round), deps: deps.replace(/[\[\]]/g, "").split(",").map((s) => s.trim()).filter(Boolean), created: created.replace(/\+\d\d:\d\d$/, ""), updated: updated.replace(/\+\d\d:\d\d$/, ""), segs });
 }
 for (const ex of cfg.extraCards || []) cards.unshift(ex);
 for (const c of cards) { c.phase = phaseOf(c); if (!phaseLabel[c.phase]) { phaseLabel[c.phase] = c.phase; phaseOrder[c.phase] = 99; } }

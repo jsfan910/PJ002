@@ -27,7 +27,17 @@ description: Leader 專用。依 Epic 說明或 WBS 建立任務卡、檢查依�
    依你的角色定義執行；開工先寫 worklog A 段，收尾寫 B 段並把任務卡 status 改為 review 或 blocked。
    回報只寫五行：狀態｜產出路徑｜交接檔路徑｜需裁決事項｜下一步。
    ```
+   開發卡（`team: dev`，有 `branch`）在第一行後插入 worktree 路徑一行，仍算固定格式：
+   ```
+   worktree：../{repo}-T####（分支 task/T-####-{slug}；根目錄永遠 main，不在根目錄改程式）
+   ```
 6. **記錄**：在 Leader 的當日 worklog 追加一行「派工：T-#### … 啟動於 HH:MM」。
+
+## 提示詞鐵則
+
+- **只指向、不重述**：提示詞只給任務卡路徑與（必要時）規格檔路徑，不複製規格內容（狀態碼、欄位、階段順序、閾值一律不寫）。環境限制、回報格式、禁止事項已在角色檔，不重複。
+- **規格優先於提示詞**：提示詞與凍結規格衝突時，執行者依規格實作並在交接檔「假設與決策」註明，不需回問 Leader。E-001 已兩次驗證（UUID 格式錯應回 400 而非提示詞誤寫的 404；部署階段順序以 06 §3.2 為準）。
+- 提示詞寫錯是 Leader 的事：發現後由 Leader 追認於 Epic 裁決紀錄，不退卡。
 
 ## 子代理回報後
 
@@ -37,7 +47,7 @@ description: Leader 專用。依 Epic 說明或 WBS 建立任務卡、檢查依�
 
 ## 備援：Agent 工具找不到角色名稱時
 
-`.claude/agents/` 在 session 啟動時載入；本 session 內新建的定義要到下個 session 才會出現在可用清單。此時改用 `subagent_type: general-purpose`，`model` 依角色檔 frontmatter 指定，提示詞第一行加：
+`.claude/agents/` 於 session 啟動時載入，本 session 新建的定義要下個 session 才出現。改用 `subagent_type: general-purpose`，`model` 取角色檔 frontmatter，提示詞第一行加：
 
 ```
 先讀 .claude/agents/{role}.md，整份視為你的角色指令（含通用協定），再執行下列任務卡。
