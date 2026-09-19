@@ -6,11 +6,13 @@
 
 ## 進行中
 
-- CR 修正（平行，各自 worktree，12:05 派工）：T-0024 後端 B-1/B-2/S-1/S-2 ｜ dev-be/sonnet；T-0025 DevOps S-3/4/7/9/10/11 ｜ dev-ops/sonnet；T-0026 前端 S-5/S-6 ｜ dev-fe/sonnet
+（無）
 
 - T-0021 自動化測試＋README 實測 ｜ qa-at/sonnet ｜ r1 ｜ 11:40 派工（worktree）
 
 ## 審核中
+
+- T-0024（72558b2）、T-0025（4328d36）、T-0026（f9c9196）｜ reviewer dev-tl ｜ 12:35 依序初審合併中
 
 - T-0020 Code Review（f0e8789，結論退回：阻擋 2、建議 11）｜ reviewer qa-lead（於 T-0023 彙整）
 - T-0022 UAT r1（API 7 過、前端 3 阻擋待重現）｜ reviewer qa-lead（於 T-0023 彙整）
