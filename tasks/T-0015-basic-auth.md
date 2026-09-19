@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0011, T-0012, T-0014]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0015-basic-auth
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:56:25+08:00
+updated: 2026-09-19T09:08:02+08:00
 blocked_reason: null
 ---
 
