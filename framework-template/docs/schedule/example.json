@@ -1,0 +1,24 @@
+{
+  "epic": "E-000",
+  "title": "E-000 專案時程表",
+  "tz": "+08:00",
+  "epicStatus": "規劃中",
+  "artifactUrl": "",
+  "output": "docs/專案時程表_{date}.html",
+  "phases": [
+    { "key": "plan", "label": "規劃階段（規格包，Gate 1）" },
+    { "key": "dev-plan", "label": "開發準備（WBS）" },
+    { "key": "qa-plan", "label": "測試準備（測試計畫、案例、追溯）" },
+    { "key": "dev", "label": "開發" },
+    { "key": "qa", "label": "測試（CR / AT / UAT / 總結）" },
+    { "key": "dev-fix", "label": "Code Review 修正" },
+    { "key": "staging", "label": "staging 部署" },
+    { "key": "qa-staging", "label": "staging 補驗（Gate 2 r2）" },
+    { "key": "ops", "label": "維運" }
+  ],
+  "phaseByTeam": { "leader": "plan", "plan": "plan", "dev": "dev", "qa": "qa" },
+  "phaseById": {},
+  "extraCards": [],
+  "gates": [],
+  "notes": ""
+}

@@ -1,6 +1,6 @@
 // 產生專案時程表（WBS + 甘特圖）HTML。
 // 用法：node scripts/gen-schedule.mjs <設定檔.json> [cards.txt] [--date yyyy-mm-dd] [--out 路徑]
-// 資料：cards.txt 由 scripts/extract-cards.sh 產生；設定檔見 docs/schedule/E-001.json。
+// 資料：cards.txt 由 scripts/extract-cards.sh 產生；設定檔見 docs/schedule/example.json。
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { execSync } from "node:child_process";
