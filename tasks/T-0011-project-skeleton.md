@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0010]
 inputs:
@@ -44,7 +44,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0011-project-skeleton
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:11:18+08:00
+updated: 2026-09-19T08:24:00+08:00
 blocked_reason: null
 ---
 
@@ -71,3 +71,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 於 worktree 內重跑 WBS §1.1 驗收指令 9 條全綠（Docker 2 條依 Leader 裁決 ② 跳過，已以 `timeout 20 docker info` exit 124 佐證 daemon 不可用）：lint exit 0、build 產出 `dist/server.js`、redocly exit 0、整合測試 2 pass／0 fail、憑證掃描無輸出（另以不受引號規避的樣式補掃，僅命中 `.env.example`／`ci.yml` 的明顯佔位值）、`.gitignore` 有 `.env`、錨點計數 5 且順序與 WBS §5 骨架逐字一致。補驗 `config.ts` 缺值即啟動失敗並點名六項。交接檔「假設與決策」六條全部接受。已合併 main（`d2985cc`）。小瑕疵不退回：README「方式二：本機 Node」逐字照做無法啟動（Node 不自動讀 `.env`），已列入審核交接檔「需要 Leader 裁決的事」1。 | worklog/handoff/20260919-0817-T0011-r1-dev-tl.md |

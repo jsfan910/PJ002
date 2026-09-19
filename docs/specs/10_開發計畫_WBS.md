@@ -2,11 +2,11 @@
 doc: WBS
 title: 開發計畫
 epic: E-001
-version: 0.2
+version: 0.3
 status: review
 author: dev-tl
 reviewers: [leader]
-updated: 2026-09-19T07:38:00+08:00
+updated: 2026-09-19T08:26:00+08:00
 ---
 
 # 開發計畫（WBS）：E-001 待辦事項 Web 應用
@@ -89,11 +89,13 @@ docker build -t todo-app:dev .               # 成功
 docker compose up -d
 curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:8080/health   # 200
 curl -sS http://localhost:8080/health                                     # {"status":"ok"}
-node --test tests/integration/               # 綠
+node --test "tests/integration/**/*.test.ts"  # 綠（glob 寫法；見下方註）
 grep -rnE "(PASSWORD|SECRET|DATABASE_URL)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9]" . --include=Dockerfile --include=docker-compose.yml --include=*.json --include=*.ts --include=*.yml   # 無輸出
 grep -n "^\.env$" .gitignore                 # 有輸出
 grep -cE "ANCHOR:(error-handler|auth|static|routes|p1-auth-routes)" src/app.ts   # 5
 ```
+
+> **`node --test` 一律用 glob，不用目錄路徑**（Leader 裁決 ③，2026-09-19；dev-tl 於 T-0011 審核時實測並修正本書）：`node --test tests/integration/`（目錄寫法）在 Windows ＋ Node v24.15.0 會把目錄路徑當成 CommonJS 模組解析而失敗（`Error: Cannot find module ...`，exit 1），以全新最小範例即可重現，與本專案程式碼無關。改用 `node --test "tests/integration/**/*.test.ts"` 效果等價（遞迴尋找、綠燈判定相同）。本書 §1.2、§1.3、§1.5~§1.7 的 `node --test <單一檔案路徑>` 不受影響（指到檔案而非目錄）。
 
 ### 1.2 WI-02 統一錯誤處理器與錯誤契約（dev-be）
 
@@ -344,7 +346,7 @@ npm run verify:health                                                           
 | CI 階段 | workflow 內的指令 | 本地等價指令 | 建立者 |
 |---|---|---|---|
 | lint | `npm ci && npm run lint` ＋ `npx @redocly/cli lint docs/specs/04_API規格.yaml` | 同左 | WI-01 |
-| unit | `npm run test:unit`（即 `node --test tests/unit/`） | 同左 | WI-01 |
+| unit | `npm run test:unit`（即 `node --test "tests/unit/**/*.test.ts"`，glob 寫法見 §1.1 註） | 同左 | WI-01 |
 | build | `docker build -t todo-app:$SHA .` | `docker build -t todo-app:dev .` | WI-01 |
 | integration | service container 起 `postgres:16-alpine` → `npm run migrate` → `npm run test:integration` | `docker compose up -d db` → 同左 | WI-01（骨架）／WI-03（migrate） |
 
@@ -475,3 +477,11 @@ P1 追加的驗收重點：`password_hash` 為 bcrypt cost 12 且**明文絕不�
 | D-01 | **`.env.example` 是否可含本機專用的預設值** —— `06_*.md` §4 要求「`.env.example` 只含名稱」且「任何憑證值不得出現在程式碼」；但 SD §7 NFR-008 要求「`.env.example` 列齊全部變數名稱與說明，**複製即可用**」。兩者在 `docker compose up` 的情境下互斥：空值的 `BASIC_AUTH_PASSWORD` 會讓應用啟動失敗 | 本書的**暫定假設**：`.env.example` 可含**僅限本機 compose 的明顯佔位值**（如 `dev`），staging／prod 的值一律只存在於平台 secrets；WI-01 的驗收掃描排除 `.env.example` | 請 Leader 裁決。若裁決為「一律不得有值」，WI-01 改為在 README 明列「複製後必須自行填 3 個變數」，並接受 NFR-008 的「複製即可用」改讀為「複製並填 3 個變數即可用」 |
 | D-02 | **`eslint.config.js` 未出現在 SD §8.1 目錄樹**，但 `06_*.md` §3.1 的 lint 階段要跑 ESLint | 本書已將其列入 WI-01 的 outputs | 視為目錄樹未窮舉，非設計錯誤。若 Leader 認為需更新 SD §8.1，走規格變更請求任務卡 |
 | D-03 | **`package.json` 的 `type` 與 `tsconfig` 的 `module`** 規格未指定，但會決定前端測試檔副檔名 | 本書假設 ESM，故前端測試命名為 `*.test.mjs` | 由 WI-01 決定並寫入 README；若決定不同，Leader 於建卡時同步修正 WI-04／WI-07 的 outputs 路徑 |
+
+---
+
+## 11. 變更紀錄
+
+| 版本 | 日期 | 變更 | 依據 |
+|---|---|---|---|
+| 0.3 | 2026-09-19 | §1.1 驗收指令與 §3.3 unit 階段的 `node --test <目錄>` 改為 glob 寫法 `node --test "tests/**/*.test.ts"`，並於 §1.1 加註平台限制說明 | Leader 裁決 ③（2026-09-19T08:13:18+08:00）；dev-tl 於 T-0011 審核時實測重現目錄寫法失敗 |
