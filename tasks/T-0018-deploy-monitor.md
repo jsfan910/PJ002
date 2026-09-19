@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0010, T-0011, T-0015, T-0016]
 inputs:
@@ -24,6 +24,9 @@ outputs:
   - .github/workflows/monitor-health.yml
   - docs/specs/06_部署架構與CICD.md（僅第 1 章網址、第 5 章演練紀錄、第 6 章實作紀錄三處）
   - README.md（部署與 secrets 章節；並依 Leader 裁決 T-0011-dev-tl-① 在「方式二：本機 Node」補 .env 載入步驟）
+  - scripts/verify-health.ts（package.json 既有 `verify:health` 腳本的實作，本卡新增，見交接檔）
+  - scripts/deploy-staging.sh（deploy-staging.yml 本機等效，本卡新增，見交接檔）
+  - scripts/rollback-staging.sh（06 §5.1 回滾程序本機等效，本卡新增，見交接檔）
 acceptance:
   - WBS §1.8「驗收方式草案」的每條指令實際執行且結果符合，指令與真實輸出貼交接檔
   - npm run lint 與相關測試全綠；不改本卡 outputs 以外的檔案（git diff --stat 佐證）
@@ -34,7 +37,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0018-deploy-monitor
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T09:47:42+08:00
+updated: 2026-09-19T11:40:00+08:00
 blocked_reason: null
 ---
 

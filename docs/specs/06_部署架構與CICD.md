@@ -24,7 +24,7 @@ updated: 2026-09-19T07:30:22+08:00
 | 環境 | 用途 | 網址 | 誰可部署 | 資料 |
 |---|---|---|---|---|
 | dev | 本機開發與離線驗證 | `http://localhost:8080` | 任何人（`docker compose up`） | 本機 `postgres:16-alpine` 容器，假資料，可任意清空 |
-| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **Cloud Run 提供的 `*.run.app` 網址，由 dev-ops 部署後填入**（格式為 `https://<service>-<hash>-<region-code>.a.run.app`，服務名與雜湊由平台決定，無法事先寫死） | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
+| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **待首次部署後回填**（T-0018 已備妥 `.github/workflows/deploy-staging.yml`，格式為 `https://<service>-<hash>-<region-code>.a.run.app`，服務名與雜湊由平台決定，無法事先寫死；使用者提供 GCP 專案與 GitHub repo 並完成 README「部署與 secrets」章節的一次性設定後，`main` 綠燈即自動部署並在該次工作流摘要印出網址） | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
 | prod | **本 Epic 不建立** | — | — | — |
 
 **為什麼沒有 prod**：Epic 的成功指標只到 Gate 2「staging 可用瀏覽器操作、P0 UAT 全通過」。建立 prod 屬擴大範圍。本文件的 pipeline 保留一個手動觸發的 `deploy-prod` 位置（第 3 章），但**本輪不實作、不設定**。
@@ -240,7 +240,7 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ### 5.4 演練要求
 
-- 演練紀錄：yyyy-mm-dd，結果：**尚未演練。**
+- 演練紀錄：2026-09-19，結果：**尚未實際演練（被憑證阻擋）**。回滾指令已寫成可執行腳本（`scripts/rollback-staging.sh`，本機等效；工作流層級指令見本節上方）並以 `bash -n` 語法檢查通過；`gcloud run services update-traffic`／`revisions list`／`services describe` 三條指令逐字對照 5.1 節。**待使用者提供 GCP 專案與已部署的 staging 服務後**，由 dev-ops 或使用者執行一次 5.1 流程（先部署一個會啟動失敗的版本驗證 startup probe 擋下、再部署一個能啟動但行為有誤的版本執行一次 `update-traffic` 回滾），並回填本行日期與結果。詳見 `worklog/handoff/*T0018*.md`「需要 Leader 裁決的事」／「被憑證阻擋的最後一步」。
 - **本演練是 Gate 2 的前置條件**，由 **dev-ops** 於 DevOps ② 卡（OPS-03）完成後執行一次 5.1 流程並回填上行。演練內容：刻意部署一個會啟動失敗的版本 → 確認 Cloud Run 因 startup probe（`/health`）不通過而**不把流量切到新 revision**（舊 revision 繼續服務 100%，服務維持可用）→ 再刻意部署一個能啟動但行為有誤的版本，執行一次 5.1 的 `update-traffic` 回滾 → 記錄不可用時間、revision 名稱與資料筆數比對結果。
 - **兩種失敗要分開演練**：「啟動失敗」由平台自動擋住（不需回滾），「啟動成功但行為錯誤」才需要 5.1 的回滾。只演練前者等於沒演練回滾。
 
@@ -282,6 +282,13 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
   - 此判讀規則同步寫入 `03_系統設計書_SD.md` 第 7 章 NFR-003。
 - **另一個誤報來源 —— GitHub 排程延遲**：GitHub 的 `schedule` 在尖峰時段可能延遲數分鐘，造成取樣間隔拉長。這是**取樣器的問題，不是服務的問題**，成功率以實際取樣次數為分母即可吸收（第 3.3 節）。
 - **NFR-001 的量測不受此誤報影響**：負載測試腳本規定**先暖身 10 秒再開始取樣**，排除冷啟與 Neon 喚醒的離群值（SD 第 7 章 NFR-001）。此規定**保留不動** —— 成本為零，且對 Neon 的冷啟仍有意義。
+
+### 6.4 實作紀錄（T-0018）
+
+- `.github/workflows/monitor-health.yml` 已實作：`cron: "*/5 * * * *"` ＋ `workflow_dispatch`；每次連續取樣 3 次（間隔 20 秒），`curl -fsS -o /dev/null -w "%{http_code} %{time_total}"`，不帶憑證、不附查詢字串（已用 grep 驗證，見 T-0018 交接檔）。
+- 取樣結果**寫入兩處**：① 該次執行的 `$GITHUB_STEP_SUMMARY`（表格，人工即時查看）；② `actions/upload-artifact` 上傳 `health-samples-<run_id>` 內含 `health-samples.csv`（`timestamp_utc,attempt,http_code,time_total_seconds`），保留 90 天，供 NFR-003 24 小時／7 天採樣的事後統計（下載各次 run 的 artifact 逐筆彙總即可算成功率）。
+- GitHub Actions 額度：**選擇第 2 章對策 1（倉庫設為公開）**——本專案無機密內容，公開倉庫 Actions 分鐘數不計費，取樣頻率維持每 5 分鐘（Leader 對 O-009 裁決不變）。若使用者仍要求私有倉庫，須改為每 10 分鐘並回報 Leader 調整 NFR-003 取樣分母（本卡不預先假設使用者會選私有）。
+- **實際 24 小時採樣待使用者提供 GitHub repo 與已部署的 staging 服務後才能開始**（`STAGING_BASE_URL` 為空時，本工作流會印出 `::notice::` 並直接以 0/0 略過，不會誤判為服務掛掉），屬「遠端待驗」清單（交 Leader 追蹤，見 T-0018 交接檔）。
 
 ---
 

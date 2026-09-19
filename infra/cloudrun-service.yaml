@@ -1,0 +1,103 @@
+# infra/cloudrun-service.yaml（T-0018，OPS-03）
+#
+# Cloud Run 服務宣告（Knative Service 格式），可用
+#   gcloud run services replace infra/cloudrun-service.yaml --region asia-east1
+# 手動套用一次（需先把下方 <GCP_PROJECT_ID>、<IMAGE_TAG> 兩個佔位符換成
+# 實際值）。**日常自動部署以 .github/workflows/deploy-staging.yml 的
+# `gcloud run deploy` 參數為事實來源**（image 標籤由工作流自動代入
+# `${{ github.sha }}`，本檔的佔位符無法自動代入）；本檔的角色是「資源規格
+# 文件化 IaC」，供人閱讀與偶爾手動套用，兩者參數必須保持一致
+# （ADR-0005「後果」段落授權 dev-ops 決定去留，本卡選擇兩者並存）。
+#
+# 資源規格對照 docs/specs/06_部署架構與CICD.md 第 2 章：
+#   - 區域 asia-east1、容器埠 8080（Cloud Run 自行注入 $PORT，見下）、
+#     記憶體 512Mi、CPU 1
+#   - min-instances = 0（免費額度前提，刻意不修，見 ADR-0005）、
+#     max-instances = 2、並行數 80、請求逾時 60s
+#   - startup probe 指向 GET /health（唯一未保護路徑，BR-017／O-005）
+#   - 執行身分為非 root（Dockerfile 已建立 appuser，本檔不重複宣告，
+#     由映像決定）
+#   - 環境變數只含名稱與非機密值；機密一律以 Secret Manager 參照
+#     （secret 名稱為小寫連字號版本：database-url／basic-auth-user／
+#     basic-auth-pass，避免與應用環境變數同形造成憑證掃描誤判），
+#     倉庫中不得出現任何值
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: todo-app
+  labels:
+    app: todo-app
+    env: staging
+  annotations:
+    # 平台層不擋（--allow-unauthenticated），應用層以全站 Basic Auth 擋
+    # 整站，/health 為唯一豁免（ADR-0004）。
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 60
+      containers:
+        - image: "asia-east1-docker.pkg.dev/<GCP_PROJECT_ID>/todo-app/todo-app:<IMAGE_TAG>"
+          ports:
+            - name: http1
+              # 僅供平台路由宣告用；應用程式一律讀 process.env.PORT
+              # （Cloud Run 自行注入），不得寫死埠號（src/config.ts）。
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            # 非機密項：值可進版控（本來就不是秘密）。
+            - name: NODE_ENV
+              value: production
+            - name: LOG_LEVEL
+              value: info
+            - name: CORS_ALLOWED_ORIGINS
+              # 預設留空 = 同源部署，不註冊 CORS 外掛（O-004、BR-015）。
+              # 永遠不得填入 "*"。
+              value: ""
+            # 機密項：一律以 Secret Manager 參照，本檔不含任何值。
+            # 使用者須先在 Secret Manager 建立下列同名 secret 並授部署
+            # 服務帳號 roles/secretmanager.secretAccessor（README「部署與
+            # secrets」章節有逐步指令）。
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-url
+                  key: latest
+            - name: BASIC_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth-user
+                  key: latest
+            - name: BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth-pass
+                  key: latest
+          # startup probe：新 revision 必須通過才切流量，未通過則舊
+          # revision 繼續服務 100%（零停機，06 §3.2 deploy 階段說明）。
+          # 路徑一律用完全等於 "/health" 的字串（不可有點節段變體，
+          # dev-tl 於 T-0015 交接檔「下一步建議」第 3 點特別提醒）。
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
