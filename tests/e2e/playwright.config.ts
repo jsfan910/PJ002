@@ -31,7 +31,15 @@ export default defineConfig({
     baseURL: BASE_URL,
     httpCredentials: { username: USER, password: PASSWORD },
     screenshot: "only-on-failure",
-    trace: "retain-on-failure"
+    trace: "retain-on-failure",
+    // T-0028（qa-at r3，環境差異小修）：對 staging（Cloud Run／Google Frontend）
+    // 導覽時，Chromium／Edge 走 HTTP/2／QUIC 在本執行環境下會 net::ERR_ABORTED
+    // 逾時（curl／node fetch 對同一網址皆正常 200，只有瀏覽器的 HTTP/2／QUIC
+    // 交涉在本沙盒卡住；`page.goto` 只需 --disable-http2 即可修復，但
+    // `page.reload()` 仍逾時，需同時加 --disable-quic 才穩定，已用最小重現
+    // 腳本連續 3 次驗證皆成功）。對本機 docker compose（HTTP/1.1）無影響。
+    // 詳見交接檔。
+    launchOptions: { args: ["--disable-http2", "--disable-quic"] }
   },
   projects: [
     {
