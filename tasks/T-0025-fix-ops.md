@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0020]
 inputs:
@@ -40,7 +40,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0025-fix-ops
 created: 2026-09-19T12:03:12+08:00
-updated: 2026-09-19T12:19:31+08:00
+updated: 2026-09-19T12:45:00+08:00
 blocked_reason: null
 ---
 
@@ -63,3 +63,4 @@ dev-tl 重跑 acceptance 每條；actionlint；npm run dev 實際啟動一次並
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 七條全通過：actionlint 0 finding、deploy-staging.yml 的 run: 區塊 secrets. 零命中、monitor-health.yml 無 curl -f、compose 實測 POSTGRES_HOST_PORT=5437 生效、tsconfig.test.json 使 lint 涵蓋 8 個 tests/*.ts 且全綠、06 參數表逐格對帳與三處現況一致（含兩項飄移標註屬實）、unit 75/75、integration 47/47。package.json 三處（scripts.dev 拆 dev:build/dev:run、scripts.lint、engines.node>=22.18）經擁有者 dev-tl 覆核核准；`npm run dev` 已不存在，改以兩支 script 實測 /health 200（裁決理由見交接檔）。tests 兩檔型別註記為 S-4 必然伴隨變更，核准為範圍例外。已 --no-ff 合併 main | worklog/handoff/20260919-1236-T0025-r1-dev-tl.md |
