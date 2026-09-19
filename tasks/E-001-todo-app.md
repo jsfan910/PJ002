@@ -288,3 +288,12 @@ updated: 2026-09-19T14:06:43+08:00
 - 裁決③：TC-078／081／105 不屬 qa-at 範圍，由 UAT r2（T-0029，10/10）與部署紀錄佐證。
 - T-0029 r2（sonnet）10/10 通過；r1（haiku）判為工具問題。qa 並行存取 staging 互相刪資料：之後 staging 測試卡錯開時段。
 - 派 dev-tl 合併 T-0028 分支；派 qa-lead T-0030（可直接讀 worktree 內報告）。
+
+### 2026-09-19T17:47:01+08:00 — 對測試總結 r2（T-0030）四項的裁決；監測 cron 未觸發
+
+- T-0030 done。退出準則達成 8／未達 3／不適用 1；P0 TC 100 通過、4 部分、1 阻擋、**0 不通過**；開放 S1/S2 = 0、S3 = 2（D-014、D-017）；部署不可用 0 秒。
+- **事實**：monitor-health.yml 的 cron `*/5` 自 16:46 手動觸發後至 17:45（59 分鐘）零次自動執行；GitHub 排程有延遲慣例，但不能把 NFR-003 押在它上面。
+- 裁決 A：Gate 2 最終判定等 NFR-003 滿 24 小時；今日不另出 Gate 2 r2 報告，以 T-0030 測試總結 r2 為今日狀態。
+- 裁決 B：**開 T-0031（dev-ops 維運卡）**：診斷 GitHub cron；新增 GCP Cloud Monitoring uptime check（免費）每 5 分鐘打 /health 作為 NFR-003 主要資料來源，GitHub cron 降為備援；06 §6 更新判讀來源；採樣起算改以 uptime check 建立時間為準。
+- 裁決 C：TC-080 間接證據追認；T-0031 推送 main 觸發部署時由 dev-ops 直接量測一次補證。
+- 裁決 D：Firefox 4/6 維持 Gate 2 後補跑。

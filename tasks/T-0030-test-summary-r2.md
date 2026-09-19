@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-lead
 model: opus
-status: review
+status: done
 round: 1
 depends_on: [T-0028, T-0029]
 inputs:
@@ -25,7 +25,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T17:38:24+08:00
+updated: 2026-09-19T17:47:01+08:00
 blocked_reason: null
 ---
 
@@ -45,3 +45,4 @@ Leader：核對退出準則表無「未執行」；抽查 NFR-003 計算。
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | done | 12 項每格有數字；裁決 A 等 24h、B 開 T-0031、C 下次部署補做、D 維持 | worklog/handoff/20260919-工作交接.md |
