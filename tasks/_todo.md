@@ -6,13 +6,16 @@
 
 ## 進行中
 
-- T-0027 staging 部署 ｜ dev-ops/sonnet ｜ r1 ｜ 使用者修正 WIF 後重新觸發，接續中
+- T-0028 AT r3 staging ｜ qa-at/sonnet ｜ r1 ｜ 16:40 派工（worktree）
+- T-0029 UAT r3 staging ｜ qa-uat/haiku ｜ r1 ｜ 16:40 派工
 
 （無）
 
 （無）
 
 ## 審核中
+
+- T-0027 staging 部署（38817d0）｜ reviewer dev-tl ｜ 16:40 初審合併中
 
 （無）
 
@@ -24,8 +27,6 @@
 
 ## 待辦（staging 補驗，T-0027 done 後開）
 
-- T-0028 AT r3 對 staging 重跑＋NFR-003 採樣判讀 ｜ qa-at/sonnet ｜ 依賴 T-0027
-- T-0029 UAT r3 於 staging ｜ qa-uat/haiku ｜ 依賴 T-0027（與 T-0028 平行）
 - T-0030 測試總結 r2 ｜ qa-lead/opus ｜ 依賴 T-0028, T-0029
 
 ## 待辦（Gate 2 後）

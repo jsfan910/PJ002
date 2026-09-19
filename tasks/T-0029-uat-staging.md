@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-uat
 model: haiku
-status: todo
+status: in_progress
 round: 1
 depends_on: [T-0027]
 inputs:
@@ -24,7 +24,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T16:31:34+08:00
+updated: 2026-09-19T16:39:33+08:00
 blocked_reason: null
 ---
 
