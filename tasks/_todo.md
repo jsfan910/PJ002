@@ -6,7 +6,7 @@
 
 ## 進行中
 
-- T-0021 r2 AT 對最終 main 重跑 ｜ qa-at/sonnet ｜ 13:15 派工
+- T-0023 缺陷清單＋測試總結 ｜ qa-lead/opus ｜ r1 ｜ 13:30 派工
 
 （無）
 （無）
@@ -18,6 +18,7 @@
 
 - T-0020 r2 CR（5a346b1，阻擋 0）｜ reviewer qa-lead（T-0023）
 - T-0022 r2 UAT（10/10）｜ reviewer qa-lead（T-0023）
+- T-0021 r2 AT（e1547eb，0 fail）｜ reviewer qa-lead（T-0023）
 
 （無）
 
@@ -32,5 +33,4 @@
 
 ## 待辦
 
-- T-0023 缺陷清單＋測試總結 ｜ qa-lead/opus ｜ 依賴 T-0020, T-0021, T-0022
 - （待使用者）staging 首次部署後：API servers 回填小卡、回滾演練、NFR-003 24 小時採樣
