@@ -6,6 +6,8 @@
 
 ## 進行中
 
+- T-0027 staging 部署 ｜ dev-ops/sonnet ｜ r1 ｜ 使用者修正 WIF 後重新觸發，接續中
+
 （無）
 
 （無）
@@ -16,7 +18,7 @@
 
 ## 阻塞
 
-- T-0027 staging 部署 ｜ dev-ops ｜ 阻塞：WIF provider 條件為佔位符，待使用者 update-oidc 後重新觸發（分支 task/T-0027-staging-deploy aa330d1 保留）
+（無）
 
 （無）
 

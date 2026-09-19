@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: blocked
+status: in_progress
 round: 1
 depends_on: [T-0018, T-0025]
 inputs:
@@ -32,8 +32,8 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0027-staging-deploy
 created: 2026-09-19T15:50:02+08:00
-updated: 2026-09-19T16:03:35+08:00
-blocked_reason: GCP WIF provider attribute-condition 仍為佔位符 <owner>/<repo>，Actions auth 階段被拒；待使用者執行 update-oidc
+updated: 2026-09-19T16:07:27+08:00
+blocked_reason: null
 ---
 
 ## 目標
