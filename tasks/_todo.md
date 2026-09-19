@@ -12,10 +12,6 @@
 | T-0033 | 模板 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
 | T-0034 | skill v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
 | T-0035 | 計畫書 v1.1 與 CLAUDE.md | leader 代理 / opus | 1 | 18:15 | E-002 |
-| T-0032 | 角色檔 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
-| T-0033 | 模板 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
-| T-0034 | skill v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
-| T-0035 | 計畫書 v1.1 與 CLAUDE.md | leader 代理 / opus | 1 | 18:15 | E-002 |
 
 ## 審核中
 
