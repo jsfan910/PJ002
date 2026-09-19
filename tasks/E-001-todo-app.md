@@ -1,10 +1,10 @@
 ---
 id: E-001
 title: 待辦事項 Web 應用（Phase 1 試跑範例）
-status: developing        # planning | gate1 | developing | testing | gate2 | done
+status: testing           # planning | gate1 | developing | testing | gate2 | done
 owner: leader
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T07:17:55+08:00
+updated: 2026-09-19T11:45:41+08:00
 ---
 
 # E-001 待辦事項 Web 應用
@@ -175,3 +175,13 @@ updated: 2026-09-19T07:17:55+08:00
 | ② | Secret Manager 命名歸 T-0018，接受 |
 
 使用者一次性設定清單見 README「部署與 secrets（T-0018）」章節；完成前 staging 相關 TC 記「阻擋（環境未就緒）」。
+
+### 2026-09-19T11:45:41+08:00 — 對批次 5 審核三項的裁決；開發階段結案，進入測試
+
+| # | 裁決 |
+|---|---|
+| ① | `scripts/*.sh` 追認接受：硬前提 6 的意圖是「可在 Git Bash 或 PowerShell 執行」，scripts 只是 workflow 的本機等效，標準指令仍是跨 shell 的 npm script |
+| ② | dev-ops 自行補進 outputs 的 `scripts/deploy-staging.sh`、`rollback-staging.sh`、`verify-health.ts` 追認 |
+| ③ | 部署階段順序以 06 §3.2 為準（auth → migrate → build&push → deploy → verify）；Leader 派工提示詞寫錯，規格優先 |
+
+開發階段結案：T-0011～T-0018 全部 done 並合併，main `df4071b`；全量 lint 0、unit 75/75、integration 47/47。Epic status → testing。
