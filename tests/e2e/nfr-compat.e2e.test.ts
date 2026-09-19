@@ -70,6 +70,9 @@ test("TC-091：US-001~US-007 操作流程無重疊、無橫向捲動，並記錄
     for (let j = i + 1; j < validBoxes.length; j += 1) {
       const a = validBoxes[i];
       const b = validBoxes[j];
+      // noUncheckedIndexedAccess（tsconfig.json）下索引存取回傳 T | undefined；
+      // i／j 都在陣列長度內，此處僅為型別收斂。
+      if (!a || !b) continue;
       const overlapsVertically = a.top < b.bottom && b.top < a.bottom;
       // 三大區塊本就垂直排列（新增表單／篩選/清單），允許緊鄰但不應大幅重疊
       const overlapArea = overlapsVertically ? Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) : 0;

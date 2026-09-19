@@ -113,7 +113,10 @@ npm start                       # 另開一個終端機視窗執行下一步
 | 啟動（讀 `dist/`） | `npm start` |
 | Lint（ESLint ＋ `tsc --noEmit`，同時檢查 `src/` 與 `tests/`） | `npm run lint` |
 | 單元測試（後端 `*.test.ts` ＋ 前端 `*.test.mjs`，需先 `npm run build`） | `npm run build && npm run test:unit` |
-| 整合測試（需先 `npm run build`，見下方限制） | `npm run test:integration` |
+| 整合測試（進程內 `app.inject`，需先 `npm run build`，見下方限制） | `npm run test:integration` |
+| QA 整合測試（真實 HTTP，**需服務已在 `$BASE_URL` 跑起來**，T-0021） | `npm run test:integration:qa` |
+| E2E（Playwright，需服務已跑起來；瀏覽器二進位檔先 `npx playwright install chromium`） | `npm run test:e2e -- --project=chromium-1280x800 --project=chromium-390x844` |
+| 效能腳本（NFR-001／NFR-007，需服務已跑起來；GET／POST／PATCH／DELETE 四組各「暖身 10 秒＋取樣 60 秒」，**約 6 分鐘**，可用 `PERF_WARMUP_MS`／`PERF_DURATION_MS` 縮短） | `npm run test:perf` |
 | Migration（**需先 `npm run build`**，腳本讀 `dist/db/migrate.js`） | `npm run build && npm run migrate` |
 | 驗證 `/health`（輪詢至 200 或逾時；可用 `BASE_URL`／`POLL_INTERVAL_SECONDS`／`POLL_TIMEOUT_SECONDS` 覆寫，本機預設 `http://localhost:8080`／2 秒／60 秒） | `npm run verify:health` |
 | 本機 Docker 建置 | `docker build -t todo-app:dev .` |
@@ -121,12 +124,15 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 ### 已知平台限制（本卡驗收時記錄，供後續卡與 CI 參考）
 
-- `node --test <目錄>`（不帶副檔名 glob，例如 `node --test tests/integration/`）在本機 Node v24.15.0／Windows 上會誤把目錄路徑當成 CommonJS 模組解析而失敗（`Error: Cannot find module ...`），與本專案程式碼無關（以一個全新的最小範例目錄即可重現同一錯誤）。因此 `test:unit`／`test:integration` 兩個 script 改用明確的 glob（`"tests/unit/**/*.test.ts"`／`"tests/integration/**/*.test.ts"`），效果等價、可正常遞迴尋找測試檔。`test:unit` 另帶第二個 glob `"tests/unit/**/*.test.mjs"`，使前端測試檔（D-03 裁決：前端測試檔副檔名為 `.test.mjs`）同樣被涵蓋；兩個 glob 皆加引號，Git Bash 與 PowerShell 皆可執行。
+- `node --test <目錄>`（不帶副檔名 glob，例如 `node --test tests/integration/`）在本機 Node v24.15.0／Windows 上會誤把目錄路徑當成 CommonJS 模組解析而失敗（`Error: Cannot find module ...`），與本專案程式碼無關（以一個全新的最小範例目錄即可重現同一錯誤）。因此 `test:unit`／`test:integration` 兩個 script 改用明確的 glob（`"tests/unit/**/*.test.ts"`／`"tests/integration/*.test.ts"`，後者的範圍見下方「測試分層」一條），效果等價、可正常遞迴尋找測試檔。`test:unit` 另帶第二個 glob `"tests/unit/**/*.test.mjs"`，使前端測試檔（D-03 裁決：前端測試檔副檔名為 `.test.mjs`）同樣被涵蓋；兩個 glob 皆加引號，Git Bash 與 PowerShell 皆可執行。
 - `tests/integration/health.test.ts` 匯入路徑指向 `../../dist/`（編譯後產物）而非 `../../src/`：Node 原生的 TypeScript 型別剝除不會把 `.js` 匯入規格自動對應回同名 `.ts` 檔（這是 TypeScript 5.7 的 `rewriteRelativeImportExtensions` 才有的能力；本專案釘選 `~5.6`，尚無此功能）。因此**跑整合測試前務必先 `npm run build`**（`npm run test:integration` 之前的所有本文件範例皆已按此順序排列）。
 - 同一原因，**`npm run migrate` 前也必須先 `npm run build`**：`src/db/migrate.ts` 以 `.js` 規格匯入 `../config.js`，直接執行 `.ts` 會 `ERR_MODULE_NOT_FOUND`。`migrate` 腳本已改為讀 `dist/db/migrate.js`（與 `npm start` 同模式，Leader 裁決 T-0013-②）。部署時的順序固定為 **build → migrate → deploy**（06 §3）。
 - 同一原因，`npm run test:unit` 也需先 `npm run build`（部分單元測試檔匯入 `dist/`）；`.github/workflows/ci.yml` 的 `unit` job 已於 `test:unit` 前加一步 `npm run build`（Leader 裁決 T-0012-①）。
 - **`npm run dev` 已拆成兩個 script**（T-0025，CR S-11）：原 `node --watch src/server.ts` 必然失敗，同一 `ERR_MODULE_NOT_FOUND` 原因——`src/server.ts` 以 `.js` 規格匯入，Node 的型別剝除不會對應回 `.ts`。本專案未安裝 `concurrently`／`npm-run-all`（package.json 為單一擁有者，新增相依需先向 dev-tl 提出），因此開發模式改為**兩個終端機分別執行**：終端機一 `npm run dev:build`（`tsc -w`，持續編譯到 `dist/`）；終端機二等第一次編譯完成後執行 `npm run dev:run`（`node --watch dist/server.js`，`dist/` 變動時自動重啟）。兩者都需先設好環境變數（同「方式二：本機 Node」章節）。
 - **`npm run lint` 現在也需要先 `npm run build`**（T-0025，CR S-4）：新增的 `tsconfig.test.json` 讓 `lint` 一併對 `tests/**/*.ts` 執行 `tsc --noEmit`，而多數整合測試與部分單元測試以 `../../dist/...` 匯入編譯產物（見上面兩點的同一原因），`dist/` 不存在時會是 `TS2307 Cannot find module`。本文件與 `scripts/deploy-staging.sh` 的既有順序（`npm ci && npm run build` 在前）不受影響；`.github/workflows/ci.yml` 的 `lint` job 已於 `npm run lint` 前補上 `npm run build`（與 `unit`／`integration` 兩個 job 做法一致，Leader 裁決 2026-09-19T12:22:24+08:00，同 T-0012-① 案）。
+- **測試分層：`test:integration` 與 `test:integration:qa` 是兩組不同前提的測試**（T-0021，dev-tl 合併時裁決）。`tests/integration/*.test.ts`（dev 團隊寫）用 Fastify 的 `app.inject()` 在進程內呼叫，**不需要服務在跑**，所以 `.github/workflows/ci.yml` 的 `integration` job 可以直接跑；`tests/integration/qa/**/*.qa.test.ts`（T-0021，qa-at 寫）走真實 HTTP 打 `$BASE_URL`，**必須先有服務在跑**（`docker compose up -d` 或 `npm start`），目的是日後把 `$BASE_URL` 換成 staging 網址就能原碼重跑。因此 `test:integration` 的 glob 收斂為 `tests/integration/*.test.ts`（只取第一層），QA 那組改由 `test:integration:qa` 執行，並在 `.github/workflows/qa-tests.yml` 的 `integration-qa` job 內先啟動服務再跑。**兩者都要跑才算涵蓋完整**。
+- **`npm run lint` 現在跑三個 tsc project**（T-0021，dev-tl 合併時新增第三個）：`tsconfig.json`（`src/`）→ `tsconfig.test.json`（`tests/`，但排除 `tests/e2e`）→ `tsconfig.e2e.json`（`tests/e2e`，`lib` 多加 `DOM`）。原因是 e2e 的 `page.evaluate()` 回呼在瀏覽器裡執行、需要 `document`／`HTMLInputElement` 等 DOM 型別，而 `tests/unit`／`tests/integration` 跑在 Node 進程內，不該拿到 DOM 全域（否則誤用 DOM API 會通過型別檢查卻在執行時炸掉）。`tests/perf/*.mjs` 是純 JS（非 TypeScript），不在任何 tsc project 內，靠實際執行驗證（`npm run test:perf`）。
+- **`@playwright/test` 釘選 `1.63.0`（不帶 `^`）**（T-0021，Leader 裁決 2026-09-19T12:32:40+08:00）：瀏覽器二進位檔與套件版本是一對一綁定的，浮動版本會讓 `npx playwright install` 下載到的瀏覽器與套件對不上。`npm ci` 之後仍需執行一次 `npx playwright install chromium`（CI 用 `--with-deps`）才會有瀏覽器可跑；`npm run test:e2e` 預設會跑 `tests/e2e/playwright.config.ts` 的全部 6 個 project（Chromium／Edge／Firefox × 兩種尺寸），只跑其中幾組時用 `-- --project=<名稱>` 指定。E2E 與效能腳本從環境變數讀 `BASE_URL`／`BASIC_AUTH_USER`／`BASIC_AUTH_PASSWORD`（或 `STAGING_` 前綴版本），倉庫內不寫死憑證。
 
 ## 目錄結構
 

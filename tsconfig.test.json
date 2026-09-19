@@ -8,5 +8,6 @@
     "allowImportingTsExtensions": true
   },
   "include": ["tests/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  // tests/e2e 走 tsconfig.e2e.json（需要 DOM 全域型別，理由見該檔檔頭）。
+  "exclude": ["node_modules", "dist", "tests/e2e"]
 }

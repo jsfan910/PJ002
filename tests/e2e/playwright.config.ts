@@ -1,10 +1,12 @@
 /**
  * tests/e2e/playwright.config.ts
  *
- * T-0021（qa-at）：E2E 設定。**不改 package.json**——本卡在 worktree 內以
- * `npm install --no-save --no-package-lock @playwright/test` 臨時安裝
- * （見交接檔「需要 Leader 裁決的事」：套件版本與是否正式併入交 dev-tl 合併
- * 時決定）。執行方式：`npx playwright test -c tests/e2e/playwright.config.ts`。
+ * T-0021（qa-at）：E2E 設定。`@playwright/test` 已於 dev-tl 合併本卡時正式列入
+ * `package.json` devDependencies 並釘選 `1.63.0`（Leader 裁決
+ * 2026-09-19T12:32:40+08:00）；`npm ci` 之後另需 `npx playwright install chromium`
+ * 下載瀏覽器二進位檔。執行方式：`npm run test:e2e`（等同
+ * `npx playwright test -c tests/e2e/playwright.config.ts`），指定 project 用
+ * `npm run test:e2e -- --project=chromium-1280x800`。
  *
  * `baseURL` 讀 `$BASE_URL`（本機 docker compose 預設 `http://localhost:8080`）；
  * `httpCredentials` 從環境變數讀，不寫死字面值（07 §6.2 資料衛生規則）。

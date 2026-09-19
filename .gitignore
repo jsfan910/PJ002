@@ -18,3 +18,8 @@ __pycache__/
 dist/
 build/
 coverage/
+
+# Playwright 執行產物（T-0021）：失敗時的截圖／trace 與 HTML 報告，不入版控
+test-results/
+playwright-report/
+.playwright/

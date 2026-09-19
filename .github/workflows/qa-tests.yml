@@ -4,8 +4,9 @@
 #   - integration-qa：對照 20_測試案例.md 的 P0 integration TC（tests/integration/qa/**），
 #     用 postgres:16-alpine service container，push/PR 觸發，與 ci.yml 的 integration 階段
 #     互相獨立（本檔不覆蓋、不取代 ci.yml，避免與既有 pipeline 衝突）。
-#   - e2e：Playwright（Chromium，至少一組；本機臨時安裝 @playwright/test，見
-#     tests/e2e/playwright.config.ts 檔頭），只 workflow_dispatch 手動觸發
+#   - e2e：Playwright（Chromium，至少一組；@playwright/test 已列入 devDependencies
+#     並釘選 1.63.0，npm ci 一併裝好，只需再下載瀏覽器二進位檔），
+#     只 workflow_dispatch 手動觸發
 #     （需下載瀏覽器二進位檔，不適合每次 push 都跑）。
 #   - perf：NFR-001／NFR-007 效能腳本，只 workflow_dispatch 手動觸發（長時間執行，
 #     不適合塞進一般 CI 節流）。
@@ -74,7 +75,7 @@ jobs:
           node dist/server.js &
           npx --yes wait-on http://localhost:8080/health --timeout 30000
       - name: 執行 tests/integration/qa（依序，避免共用資料庫互相干擾）
-        run: node --test --test-concurrency=1 "tests/integration/qa/**/*.qa.test.ts"
+        run: npm run test:integration:qa
 
   e2e:
     name: e2e (Playwright)
@@ -116,12 +117,13 @@ jobs:
         run: |
           node dist/server.js &
           npx --yes wait-on http://localhost:8080/health --timeout 30000
-      - name: 臨時安裝 @playwright/test（不落地 package.json／package-lock.json）
-        run: npm install --no-save --no-package-lock @playwright/test
+      # @playwright/test 已由 npm ci 一併裝好（devDependencies 釘選 1.63.0，
+      # Leader 裁決 2026-09-19T12:32:40+08:00，dev-tl 於 T-0021 合併時落地）；
+      # 這裡只需要下載瀏覽器二進位檔。
       - name: 安裝 Chromium（至少一組，NFR-004 R-5：最新版即可）
         run: npx playwright install --with-deps chromium
       - name: 執行 e2e（Chromium，兩種尺寸）
-        run: npx playwright test -c tests/e2e/playwright.config.ts --project=chromium-1280x800 --project=chromium-390x844
+        run: npm run test:e2e -- --project=chromium-1280x800 --project=chromium-390x844
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -169,7 +171,5 @@ jobs:
         run: |
           node dist/server.js &
           npx --yes wait-on http://localhost:8080/health --timeout 30000
-      - name: NFR-001（TC-085／TC-086，暖身 10 秒＋正式 60 秒）
-        run: node tests/perf/tc085-tc086-nfr001.perf.mjs
-      - name: NFR-007（TC-094，500 筆容量）
-        run: node tests/perf/tc094-nfr007-capacity.perf.mjs
+      - name: NFR-001（TC-085／TC-086，暖身 10 秒＋正式 60 秒）＋ NFR-007（TC-094，500 筆容量）
+        run: npm run test:perf

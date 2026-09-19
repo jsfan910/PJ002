@@ -1,0 +1,18 @@
+{
+  // T-0021（dev-tl 合併時新增）：tests/e2e/** 的型別檢查專用 project。
+  //
+  // 為什麼不直接把 "DOM" 加進 tsconfig.test.json：tests/e2e 的 page.evaluate()
+  // 回呼在瀏覽器裡執行，需要 document／HTMLInputElement 等 DOM 型別；但
+  // tests/unit 與 tests/integration 跑在 Node 進程內，若也拿到 DOM 全域，
+  // 誤用 DOM API 會通過型別檢查卻在執行時炸掉。兩者分開，各自只拿到該有的
+  // 全域型別。lint 會依序跑 tsconfig.json → tsconfig.test.json → 本檔。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "lib": ["ES2022", "DOM"],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["tests/e2e/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
