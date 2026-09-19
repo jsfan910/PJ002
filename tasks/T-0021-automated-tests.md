@@ -5,8 +5,8 @@ epic: E-001
 team: qa
 role: qa-at
 model: sonnet
-status: review
-round: 1
+status: in_progress
+round: 2
 depends_on: [T-0017, T-0018]
 inputs:
   - docs/specs/07_測試計畫.md
@@ -33,7 +33,7 @@ acceptance:
 reviewer: qa-lead
 branch: task/T-0021-automated-tests
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T13:22:00+08:00
+updated: 2026-09-19T13:12:54+08:00
 blocked_reason: null
 ---
 
@@ -56,3 +56,4 @@ qa-lead：重跑本機測試指令核對數字；核對 TC-ID 覆蓋（grep TC- 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
 | r1 | dev-tl | 技術初審通過並合併 | 技術層面三項全過：分支未動 `src/`、未動 `package.json`、相依合理（僅 `@playwright/test`）。已 `--no-ff` 合併進 main（`beb3f0b`，無衝突）。收尾：`@playwright/test` 釘選 `1.63.0` 進 devDependencies 並更新 lock；補 `test:integration:qa`／`test:e2e`／`test:perf` 三個 script 並收斂 `test:integration` 的 glob（兩組測試前提不同，見 README「測試分層」）；新增 `tsconfig.e2e.json`（e2e 需 DOM 型別）並納入 `lint`；`qa-tests.yml` 改由 `npm ci` 取得 Playwright。合併後對含修正的 main 重跑：unit 76/76、integration 56/56、qa-integration 38 過／0 敗／4 阻擋（staging）、e2e Chromium 68/68（153.0.8010.12）、perf PASS、actionlint 0。**測試內容品質（TC 覆蓋、案例正確性）不在本次範圍，由 qa-lead 於 T-0023 審。** | worklog/handoff/20260919-1301-T0021-r1-dev-tl.md |
+| r1 | leader | rework→r2 | dev-tl 技術初審通過並合併（beb3f0b，e7abe4f）；r2 對最終 main 重跑三類並更新 AT 報告 | worklog/handoff/20260919-工作交接.md |

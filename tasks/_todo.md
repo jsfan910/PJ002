@@ -6,6 +6,8 @@
 
 ## 進行中
 
+- T-0021 r2 AT 對最終 main 重跑 ｜ qa-at/sonnet ｜ 13:15 派工
+
 - T-0020 r2 CR 複審修正處 ｜ qa-cr/opus ｜ 13:00 派工
 - T-0022 r2 UAT 前端三則重跑 ｜ qa-uat/haiku ｜ 13:00 派工
 
@@ -14,7 +16,7 @@
 
 ## 審核中
 
-- T-0021 AT 分支（86361f0）｜ dev-tl 合併中（安裝 Playwright）
+（無）
 
 （無）
 

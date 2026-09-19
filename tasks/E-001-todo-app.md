@@ -220,3 +220,10 @@ updated: 2026-09-19T11:45:41+08:00
 - dev-tl 裁決 `npm run dev` 拆為 `dev:build`／`dev:run`，Leader 追認。
 - D-FE-001 成因說明（dev-tl）：自動化瀏覽器需先以帶帳密網址載入建立認證快取，再以不帶帳密網址操作；供 qa-uat r2 採用、qa-lead T-0023 裁定為「工具限制」參考。
 - 下一步：dev-tl 合併 T-0021 分支（Playwright 列入 devDependencies）→ qa-cr r2、qa-at r2、qa-uat r2 平行 → T-0023。
+
+### 2026-09-19T13:12:54+08:00 — T-0021 合併與追認
+
+- T-0021 分支合併（main `e7abe4f`）：Playwright 1.63.0 devDependency、tsconfig.e2e.json、test:integration 收斂為進程內、QA HTTP 組改 test:integration:qa。合併後 e2e Chromium 68/68、QA integration 38 過／4 阻擋、perf PASS、actionlint 0。
+- 追認 dev-tl 兩項：①本機 compose 服務因平行 agent 使用而未關閉；②tsconfig.e2e.json 拆分而非把 DOM 塞進 Node 測試設定。
+- qa-lead T-0023 驗收須同時跑 test:integration 與 test:integration:qa。
+- qa-at r2：對最終 main 重跑三類並更新 AT 報告（r1 報告數字已過時）。
