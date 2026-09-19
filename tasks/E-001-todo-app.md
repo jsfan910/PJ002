@@ -160,3 +160,9 @@ updated: 2026-09-19T07:17:55+08:00
 |---|---|
 | ① | `.github/workflows/ci.yml` unit job 在 test:unit 前補 `npm run build`，由 dev-tl 於批次 2 合併 commit 一併修（與 T-0013 的 migrate 腳本修法同一 commit） |
 | ② | `src/app.ts` 錨點一行 + 必要 import 一行，接受；acceptance 的意圖是「不動其他邏輯」，import 不算 |
+
+### 2026-09-19T09:37:07+08:00 — 對 T-0016 一項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | UUID 格式錯誤回 **400 E_VALIDATION**（格式對但無資料才 404），依 04_API規格.yaml 與 SA/SD；Leader 派工提示詞的「404」為誤寫，規格優先。dev-be 依規格實作正確 |
