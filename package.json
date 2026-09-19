@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "lint": "eslint . && tsc --noEmit -p tsconfig.json",
-    "test:unit": "node --test \"tests/unit/**/*.test.ts\"",
+    "test:unit": "node --test \"tests/unit/**/*.test.ts\" \"tests/unit/**/*.test.mjs\"",
     "test:integration": "node --test \"tests/integration/**/*.test.ts\"",
     "migrate": "node dist/db/migrate.js",
     "verify:health": "node scripts/verify-health.ts"

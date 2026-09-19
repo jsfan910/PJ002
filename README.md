@@ -69,7 +69,7 @@ npm start                       # 另開一個終端機視窗執行下一步
 | 建置（`tsc`） | `npm run build` |
 | 啟動（讀 `dist/`） | `npm start` |
 | Lint（ESLint ＋ `tsc --noEmit`） | `npm run lint` |
-| 單元測試 | `npm run test:unit` |
+| 單元測試（後端 `*.test.ts` ＋ 前端 `*.test.mjs`，需先 `npm run build`） | `npm run build && npm run test:unit` |
 | 整合測試（需先 `npm run build`，見下方限制） | `npm run test:integration` |
 | Migration（**需先 `npm run build`**，腳本讀 `dist/db/migrate.js`） | `npm run build && npm run migrate` |
 | 驗證 `/health`（尚未實作，由 T-0018 補上） | `npm run verify:health` |
@@ -78,7 +78,7 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 ### 已知平台限制（本卡驗收時記錄，供後續卡與 CI 參考）
 
-- `node --test <目錄>`（不帶副檔名 glob，例如 `node --test tests/integration/`）在本機 Node v24.15.0／Windows 上會誤把目錄路徑當成 CommonJS 模組解析而失敗（`Error: Cannot find module ...`），與本專案程式碼無關（以一個全新的最小範例目錄即可重現同一錯誤）。因此 `test:unit`／`test:integration` 兩個 script 改用明確的 glob（`"tests/unit/**/*.test.ts"`／`"tests/integration/**/*.test.ts"`），效果等價、可正常遞迴尋找測試檔。
+- `node --test <目錄>`（不帶副檔名 glob，例如 `node --test tests/integration/`）在本機 Node v24.15.0／Windows 上會誤把目錄路徑當成 CommonJS 模組解析而失敗（`Error: Cannot find module ...`），與本專案程式碼無關（以一個全新的最小範例目錄即可重現同一錯誤）。因此 `test:unit`／`test:integration` 兩個 script 改用明確的 glob（`"tests/unit/**/*.test.ts"`／`"tests/integration/**/*.test.ts"`），效果等價、可正常遞迴尋找測試檔。`test:unit` 另帶第二個 glob `"tests/unit/**/*.test.mjs"`，使前端測試檔（D-03 裁決：前端測試檔副檔名為 `.test.mjs`）同樣被涵蓋；兩個 glob 皆加引號，Git Bash 與 PowerShell 皆可執行。
 - `tests/integration/health.test.ts` 匯入路徑指向 `../../dist/`（編譯後產物）而非 `../../src/`：Node 原生的 TypeScript 型別剝除不會把 `.js` 匯入規格自動對應回同名 `.ts` 檔（這是 TypeScript 5.7 的 `rewriteRelativeImportExtensions` 才有的能力；本專案釘選 `~5.6`，尚無此功能）。因此**跑整合測試前務必先 `npm run build`**（`npm run test:integration` 之前的所有本文件範例皆已按此順序排列）。
 - 同一原因，**`npm run migrate` 前也必須先 `npm run build`**：`src/db/migrate.ts` 以 `.js` 規格匯入 `../config.js`，直接執行 `.ts` 會 `ERR_MODULE_NOT_FOUND`。`migrate` 腳本已改為讀 `dist/db/migrate.js`（與 `npm start` 同模式，Leader 裁決 T-0013-②）。部署時的順序固定為 **build → migrate → deploy**（06 §3）。
 - 同一原因，`npm run test:unit` 也需先 `npm run build`（部分單元測試檔匯入 `dist/`）；`.github/workflows/ci.yml` 的 `unit` job 已於 `test:unit` 前加一步 `npm run build`（Leader 裁決 T-0012-①）。
