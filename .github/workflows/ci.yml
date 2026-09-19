@@ -1,0 +1,96 @@
+# CI（OPS-02，06_部署架構與CICD.md §3.1）。四階段：lint → unit → build → integration。
+# 本卡（T-0011）只負責 ci.yml 本身；deploy-staging.yml／monitor-health.yml 是
+# WI-08（T-0018）的範圍。build 階段只 `docker build`，不推送（推送與部署由
+# deploy-staging.yml 負責）。
+#
+# 本 repo 目前無遠端（WBS §3.1 R-02）：本檔尚無法在 GitHub 上實際跑過，
+# 僅以本地等價指令（06_*.md §3.3）驗證邏輯；使用者提供 GitHub repo 後
+# 才會是「遠端待驗」清單的一部分，交 Leader 追蹤。
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx --yes @redocly/cli lint docs/specs/04_API規格.yaml
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: docker build（本階段只建置，不推送；推送與部署由 deploy-staging.yml 負責）
+        run: docker build -t todo-app:${{ github.sha }} .
+
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: "ci"
+          POSTGRES_PASSWORD: "ci"
+          POSTGRES_DB: "todo"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d todo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: "test"
+      PORT: "8080"
+      DATABASE_URL: "postgres://ci:ci@localhost:5432/todo"
+      BASIC_AUTH_USER: "ci"
+      BASIC_AUTH_PASSWORD: "ci"
+      LOG_LEVEL: "silent"
+      CORS_ALLOWED_ORIGINS: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # npm run migrate 的實作（src/db/migrate.ts）由 WI-03（T-0013）建立；
+      # 本卡先把 pipeline 步驟定齊（06_*.md §3.3：「integration 建立者：
+      # WI-01（骨架）／WI-03（migrate）」）。WI-03 完成前執行本步驟會失敗，
+      # 這是已知且預期的現況，不代表本卡的 CI 邏輯有誤。
+      - run: npm run migrate
+      - run: npm run test:integration
