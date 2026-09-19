@@ -227,3 +227,8 @@ updated: 2026-09-19T11:45:41+08:00
 - 追認 dev-tl 兩項：①本機 compose 服務因平行 agent 使用而未關閉；②tsconfig.e2e.json 拆分而非把 DOM 塞進 Node 測試設定。
 - qa-lead T-0023 驗收須同時跑 test:integration 與 test:integration:qa。
 - qa-at r2：對最終 main 重跑三類並更新 AT 報告（r1 報告數字已過時）。
+
+### 2026-09-19T13:15:01+08:00 — 對 CR r2（T-0020）的裁決
+
+- 結論：阻擋級 0；r1 13 項全部已修正；新增建議級 N-1（runMigrations 無互斥鎖，多實例冷啟一方 exit 1）。
+- 裁決：N-1 列 P1 待辦（與 002 migration 同卡處理，Cloud Run min instances 0 且 staging 單實例，P0 不受影響）；T-0020 r2 交 qa-lead 於 T-0023 審核。
