@@ -6,7 +6,7 @@ version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run）�
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T07:30:22+08:00
+updated: 2026-09-19T15:56:00+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -24,7 +24,7 @@ updated: 2026-09-19T07:30:22+08:00
 | 環境 | 用途 | 網址 | 誰可部署 | 資料 |
 |---|---|---|---|---|
 | dev | 本機開發與離線驗證 | `http://localhost:8080` | 任何人（`docker compose up`） | 本機 `postgres:16-alpine` 容器，假資料，可任意清空 |
-| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **待首次部署後回填**（T-0018 已備妥 `.github/workflows/deploy-staging.yml`，格式為 `https://<service>-<hash>-<region-code>.a.run.app`，服務名與雜湊由平台決定，無法事先寫死；使用者提供 GCP 專案與 GitHub repo 並完成 README「部署與 secrets」章節的一次性設定後，`main` 綠燈即自動部署並在該次工作流摘要印出網址） | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
+| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **待首次部署成功後回填**（T-0027，2026-09-19：`deploy-staging.yml` 已跑兩次真實 run，均在 `auth` 階段失敗，原因是 GCP 端 WIF provider 的 `attribute-condition` 仍是字面佔位符 `assertion.repository == '<owner>/<repo>'`，未替換為實際倉庫 `jsfan910/PJ002`，導致所有 OIDC token 都被拒絕。待使用者修正後重新觸發，網址取得方式不變：格式為 `https://<service>-<hash>-<region-code>.a.run.app`，於該次工作流摘要印出。詳見 `docs/reports/20260919-1551-部署紀錄-E001.md`） | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
 | prod | **本 Epic 不建立** | — | — | — |
 
 **為什麼沒有 prod**：Epic 的成功指標只到 Gate 2「staging 可用瀏覽器操作、P0 UAT 全通過」。建立 prod 屬擴大範圍。本文件的 pipeline 保留一個手動觸發的 `deploy-prod` 位置（第 3 章），但**本輪不實作、不設定**。
@@ -240,7 +240,7 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ### 5.4 演練要求
 
-- 演練紀錄：2026-09-19，結果：**尚未實際演練（被憑證阻擋）**。回滾指令已寫成可執行腳本（`scripts/rollback-staging.sh`，本機等效；工作流層級指令見本節上方）並以 `bash -n` 語法檢查通過；`gcloud run services update-traffic`／`revisions list`／`services describe` 三條指令逐字對照 5.1 節。**待使用者提供 GCP 專案與已部署的 staging 服務後**，由 dev-ops 或使用者執行一次 5.1 流程（先部署一個會啟動失敗的版本驗證 startup probe 擋下、再部署一個能啟動但行為有誤的版本執行一次 `update-traffic` 回滾），並回填本行日期與結果。詳見 `worklog/handoff/*T0018*.md`「需要 Leader 裁決的事」／「被憑證阻擋的最後一步」。
+- 演練紀錄：2026-09-19（T-0027 覆核），結果：**尚未實際演練**。回滾指令已寫成可執行腳本（`scripts/rollback-staging.sh`，本機等效；工作流層級指令見本節上方）並以 `bash -n` 語法檢查通過；`gcloud run services update-traffic`／`revisions list`／`services describe` 三條指令逐字對照 5.1 節。**本輪阻擋原因已從「缺憑證」精確化為「GCP 端 WIF provider 的 attribute-condition 仍是字面佔位符，未替換為實際倉庫」**（本機 `gcloud` 已登入並確認：Artifact Registry `todo-app`、Secret Manager 三個 secret 皆已就位且有 enabled 版本，`github-deployer` 服務帳號四個角色與 workloadIdentityUser 綁定皆正確；`gcloud run services list` 回傳空清單，證實**目前沒有任何一個 revision 曾經部署成功過**，回滾演練的前提「至少兩個 revision」尚不成立）。待使用者修正 WIF attribute-condition 並讓 `deploy-staging.yml` 至少成功部署一次後，由 dev-ops 或使用者執行一次 5.1 流程（先部署一個會啟動失敗的版本驗證 startup probe 擋下、再部署一個能啟動但行為有誤的版本執行一次 `update-traffic` 回滾），並回填本行日期與結果。詳見 `docs/reports/20260919-1551-部署紀錄-E001.md`、`worklog/handoff/20260919-1551-T0027-r1-dev-ops.md`。
 - **本演練是 Gate 2 的前置條件**，由 **dev-ops** 於 DevOps ② 卡（OPS-03）完成後執行一次 5.1 流程並回填上行。演練內容：刻意部署一個會啟動失敗的版本 → 確認 Cloud Run 因 startup probe（`/health`）不通過而**不把流量切到新 revision**（舊 revision 繼續服務 100%，服務維持可用）→ 再刻意部署一個能啟動但行為有誤的版本，執行一次 5.1 的 `update-traffic` 回滾 → 記錄不可用時間、revision 名稱與資料筆數比對結果。
 - **兩種失敗要分開演練**：「啟動失敗」由平台自動擋住（不需回滾），「啟動成功但行為錯誤」才需要 5.1 的回滾。只演練前者等於沒演練回滾。
 
@@ -289,6 +289,11 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - 取樣結果**寫入兩處**：① 該次執行的 `$GITHUB_STEP_SUMMARY`（表格，人工即時查看）；② `actions/upload-artifact` 上傳 `health-samples-<run_id>` 內含 `health-samples.csv`（`timestamp_utc,attempt,http_code,time_total_seconds`），保留 90 天，供 NFR-003 24 小時／7 天採樣的事後統計（下載各次 run 的 artifact 逐筆彙總即可算成功率）。
 - GitHub Actions 額度：**選擇第 2 章對策 1（倉庫設為公開）**——本專案無機密內容，公開倉庫 Actions 分鐘數不計費，取樣頻率維持每 5 分鐘（Leader 對 O-009 裁決不變）。若使用者仍要求私有倉庫，須改為每 10 分鐘並回報 Leader 調整 NFR-003 取樣分母（本卡不預先假設使用者會選私有）。
 - **實際 24 小時採樣待使用者提供 GitHub repo 與已部署的 staging 服務後才能開始**（`STAGING_BASE_URL` 為空時，本工作流會印出 `::notice::` 並直接以 0/0 略過，不會誤判為服務掛掉），屬「遠端待驗」清單（交 Leader 追蹤，見 T-0018 交接檔）。
+
+### 6.5 首次真實 run 紀錄（T-0027）
+
+- **`deploy-staging.yml`**：main 於 `7d620f6` 綠燈後自動觸發，共兩次真實 run（`#1` https://github.com/jsfan910/PJ002/actions/runs/35430432261、`#2` https://github.com/jsfan910/PJ002/actions/runs/35430463010），**皆在 `auth`（WIF）階段失敗**，耗時 18～21 秒，錯誤訊息 `google-github-actions/auth failed with: ... {"error":"unauthorized_client","error_description":"The given credential is rejected by the attribute condition."}`。根因與修法見 `docs/reports/20260919-1551-部署紀錄-E001.md`。`migrate`／`build & push`／`deploy`／`verify` 四個階段皆未執行到，因此本輪無法驗證這幾個階段的真實行為，僅靠 T-0018 的本機驗證與 actionlint 佐證其語法正確。
+- **`monitor-health.yml`**：main 綠燈後至本卡收尾時（約 15 分鐘內）**尚無任何 run**（GitHub 排程觸發器在工作流剛併入時常有數分鐘至數十分鐘的延遲，非本卡程式碼問題）；`workflow_dispatch` 手動觸發需登入 GitHub，agent 不代登入。**首次成功採樣待 cron 自然觸發或使用者手動按 Run workflow**，屬「遠端待驗」清單（交 Leader 追蹤）。
 
 ---
 

@@ -183,6 +183,37 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 staging 部署於 **GCP Cloud Run**（`min-instances = 0`，免費額度）＋ **Artifact Registry**（映像存放）＋ **Neon Serverless Postgres（Free）**；CI/CD 為 **GitHub Actions**，GCP 認證採 **Workload Identity Federation（WIF）**，倉庫中不存在任何長期金鑰。完整設計見 `docs/specs/06_部署架構與CICD.md`（第 2～6 章）與 `docs/specs/adr/ADR-0005-雲端平台-CloudRun.md`。**下列指令中的憑證與雲端帳號一律由使用者自行設定，agent 不索取、不代填。**
 
+### GCP 指令在哪裡執行（T-0027 補充）
+
+本章所有 `gcloud` 指令可在下列任一環境執行，指令內容本身沒有差異：
+
+- **GCP Cloud Shell**（免安裝，網頁 https://console.cloud.google.com → 右上角終端機圖示）：已預裝 `gcloud`，直接貼 Git Bash 區塊即可。
+- **本機 Windows Google Cloud SDK**：Git Bash 下可直接打 `gcloud`；**Windows `cmd.exe` 或 PowerShell 下必須打 `gcloud.cmd`**（`gcloud` 本體是 shell script，Windows 原生殼層無法直接執行；若安裝時已加到 PATH 且有 `.cmd` 包裝則兩種殼層都可用 `gcloud.cmd`，保守起見一律加 `.cmd`）。
+
+**佔位符務必替換成實際值，不可保留角括號**：本文件所有 `<PROJECT_ID>`、`<PROJECT_NUMBER>`、`<owner>/<repo>` 都必須換成你的實際值（例如 `<owner>/<repo>` → `jsfan910/PJ002`）。**T-0027 實測發現一個真實案例**：WIF provider 的 `--attribute-condition="assertion.repository == '<owner>/<repo>'"` 若未替換角括號內容就直接執行，GCP 會把字面字串 `<owner>/<repo>` 當成比對條件，導致**任何**倉庫（包括正確倉庫）的 OIDC token 都被拒絕，`google-github-actions/auth` 失敗訊息為 `The given credential is rejected by the attribute condition.`。修法：重新執行第 4 步的 ② 指令，把 `<owner>/<repo>` 換成實際倉庫（詳見 `docs/reports/` 部署紀錄報告）。
+
+**`cmd.exe` 的 `echo` 不需要單引號**：`cmd.exe` 的 `echo` 會把單引號原樣印出（不像 Git Bash／PowerShell 會處理引號語意）。若要在 `cmd.exe` 下輸出同樣的 JSON 字串，省略單引號、雙引號改用兩個雙引號跳脫：`echo [{""name"":""keep-last-5""}]`。
+
+**`<(echo …)` 這種 process substitution 在 Windows 不可用**（PowerShell／`cmd.exe` 都沒有這個語法）。第 3 步 `set-cleanup-policies --policy=<(echo '...')` 在 Windows 下請先寫成暫存檔再引用：
+
+```powershell
+$json = '[{"name":"keep-last-5","action":{"type":"Keep"},"mostRecentVersions":{"keepCount":5}}]'
+[System.IO.File]::WriteAllText("$PWD\cleanup-policy.json", $json)
+gcloud.cmd artifacts repositories set-cleanup-policies todo-app `
+  --location=asia-east1 --project "<PROJECT_ID>" --policy=cleanup-policy.json
+Remove-Item cleanup-policy.json
+```
+
+**Secret 值改用 `[IO.File]::WriteAllText` 寫檔，避免多寫入換行**：PowerShell 的 `Set-Content`／`>` 重導向預設會在檔尾多加一個換行字元；若拿來當 `gcloud secrets versions add --data-file=` 的輸入，密碼或連線字串會多一個看不見的 `\n`，導致應用程式驗證失敗且難以排查。改用：
+
+```powershell
+[System.IO.File]::WriteAllText("$PWD\secret.txt", "你的密鑰值", [System.Text.Encoding]::UTF8)
+gcloud.cmd secrets versions add database-url --project "<PROJECT_ID>" --data-file="$PWD\secret.txt"
+# 驗證檔案內容沒有多餘的換行字元（尾端應直接是內容最後一個位元組，不是 0D 0A 或 0A）：
+Format-Hex "$PWD\secret.txt" | Select-Object -Last 3
+Remove-Item secret.txt
+```
+
 ### 前置：GCP 一次性設定（使用者自行執行）
 
 1. **建立 GCP 專案並啟用計費帳戶**（Cloud Run／Artifact Registry 的硬性前提，即使實際費用為 US$0；建議額外設一個 US$1 預算警示，06 §2）。

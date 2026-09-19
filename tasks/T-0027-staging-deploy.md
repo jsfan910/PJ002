@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: in_progress
+status: blocked
 round: 1
 depends_on: [T-0018, T-0025]
 inputs:
@@ -32,8 +32,18 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0027-staging-deploy
 created: 2026-09-19T15:50:02+08:00
-updated: 2026-09-19T15:50:24+08:00
-blocked_reason: null
+updated: 2026-09-19T15:59:15+08:00
+blocked_reason: >-
+  GCP 端 WIF provider（github-pool/github-provider）的 attribute-condition 仍是字面佔位符
+  assertion.repository == '<owner>/<repo>'，未替換為實際倉庫 jsfan910/PJ002，導致
+  deploy-staging.yml 兩次真實 run（35430432261、35430463010）皆在 auth 階段被拒絕
+  （google-github-actions/auth: "The given credential is rejected by the attribute
+  condition."）。已用本機已登入 gcloud 唯讀查詢確認其餘設定（SA 四個角色、
+  workloadIdentityUser 綁定、Artifact Registry、Secret Manager 三個 secret）皆正確，
+  僅此一處字元級錯誤。修法屬安全性設定變更，agent 不代為執行，已將確切修正指令與
+  後續步驟寫入 docs/reports/20260919-1551-部署紀錄-E001.md 與
+  worklog/handoff/20260919-1551-T0027-r1-dev-ops.md。使用者修正後，本卡剩餘項目
+  （三條 curl 驗證、三處回填、回滾演練、monitor-health 首次成功採樣）預期可接續完成。
 ---
 
 ## 目標
