@@ -2,14 +2,20 @@
 
 事實來源是各任務卡 frontmatter；本檔由 Leader 以 `/dispatch` 重新彙整。引言區（本段到第一個 `## ` 之前）只放一行指向當日交接檔。
 
-> 本日交接見 `worklog/handoff/20260919-工作交接.md`。E-001：Gate 1 通過；P0 開發與本機測試全部完成；staging 已部署（https://todo-app-dpevsdhdva-de.a.run.app）；Gate 2 報告 r1 已提交，staging 補驗進行中，NFR-003 需 24 小時採樣。
+> 本日交接見 `worklog/handoff/20260919-工作交接.md`。**Phase 2（E-002 框架 v1.1）已啟動，四卡平行。** E-001：Gate 1 通過；P0 開發與本機測試全部完成；staging 已部署（https://todo-app-dpevsdhdva-de.a.run.app）；Gate 2 報告 r1 已提交，staging 補驗進行中，NFR-003 需 24 小時採樣。
 
 ## 進行中
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| （無） | | | | | |
-| （無） | | | | | |
+| T-0032 | 角色檔 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0033 | 模板 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0034 | skill v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0035 | 計畫書 v1.1 與 CLAUDE.md | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0032 | 角色檔 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0033 | 模板 v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0034 | skill v1.1 | leader 代理 / opus | 1 | 18:15 | E-002 |
+| T-0035 | 計畫書 v1.1 與 CLAUDE.md | leader 代理 / opus | 1 | 18:15 | E-002 |
 
 ## 審核中
 
