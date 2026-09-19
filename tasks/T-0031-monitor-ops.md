@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0027]
 inputs:
@@ -29,7 +29,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0031-monitor-ops
 created: 2026-09-19T17:47:01+08:00
-updated: 2026-09-19T17:47:01+08:00
+updated: 2026-09-19T18:09:10+08:00
 blocked_reason: null
 ---
 
