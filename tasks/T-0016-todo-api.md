@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0012, T-0013, T-0015]
 inputs:
@@ -34,7 +34,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0016-todo-api
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T09:21:59+08:00
+updated: 2026-09-19T09:34:12+08:00
 blocked_reason: null
 ---
 
