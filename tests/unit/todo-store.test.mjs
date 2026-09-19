@@ -148,6 +148,47 @@ test("load()：網路失敗（NetworkError）時設定 kind=network 的 error", 
   assert.equal(store.getState().error.kind, "network");
 });
 
+test("load()：先發後到時，只有最新一次的回應會寫入 state（S-5，CR-E001 請求序列化）", async () => {
+  // 模擬快速連續切換篩選：第一次呼叫的回應被延遲（之後才手動 resolve），
+  // 第二次呼叫立即完成並先抵達。第一次的（較舊）回應終於到達時不得覆蓋
+  // 已經是最新一次（第二次）的結果。
+  const SECOND_TODO = { ...SAMPLE_TODO, id: "id-2", title: "第二次篩選的結果" };
+  let resolveFirst;
+  const firstResponse = new Promise((resolve) => {
+    resolveFirst = resolve;
+  });
+  let callCount = 0;
+  const { api, calls } = createMockApi({
+    listTodos: async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return firstResponse.then(() => [SAMPLE_TODO]);
+      }
+      return [SECOND_TODO];
+    }
+  });
+  const store = createTodoStore(api);
+
+  const firstLoad = store.actions.load("active"); // 先發出（會延遲回應）
+  const secondLoad = store.actions.load("completed"); // 後發出，但立即 resolve
+
+  const secondResult = await secondLoad;
+  assert.equal(secondResult.ok, true);
+  assert.deepEqual(store.getState().todos, [SECOND_TODO]);
+  assert.equal(store.getState().filter, "completed");
+
+  // 讓第一次（較舊）的回應終於到達（後到）。
+  resolveFirst();
+  const firstResult = await firstLoad;
+
+  assert.equal(firstResult.ok, true);
+  assert.equal(firstResult.stale, true);
+  // 畫面資料仍是最新一次（第二次）篩選的結果，未被先發後到的舊回應覆蓋。
+  assert.deepEqual(store.getState().todos, [SECOND_TODO]);
+  assert.equal(store.getState().filter, "completed");
+  assert.deepEqual(calls.listTodos, ["active", "completed"]);
+});
+
 // ---------------------------------------------------------------------------
 // setFilter()
 // ---------------------------------------------------------------------------

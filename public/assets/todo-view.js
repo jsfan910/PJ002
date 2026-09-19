@@ -39,6 +39,14 @@ if (addInput) {
 // 目前處於「編輯中」的待辦 id；純畫面狀態，不進 todo-store（store 只保存伺服器資料狀態）。
 let editingId = null;
 
+// S-6（CR-E001）：編輯中尚未儲存的草稿文字。純畫面狀態，不進 todo-store。
+// 編輯模式期間任何 store 通知（例如編輯 A 時對 B 按完成觸發的 `load()`）都會呼叫
+// `render()` 整段重繪，若 input 一律以 `todo.title` 初始化，使用者已鍵入但尚未儲存
+// 的文字會被吃掉。改以 `editingDraft ?? todo.title` 初始化，並在 input 事件同步更新
+// 本變數，重繪時即可還原使用者目前鍵入的內容。進入編輯模式時重置為 `null`
+// （交由 `todo.title` 當初始值），儲存或取消時清空。
+let editingDraft = null;
+
 const BUTTON_STYLE =
   "min-width:44px;min-height:44px;padding:0 12px;border-radius:6px;border:1px solid var(--color-border);" +
   "background:var(--color-surface);color:var(--color-text);cursor:pointer;font-size:0.9rem;";
@@ -126,6 +134,7 @@ function renderDisplayItem(li, todo) {
   const editButton = createButton("編輯", "todo-item-edit", BUTTON_STYLE);
   editButton.addEventListener("click", () => {
     editingId = todo.id;
+    editingDraft = null; // S-6：進入編輯模式時重置草稿，改由 todo.title 當初始值。
     render();
   });
 
@@ -150,13 +159,18 @@ function renderEditingItem(li, todo) {
 
   const input = document.createElement("input");
   input.type = "text";
-  input.value = todo.title;
+  // S-6：以草稿優先，還原編輯期間被其他 store 通知觸發重繪前使用者已鍵入的文字；
+  // 尚無草稿（剛進入編輯模式）時才用 todo.title 當初始值。
+  input.value = editingDraft ?? todo.title;
   input.maxLength = 200;
   input.dataset.testid = "todo-item-edit-input";
   input.setAttribute("aria-label", "編輯待辦標題");
   input.style.cssText =
     "flex:1 1 auto;min-width:160px;height:44px;padding:0 8px;border:1px solid var(--color-border);" +
     "border-radius:6px;font-size:1rem;";
+  input.addEventListener("input", () => {
+    editingDraft = input.value;
+  });
 
   const saveButton = document.createElement("button");
   saveButton.type = "submit";
@@ -168,6 +182,7 @@ function renderEditingItem(li, todo) {
   cancelButton.addEventListener("click", () => {
     // AC-003-3：取消維持原標題並離開編輯狀態。
     editingId = null;
+    editingDraft = null; // S-6：離開編輯模式時清空草稿。
     render();
   });
 
@@ -177,6 +192,7 @@ function renderEditingItem(li, todo) {
     // 先離開編輯狀態再送出，避免等待網路時畫面卡在編輯表單；
     // 若驗證或伺服器回錯誤，store 會設定 error，原標題不受影響（AC-003-2）。
     editingId = null;
+    editingDraft = null; // S-6：離開編輯模式時清空草稿。
     render();
     todoStore.actions.updateTitle(todo.id, nextTitle);
   });

@@ -102,6 +102,12 @@ export function createTodoStore(apiClient = defaultApiClient) {
 
   const listeners = new Set();
 
+  // S-5（CR-E001）：`load()` 的請求序列化保護。單調遞增，每次 `load()` 開頭取號；
+  // await 回來後只有仍是「最新一次」發出的請求才寫入 state，避免快速連續切換篩選時
+  // 先發後到的舊回應覆蓋較新的結果（BR-011：事實來源永遠是後端，但競態下必須是
+  // 「最新一次」的後端回應）。
+  let requestSeq = 0;
+
   function getState() {
     return state;
   }
@@ -125,12 +131,20 @@ export function createTodoStore(apiClient = defaultApiClient) {
    */
   async function load(filter) {
     const targetFilter = filter ?? state.filter;
+    const seq = ++requestSeq;
     setState({ filter: targetFilter, loading: true, error: null });
     try {
       const todos = await apiClient.listTodos(targetFilter);
+      // S-5：非最新一次的請求，其回應不再寫入 state（已被之後發出的請求取代）。
+      if (seq !== requestSeq) {
+        return { ok: true, stale: true };
+      }
       setState({ todos, loading: false, error: null });
       return { ok: true };
     } catch (err) {
+      if (seq !== requestSeq) {
+        return { ok: false, stale: true };
+      }
       setState({ loading: false, error: toDisplayError(err) });
       return { ok: false, error: state.error };
     }
