@@ -13,3 +13,4 @@
 - T-0009 測試計畫、測試案例、TC 欄 ｜ qa-lead ｜ 完成 2026-09-19 ｜ 回合 1（審核 leader）
 - T-0010 規格變更：雲端改 Cloud Run ｜ plan-sd ｜ 完成 2026-09-19 ｜ 回合 1（審核 leader）
 - T-0019 測試計畫同步 Cloud Run、追溯補欄 ｜ qa-lead ｜ 完成 2026-09-19 ｜ 回合 1（審核 leader）
+- T-0011 專案骨架＋CI＋/health＋README ｜ dev-ops ｜ 完成 2026-09-19 ｜ 回合 1（審核 dev-tl，合併 d2985cc）

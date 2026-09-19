@@ -6,11 +6,13 @@
 
 ## 進行中
 
+- 批次 2：T-0012 錯誤處理器 ｜ dev-be/sonnet ｜ r1；T-0013 資料層 ｜ dev-be/sonnet ｜ r1；T-0014 前端版面＋API client ｜ dev-fe/sonnet ｜ r1 ｜ 08:25 平行派工（各自 worktree）
+
 （無）
 
 ## 審核中
 
-- T-0011 專案骨架 ｜ dev-ops/sonnet ｜ r1 ｜ reviewer dev-tl（審核中，分支 task/T-0011-project-skeleton）
+（無）
 
 （無）
 
@@ -21,7 +23,6 @@
 ## 待辦（開發批次，依 WBS §2）
 
 
-- 批次 2（平行）：T-0012 錯誤處理器 ｜ dev-be/sonnet；T-0013 資料層 ｜ dev-be/sonnet；T-0014 前端版面與 API client ｜ dev-fe/sonnet ｜ 皆依賴 T-0011
 - 批次 3：T-0015 Basic Auth／靜態託管 ｜ dev-be/sonnet ｜ 依賴 T-0011, T-0012, T-0014
 - 批次 4：T-0016 待辦 API ｜ dev-be/sonnet ｜ 依賴 T-0012, T-0013, T-0015
 - 批次 5（平行）：T-0017 前端狀態與呈現 ｜ dev-fe/sonnet ｜ 依賴 T-0014, T-0016；T-0018 staging 部署與監測 ｜ dev-ops/sonnet ｜ 依賴 T-0010, T-0011, T-0015, T-0016
