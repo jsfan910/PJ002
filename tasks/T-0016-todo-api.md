@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0012, T-0013, T-0015]
 inputs:
@@ -34,7 +34,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0016-todo-api
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T09:34:12+08:00
+updated: 2026-09-19T09:45:00+08:00
 blocked_reason: null
 ---
 
@@ -61,3 +61,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | acceptance 五條全數通過：lint/build exit 0、unit 51/51、integration 47/47；實際起服務以 `curl -u` 逐端點驗，五端點狀態碼／schema／錯誤碼與 04_API規格.yaml 逐項一致（DELETE 204 無本文、PATCH 設定目標狀態冪等三次不翻轉且可設回、後端篩選、排序新到舊、`grep -c updatedAt`=0、UUID 格式錯 400／格式對查無 404）；title 邊界 0/1/200/201 與 trim 情境皆回 400/201 而非 500；BR 落點在 service 層、`createdAt` 由 response schema 單點序列化、未在 register 內 setErrorHandler、repository 未被改、`src/app.ts` 只 2 insertions（錨點一行＋import）；`git diff main...HEAD --stat` 只動 outputs。dev-be 五條假設與決策全部接受（UUID 400 與 Leader 2026-09-19T09:37:07 裁決一致）。已 `git merge --no-ff` 合併至 main | worklog/handoff/20260919-0938-T0016-r1-dev-tl.md |
