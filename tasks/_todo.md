@@ -6,7 +6,7 @@
 
 ## 進行中
 
-- T-0027 staging 首次部署、回填、回滾演練、監測 ｜ dev-ops/sonnet ｜ r1 ｜ 待 main 推送成功後派工
+- T-0027 staging 首次部署、回填、回滾演練、監測 ｜ dev-ops/sonnet ｜ r1 ｜ 15:05 派工（worktree）
 
 （無）
 
