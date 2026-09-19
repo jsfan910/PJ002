@@ -145,3 +145,11 @@ updated: 2026-09-19T07:17:55+08:00
 | # | 裁決 |
 |---|---|
 | ① | T-0017 outputs 追加 `public/index.html`，限新增載入 todo-view.js 的 `<script type="module">` 進入點一行；不重排版面 |
+
+### 2026-09-19T08:39:11+08:00 — 對 T-0013 三項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | `tests/unit/todo-repository.test.ts` 併入 T-0013 outputs（dev-tl 審核時視為在範圍內） |
+| ② | `package.json` 的 `migrate` 腳本改為 `node dist/db/migrate.js`（或等效需先 build 的寫法）由 dev-tl 於初審合併 commit 一併修正，並在 README 註明 migrate 前需 build；package.json 單一擁有者規約不變（dev-tl 即仲裁者） |
+| ③ | 不做啟動時自動 migrate；migrate 為部署 pipeline 的獨立階段（06 §3），由 T-0018 實作 |
