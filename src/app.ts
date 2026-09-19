@@ -30,6 +30,16 @@ export function buildApp(config: AppConfig): FastifyInstance {
       // 此設定只能在 Fastify 建構時指定，故由本卡（app.ts 骨架）一次寫入，
       // 不等 WI-02／WI-05 到位；不影響各卡在自己錨點插入的註冊順序。
       redact: ["req.headers.authorization"]
+    },
+    // CR S-1：Fastify 的 ajv 預設 `coerceTypes: true`，會把
+    // `POST /api/v1/todos` 送 `{"title": 123}` 脅迫成字串 `"123"` 後放行
+    // （回 201），與 04_API規格.yaml 的 `type: string` 嚴格讀法（送錯型別
+    // 應回 400）不符。此設定只能在 Fastify 建構時指定，故與 `redact` 一樣
+    // 由本卡骨架一次寫入。
+    ajv: {
+      customOptions: {
+        coerceTypes: false
+      }
     }
   });
 

@@ -36,6 +36,11 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 COPY public ./public
+# CR B-2 追加：src/db/migrate.ts 的 MIGRATIONS_DIR 在 runtime 讀
+# /app/migrations（相對 dist/db 往上兩層），啟動時自動 migration
+# 需要這個目錄存在，否則容器內 ENOENT；builder 階段不需要（tsc 不讀
+# migrations/，故不加在 builder，與 dist 的來源不同，不適用 --from=builder）。
+COPY migrations ./migrations
 
 # 非 root 使用者執行（Cloud Run 與本機皆適用）。
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \

@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0020]
 inputs:
@@ -26,6 +26,7 @@ outputs:
   - tests/integration/auth-basic.test.ts
   - tests/integration/startup-migrate.test.ts（新）
   - tests/integration/todos-api.test.ts（僅補型別脅迫案例）
+  - Dockerfile（Leader 追加授權：runtime 階段補 COPY migrations ./migrations 一行，修 B-2 容器內 ENOENT）
 acceptance:
   - B-1：豁免比對只剝除 ? 與 # 之後，不做任何正規化；/foo/../health、/.%2e/health、/%2e%2e/health、/assets/%2e%2e/%2e%2e/health 未帶憑證皆 401（測試斷言）；/health 與 /health?x=1 仍 200
   - S-2：豁免只適用 GET 與 HEAD；POST /health 未帶憑證回 401
@@ -35,7 +36,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0024-fix-auth-migrate
 created: 2026-09-19T12:03:12+08:00
-updated: 2026-09-19T12:03:12+08:00
+updated: 2026-09-19T12:22:29+08:00
 blocked_reason: null
 ---
 
