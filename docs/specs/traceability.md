@@ -6,7 +6,7 @@ version: 0.2
 status: approved       # Gate 1 通過；TC 欄由 qa-lead 於 T-0009 填實，NFR「對應測試」欄與主表「狀態」欄由 qa-lead 於 T-0019 依 Leader 裁決補填；主表「狀態」欄於 T-0023 改寫為**測試結果**（2026-09-19）
 author: plan-ba
 reviewers: [leader, qa-lead]
-updated: 2026-09-19T07:45:48+08:00
+updated: 2026-09-19T17:38:24+08:00   # T-0030：主表「狀態」欄改寫為含 staging 實測結果
 ---
 
 # 追溯矩陣：E-001 待辦事項 Web 應用
@@ -15,6 +15,7 @@ DoD：無孤兒需求（每個 US 至少一個 UC、一個模組、一個測試�
 
 **本檔目前狀態（T-0019 後）：主表八欄全部定稿** —— `US-ID`、`US 標題`、`優先級`、`UC-ID`、`SD 模組`、`API 端點` 六欄由 plan-ba 於 T-0005 r1 反向核對定稿；`TC-ID` 欄由 qa-lead 於 T-0009 r1 填實；`狀態` 欄與下方「非功能需求追溯」表的 `對應測試` 欄由 qa-lead 於 **T-0019** 依 Leader 裁決（2026-09-19T07:40:06+08:00 對 T-0009 的裁決第 1、2 項）補填。**無未定稿欄位。**
 **T-0023（2026-09-19）**：主表 `狀態` 欄由「定稿狀態」改寫為 **Gate 2 的測試結果**（本機／staging 分列）。逐 TC 的通過證據見 `docs/reports/` 的 CR／AT／UAT 三組報告與 `docs/reports/20260919-1356-測試總結-E001.md`；缺陷見 `docs/specs/24_缺陷清單.md`。
+**T-0030（2026-09-19，本次）**：staging 已於 T-0027 首次部署成功，主表 `狀態` 欄**全面改寫為「本機＋staging」的實測結果**。證據來源：AT r3 `docs/reports/20260919-1719-AT-E001-r3.md`（staging integration／e2e／perf）、UAT r4 `docs/reports/20260919-1656-UAT-E001-r4.md`（staging 逐 US 實操）、`docs/specs/06_部署架構與CICD.md` §5.4（回滾演練）、彙總見 `docs/reports/20260919-1738-測試總結-E001-r2.md`。**本次僅改主表「狀態」欄，其餘七欄與孤兒檢查不動。**
 欄位填寫責任：`UC-ID` 由 plan-sa（T-0003）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/02_系統分析書_SA.md` 第 1 章；`SD 模組`、`API 端點` 由 plan-sd（T-0004）補 —— **已於 2026-09-19 完成**，來源 `docs/specs/03_系統設計書_SD.md` 第 3 章模組表與第 5 章 API 摘要、`docs/specs/04_API規格.yaml`；**`TC-ID` 由 qa-lead 於測試計畫卡（T-0009 r1）填實**，來源 `docs/specs/20_測試案例.md`（本檔不代填，也不得以空白推論為「無對應」）。
 plan-ba 已於 T-0005 r1 反向審核覆蓋度並定稿，審核過程與證據見 `docs/reports/20260919-0637-覆蓋度審核-E001.md`。
 未填欄位一律標 `—`（待補），不得留空以免誤判為「已確認無對應」。
@@ -23,16 +24,16 @@ plan-ba 已於 T-0005 r1 反向審核覆蓋度並定稿，審核過程與證據�
 
 | US-ID | US 標題 | 優先級 | UC-ID | SD 模組 | API 端點 | TC-ID | 狀態 |
 |---|---|---|---|---|---|---|---|
-| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | TC-001 ~ TC-011、TC-088、TC-096 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | TC-012 ~ TC-018、TC-093、TC-094、TC-097 | P0 全 TC 通過（本機）；TC-093 為 NFR-006 本機近似、TC-094 容量 502 筆通過（T-0023） |
-| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | TC-019 ~ TC-029、TC-098 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | TC-030 ~ TC-037、TC-099 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | TC-038 ~ TC-047、TC-100 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | TC-048 ~ TC-058、TC-101 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | TC-059 ~ TC-064、TC-102 | P0 全 TC 通過（本機）；無 staging 依存 TC（T-0023） |
-| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | TC-065 ~ TC-069、TC-091、TC-103 | P0 TC 通過（本機）；**TC-091 相容性 4／6 組通過**（Chromium、Edge 各 2 尺寸過；Firefox 2 組阻擋：工具／環境限制，Leader 裁決列 Gate 2 後補跑）（T-0023） |
-| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | TC-070 ~ TC-077、TC-085 ~ TC-087、TC-092、TC-104 | P0 全 TC 通過（本機）；NFR-001 P95 GET 47.7ms／寫入 4.5~7.8ms 皆達標（T-0023） |
-| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | TC-078 ~ TC-084、TC-089、TC-090、TC-095、TC-105 | **TC-082／083／095 通過（本機）；staging 依存 8 條阻擋（環境未就緒）**：TC-078、079、080、081（僅本機段過）、084、089、090、105。**staging 尚未部署，不得以本機結果代表 staging**（T-0023） |
+| US-001 | 新增待辦 | P0 | UC-001 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `POST /api/v1/todos` | TC-001 ~ TC-011、TC-088、TC-096 | 本機全通過；**staging：TC-096（uat）通過**（UAT r4 於 staging 實操）、**TC-009 部分通過（間歇性）** —— e2e 對 staging 的 msedge-390x844 偶發 `error-message` 不顯示（約 2~4 成），已立 **D-017（S3／open／P1）**；其餘全通過（T-0030） |
+| US-002 | 檢視待辦清單 | P0 | UC-002 | BE-04、BE-05、BE-06、FE-02、FE-03、FE-04 | `GET /api/v1/todos` | TC-012 ~ TC-018、TC-093、TC-094、TC-097 | 本機全通過；**staging：TC-094 容量 714 筆中位數 116.2 ms 通過**（門檻 < 2000 ms）、**TC-097（uat）通過**；TC-093（容器重啟資料仍在）仍為本機近似，staging 對應項見 US-010 的 TC-080（T-0030） |
+| US-003 | 編輯待辦 | P0 | UC-003 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}` | TC-019 ~ TC-029、TC-098 | 本機全通過；**staging 全通過**（AT r3 integration/e2e＋UAT r4 於 staging 實操 US-003，含 AC-003-5 的 404 可讀錯誤）（T-0030） |
+| US-004 | 刪除待辦 | P0 | UC-004 | BE-04、BE-05、BE-06、FE-03、FE-04 | `DELETE /api/v1/todos/{todoId}` | TC-030 ~ TC-037、TC-099 | 本機全通過；**staging 全通過**（AT r3 integration/e2e＋UAT r4 於 staging 驗證二次確認、取消不送出、204／404 語意）（T-0030） |
+| US-005 | 切換完成／未完成 | P0 | UC-005 | BE-04、BE-05、BE-06、FE-03、FE-04 | `PATCH /api/v1/todos/{todoId}`（設定目標狀態，冪等，O-002） | TC-038 ~ TC-047、TC-100 | 本機全通過；**staging 全通過**（AT r3 integration/e2e＋UAT r4 於 staging 驗證 `PATCH` 冪等、`title`／`createdAt` 不變、刪除線樣式）（T-0030） |
+| US-006 | 依狀態篩選 | P0 | UC-006 | BE-04、BE-05、BE-06、FE-03、FE-04 | `GET /api/v1/todos?status=all\|active\|completed`（篩選在後端，O-003） | TC-048 ~ TC-058、TC-101 | 本機全通過；**staging 全通過**（AT r3 integration/e2e＋UAT r4 於 staging 驗證三種篩選、零筆提示、網址列不含篩選參數）（T-0030） |
+| US-007 | 顯示建立時間 | P0 | UC-007 | BE-04、BE-06、FE-04 | `GET /api/v1/todos`、`GET /api/v1/todos/{todoId}`（回應的 `createdAt` 欄位） | TC-059 ~ TC-064、TC-102 | 本機全通過；**staging 全通過**（AT r3 integration/e2e＋UAT r4 於 staging 確認 `yyyy-mm-dd HH:mm` 格式、非相對時間、編輯／切換後不變）（T-0030） |
+| US-008 | 單頁前端操作 | P0 | UC-008 | BE-09、FE-01、FE-02、FE-03、FE-04 | `GET /`、`GET /assets/*`（靜態頁；本 US 無專屬 API 端點） | TC-065 ~ TC-069、TC-091、TC-103 | 本機全通過；**staging：TC-103（uat）通過**（UAT r4 全程單頁、URL 不變、載入中提示、錯誤可讀且不凍結）；**TC-067 部分通過（間歇性）** —— e2e 對 staging 的 msedge 兩尺寸偶發 `error-message` 不顯示，已立 **D-017（S3／open／P1）**；**TC-091 維持 4／6 組**（Chromium×2、Edge×2 於 staging 亦執行；Firefox 2 組仍阻擋於沙盒工具限制，Leader 裁決列 Gate 2 後補跑，見 E-B-09）（T-0030） |
+| US-009 | REST API | P0 | UC-009 | BE-01、BE-03、BE-04、BE-05、BE-06 | 全部 `/api/v1/*` 端點 ＋ 統一錯誤物件（`components/schemas/Error`） | TC-070 ~ TC-077、TC-085 ~ TC-087、TC-092、TC-104 | 本機全通過；**staging 全通過** —— NFR-001 於 staging 實測 P95：**GET 156.4 ms**（門檻 < 500 ms）、**POST 315.6 ms／PATCH 158.5 ms／DELETE 316.9 ms**（門檻 < 800 ms），全 PASS；TC-104（uat）由 UAT r4 逐端點 `curl` 驗證（201／200／204／400／404／統一錯誤物件）通過（T-0030） |
+| US-010 | staging 部署 | P0 | UC-010、UC-011 | BE-02、BE-07、BE-08、OPS-01、OPS-02、OPS-03、OPS-04 | `GET /health`（**唯一未保護路徑**，O-005） | TC-078 ~ TC-084、TC-089、TC-090、TC-095、TC-105 | **staging 已於 2026-09-19 部署（T-0027），原 8 條阻擋逐條給結果**：**通過 6** —— TC-078（UAT r4 於 staging 完成 US-001~007）、TC-079（實測 **302**，Leader 2026-09-19T17:30:10 裁決接受 302 等效；規格文字落差記 **D-016**）、TC-081（T-0027 實際完成一次 staging 部署佐證）、TC-084（回滾演練 9.689s／10.355s，`06` §5.4 已回填）、TC-090（部署期間 228 樣本全 200、最長連續失敗 **0 秒**）、TC-105（`/health` 200／`/` 401／帶憑證 200，HTTPS）；**部分通過 1** —— TC-080（僅間接證據，未取得同批資料跨部署前後直接比對）；**未判定 1** —— TC-089（NFR-003 採樣中，24 小時窗未滿）。TC-082／083／095 續維持通過（T-0030） |
 | US-011 | 使用者註冊 | P1 | UC-012 | BE-10、BE-11、BE-12 | `POST /api/v1/auth/register` | TC-106 ~ TC-111（Gate 2 後） | P1：未執行（Gate 2 後），不列入 Gate 2 門檻（T-0023） |
 | US-012 | 使用者登入與登出 | P1 | UC-013 | BE-10、BE-11、BE-13 | `POST /api/v1/auth/login`（登出為用戶端清除 JWT，**無端點**，O-006） | TC-112 ~ TC-117（Gate 2 後） | P1：未執行（Gate 2 後），不列入 Gate 2 門檻（T-0023） |
 | US-013 | 使用者資料隔離 | P1 | UC-014 | BE-13、BE-05、BE-06、BE-12 | 全部 `/api/v1/todos*` 端點（JWT 授權橫切；跨使用者回 404，O-001） | TC-118 ~ TC-123（Gate 2 後） | P1：未執行（Gate 2 後），不列入 Gate 2 門檻（T-0023） |

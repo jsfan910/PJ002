@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-lead
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0028, T-0029]
 inputs:
@@ -15,7 +15,7 @@ inputs:
   - docs/specs/07_測試計畫.md#4
   - docs/specs/06_部署架構與CICD.md#5.4（回滾演練紀錄）
 outputs:
-  - docs/reports/yyyymmdd-HHmm-測試總結-E001-r2.md
+  - docs/reports/20260919-1738-測試總結-E001-r2.md
   - docs/specs/24_缺陷清單.md（新增或關閉的缺陷）
   - docs/specs/traceability.md（僅主表「狀態」欄）
 acceptance:
@@ -25,7 +25,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T17:30:10+08:00
+updated: 2026-09-19T17:38:24+08:00
 blocked_reason: null
 ---
 
