@@ -22,6 +22,12 @@
 
 （無）
 
+## 待辦（staging 補驗，T-0027 done 後開）
+
+- T-0028 AT r3 對 staging 重跑＋NFR-003 採樣判讀 ｜ qa-at/sonnet ｜ 依賴 T-0027
+- T-0029 UAT r3 於 staging ｜ qa-uat/haiku ｜ 依賴 T-0027（與 T-0028 平行）
+- T-0030 測試總結 r2 ｜ qa-lead/opus ｜ 依賴 T-0028, T-0029
+
 ## 待辦（Gate 2 後）
 
 - P1：US-011～US-013 多使用者帳號（依 WBS §8，開卡前 Leader 依使用者裁決②決定時機）
