@@ -166,3 +166,12 @@ updated: 2026-09-19T07:17:55+08:00
 | # | 裁決 |
 |---|---|
 | ① | UUID 格式錯誤回 **400 E_VALIDATION**（格式對但無資料才 404），依 04_API規格.yaml 與 SA/SD；Leader 派工提示詞的「404」為誤寫，規格優先。dev-be 依規格實作正確 |
+
+### 2026-09-19T10:20:10+08:00 — 對 T-0018 兩項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | 04_API規格.yaml 的 staging servers 佔位符待首次部署成功後，由 Leader 另開小卡（plan-sd 或 dev-ops 回填實值） |
+| ② | Secret Manager 命名歸 T-0018，接受 |
+
+使用者一次性設定清單見 README「部署與 secrets（T-0018）」章節；完成前 staging 相關 TC 記「阻擋（環境未就緒）」。
