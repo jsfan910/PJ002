@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-fe
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0020]
 inputs:
@@ -26,7 +26,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0026-fix-frontend
 created: 2026-09-19T12:03:12+08:00
-updated: 2026-09-19T12:16:36+08:00
+updated: 2026-09-19T12:53:00+08:00
 blocked_reason: null
 ---
 
@@ -47,3 +47,4 @@ dev-tl 重跑測試；在瀏覽器快速連續切換篩選與編輯中觸發其�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 四條全通過：lint 0、node --test tests/unit/todo-store.test.mjs 25/25、innerHTML 0、index.html／api-client.js／styles.css diff 0 筆、11 個 data-testid 不變；瀏覽器實測（compose 真實服務）快速切換篩選五連點後按鈕與清單一致，並以人為延遲 status=active 回應 1500ms 製造真正的先發後到，舊回應未覆蓋畫面（S-5）；編輯 TodoA 鍵入未儲存草稿後對 TodoB 觸發完成導致整段重繪，輸入框仍為 TodoA-DRAFT-UNSAVED，續按儲存正常寫入（S-6）。S-6 無自動化測試一項經 dev-tl 裁決接受（view 層依 07 測試計畫由 qa-at／qa-uat 以真實瀏覽器覆蓋，補 jsdom 需新增 devDependency 屬規格變更），已交 qa-at r2 補 E2E。已 --no-ff 合併 main | worklog/handoff/20260919-1246-T0026-r1-dev-tl.md |
