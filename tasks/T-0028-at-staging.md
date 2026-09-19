@@ -27,7 +27,7 @@ acceptance:
 reviewer: qa-lead
 branch: task/T-0028-at-staging
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T17:26:49+08:00
+updated: 2026-09-19T17:33:22+08:00
 blocked_reason: null
 ---
 
@@ -50,3 +50,4 @@ qa-lead：核對 r3 報告數字與原始輸出一致；抽查 2 條原阻擋 TC
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | 技術初審通過並合併 | diff 僅動 docs/reports、tests/e2e/playwright.config.ts（環境差異小修）、任務卡、交接檔，未動 src/ 與 package.json；憑證掃描無字面值命中；合併後根目錄 build／test:unit（76/76）／test:integration（56/56）全綠，lint 唯一錯誤在 `scripts/gen-schedule.mjs`（來自 main 既有 commit b2fb97b，非本卡）。內容品質由 qa-lead 於 T-0030 續審，status 維持 review。 | worklog/handoff/20260919-1733-T0028-r1-dev-tl.md |
