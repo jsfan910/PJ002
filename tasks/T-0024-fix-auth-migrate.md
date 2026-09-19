@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0020]
 inputs:
@@ -36,7 +36,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0024-fix-auth-migrate
 created: 2026-09-19T12:03:12+08:00
-updated: 2026-09-19T12:22:29+08:00
+updated: 2026-09-19T12:36:00+08:00
 blocked_reason: null
 ---
 
@@ -59,3 +59,4 @@ dev-tl 在 worktree 重跑 acceptance 每條；curl --path-as-is 實測四個變
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | acceptance 五條全通過：豁免比對純字串切割無正規化（原始碼確認）、四個點節段變體與 POST /health 實測 401、/health 與 /health?x=1 200；docker compose down -v 後 up --build 乾淨環境容器啟動即自動建表、GET /api/v1/todos 200 []，migration 失敗路徑 exit(1) 且不監聽；coerceTypes 關閉後 title 送數字／PATCH isCompleted null 皆 400；lint 0、build 0、unit 75/75、integration 56/56；diff 只動 outputs（Dockerfile 一行為 Leader 追加授權）。已 --no-ff 合併 main | worklog/handoff/20260919-1227-T0024-r1-dev-tl.md |
