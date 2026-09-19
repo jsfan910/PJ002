@@ -93,9 +93,11 @@ button:hover{border-color:var(--ink)} button:focus-visible{outline:2px solid var
 .sw.rev{background:repeating-linear-gradient(135deg,transparent 0 3px,var(--ink2) 3px 4px);border:1px solid var(--ink2)}
 .sw.prog{background:linear-gradient(90deg,var(--dev) 0 55%,var(--dev-soft) 55% 100%);border:1px solid var(--dev)}
 .tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12px;color:var(--ink)}
 th{text-align:left;font-weight:500;color:var(--ink2);border-bottom:1px solid var(--axis);padding:6px 8px;white-space:nowrap;letter-spacing:.02em}
-td{border-bottom:1px solid var(--grid);padding:5px 8px;vertical-align:top}
+td{border-bottom:1px solid var(--grid);padding:5px 8px;vertical-align:top;color:var(--ink)}
+tr.phase td{color:var(--ink)}
+.kpi{color:var(--ink)}
 td.mono,th.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 tr.phase td{background:var(--plane);font-weight:700;padding:8px;border-top:1px solid var(--axis)}
 .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--ink)}
@@ -167,16 +169,6 @@ table.gantt tr.phase td.tl{border-left:1px solid var(--axis)}
     </div>
   </div>
   <div class="kpis" id="kpis"></div>
-  <div class="legend">
-    <span><i class="sw" style="background:var(--leader)"></i>Leader</span>
-    <span><i class="sw" style="background:var(--plan)"></i>規劃團隊</span>
-    <span><i class="sw" style="background:var(--dev)"></i>開發團隊</span>
-    <span><i class="sw" style="background:var(--qa)"></i>測試團隊</span>
-    <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
-    <span><i class="sw rev"></i>審核回合</span>
-    <span><i class="sw" style="background:transparent;border-top:2px dashed var(--gate);height:0"></i>關卡／里程碑</span>
-    <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在</span>
-  </div>
 
   <h2>WBS 工作分解表</h2>
   <div class="tablewrap"><table id="wbs">
@@ -187,7 +179,17 @@ table.gantt tr.phase td.tl{border-left:1px solid var(--axis)}
 
   <div class="gantt-section">
     <h2>甘特圖 · 2026-09-19</h2>
-    <div class="gwrap"><table class="gantt" id="gantt">
+    <div class="legend">
+      <span><i class="sw" style="background:var(--leader)"></i>Leader</span>
+      <span><i class="sw" style="background:var(--plan)"></i>規劃團隊</span>
+      <span><i class="sw" style="background:var(--dev)"></i>開發團隊</span>
+      <span><i class="sw" style="background:var(--qa)"></i>測試團隊</span>
+      <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
+      <span><i class="sw rev"></i>審核回合</span>
+      <span><i class="sw" style="background:transparent;border-top:2px dashed var(--gate);height:0"></i>關卡／里程碑（編號見圖下）</span>
+      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在</span>
+    </div>
+    <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
       <thead><tr><th>卡號</th><th>階段 ／ 任務</th><th class="mono">派工</th><th class="mono">完成</th><th>狀態</th><th style="padding:0"><div class="axis" id="axis"></div></th></tr></thead>
       <tbody></tbody>
@@ -260,7 +262,8 @@ for (let h = 4; h <= endH; h++) {
   const p = pct("2026-09-19T"+String(h).padStart(2,"0")+":00:00");
   axis += '<div class="tick" style="left:'+p+'%"><span>'+String(h).padStart(2,"0")+':00</span></div>';
 }
-for (const g of DATA.gates) axis += '<div class="mark" style="left:'+pct(g.t)+'%"><span>'+esc(g.label)+'</span></div>';
+const circled = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨"];
+DATA.gates.forEach((g, i) => { axis += '<div class="mark" style="left:'+pct(g.t)+'%"><span title="'+esc(g.label)+'">'+circled[i]+'</span></div>'; });
 if (nowIso) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+fmt(nowIso)+'</span></div>';
 document.getElementById("axis").innerHTML = axis;
 
@@ -301,7 +304,7 @@ for (const p of phases) {
   }
 }
 document.querySelector("#gantt tbody").innerHTML = grows;
-document.getElementById("ms").innerHTML = DATA.gates.map(g => '<span>▮ '+fmt(g.t)+' '+esc(g.label)+'</span>').join("");
+document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span>'+circled[i]+' '+fmt(g.t)+' '+esc(g.label)+'</span>').join("");
 document.getElementById("gen").textContent = "資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC · 「現在」線以開啟頁面時的本機時間計算";
 </script>
 `;
