@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: in_progress
+status: done
 round: 1
 depends_on: [T-0018, T-0025]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0027-staging-deploy
 created: 2026-09-19T15:50:02+08:00
-updated: 2026-09-19T16:07:27+08:00
+updated: 2026-09-19T16:45:02+08:00
 blocked_reason: null
 ---
 
@@ -57,3 +57,4 @@ dev-tl：開 Actions run 網址確認綠燈；curl staging 三條；核對三處
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 重跑驗證全數相符：run 35431202802 attempt 2 `conclusion: success`；`/health` 無憑證 200、`/` 無憑證 401（帶憑證那條採信 CI 的 verify 步驟綠燈，審核者不持有憑證）；三處回填齊（06 第 1 章、04 servers、GitHub variable 由使用者填）；06 §5.4 回滾演練有實際指令與耗時 9.689s／10.355s，唯讀 `gcloud run revisions list` 的三個 revision 與 100% 流量落點與紀錄一致；redocly lint 0 errors（1 個既有 `/health` 無 4XX warning）；`git diff main...HEAD --stat` 僅動四個 outputs ＋ 任務卡 ＋ 交接檔；憑證掃描 0 真實命中。**acceptance 第 5 條（monitor-health 至少 1 次成功採樣）未達成**——審核者自查 `total_count: 0`，成因在 GitHub 排程首次觸發延遲且 agent 無法 `workflow_dispatch`，不在 agent 能力範圍內，故不列阻擋級、不退回，改列使用者／Leader 追蹤項（見交接檔「需要 Leader 裁決的事」①）。合併後收尾 commit 由 dev-tl 修正 06 四處文字：§5.4 首行「尚未實際演練」與同節實際演練紀錄自相矛盾、§6.6 把已證偽的「含換行」寫成既定成因未加更正標記、第 1 章未寫 Leader 紀錄的真實成因、§6.7 的 revision 歸屬與 `DEPLOYED BY` 實查相反 | worklog/handoff/20260919-1640-T0027-r1-dev-tl.md |
