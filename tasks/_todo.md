@@ -6,7 +6,7 @@
 
 ## 進行中
 
-- 批次 5：T-0017 前端狀態與呈現 ｜ dev-fe/sonnet ｜ r1；T-0018 staging 部署與監測 ｜ dev-ops/sonnet ｜ r1 ｜ 10:00 平行派工（各自 worktree）
+（無）
 
 （無）
 
@@ -17,6 +17,8 @@
 （無）
 
 ## 審核中
+
+- T-0017（bae58e5）、T-0018（f8240aa）｜ reviewer dev-tl ｜ 10:35 依序初審合併中
 
 （無）
 
