@@ -16,6 +16,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import type { AppConfig } from "./config.js";
+import registerErrorHandler from "./plugins/error-handler.js";
 import healthRoutes from "./routes/health.js";
 
 export function buildApp(config: AppConfig): FastifyInstance {
@@ -30,6 +31,7 @@ export function buildApp(config: AppConfig): FastifyInstance {
   });
 
   // [ANCHOR:error-handler]   ← WI-02 於此註冊 BE-03（必須最先）
+  registerErrorHandler(app);
   // [ANCHOR:auth]            ← WI-05 於此註冊 BE-02 全域 hook（必須早於 static 與 routes）
   app.register(healthRoutes); // WI-01 註冊 BE-07
   // [ANCHOR:static]          ← WI-05 於此註冊 BE-09
