@@ -202,3 +202,8 @@ updated: 2026-09-19T11:45:41+08:00
 - 與 dev-tl 審核 T-0017 時在 Chrome 逐 AC 實測 34 條全過（含攔到 PATCH 本文）矛盾；同源 fetch 預設 credentials: same-origin 會帶瀏覽器已持有的 HTTP 認證。**D-FE-001 標「待重現」**，交 qa-lead 於 T-0023 以兩造證據裁定；若確認為工具限制則記「阻擋（工具）」非缺陷。
 - 修正卡合併後，qa-uat 以帶帳密網址的瀏覽器工具重跑前端 3 則（T-0022 r2）。
 - staging 就緒時間取決於使用者提供 GCP／GitHub 設定；未就緒前維持「本機替代」。
+
+### 2026-09-19T12:22:24+08:00 — 修正卡進度與裁決
+
+- T-0026 review（06b35b8）；T-0024 review（0963818，追加授權 Dockerfile runtime 補 COPY migrations 一行，等待補交）；T-0025 review（4328d36）。
+- 裁決：`.github/workflows/ci.yml` lint job 在 `npm run lint` 前補 `npm run build`，由 dev-tl 合併三張修正卡的收尾 commit 一併修。
