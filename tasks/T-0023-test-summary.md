@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-lead
 model: opus
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0020, T-0021, T-0022]
 inputs:
@@ -17,7 +17,7 @@ inputs:
   - docs/templates/qa_25_測試總結報告.md
 outputs:
   - docs/specs/24_缺陷清單.md
-  - docs/reports/yyyymmdd-HHmm-測試總結-E001.md
+  - docs/reports/20260919-1356-測試總結-E001.md
   - docs/specs/traceability.md（僅主表「狀態」欄更新為測試結果）
 acceptance:
   - 缺陷清單：每個缺陷有 ID、嚴重度 S1–S4、重現步驟、預期／實際、對應 TC、來源（CR/AT/UAT）、狀態；S1/S2 標明需 Leader 建修正卡
@@ -27,7 +27,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T13:28:45+08:00
+updated: 2026-09-19T14:00:00+08:00
 blocked_reason: null
 ---
 

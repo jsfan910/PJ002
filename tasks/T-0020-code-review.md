@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-cr
 model: opus
-status: review
+status: done
 round: 2
 depends_on: [T-0017, T-0018]
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T13:16:00+08:00
+updated: 2026-09-19T13:58:00+08:00
 blocked_reason: null
 ---
 
@@ -55,3 +55,4 @@ qa-lead：核對報告檢查清單無空項；抽查 3 個阻擋級或建議級�
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
 | r1 | leader | rework→r2 | CR 退回阻擋 2／建議 11 已由 T-0024～T-0026 修正合併（main 4b96b20）；r2 只複審修正處與 startup-migrate 回歸 | worklog/handoff/20260919-工作交接.md |
+| r2 | qa-lead | **done** | **通過。** 抽查 r2 報告指名的三處行號**全部存在且內容如述**：`src/plugins/basic-auth.ts:53-64` `stripQueryAndHash()` 為純字串切割（只找 `?`／`#` 取較小索引後 `slice`）、`:70-75` `isExemptPath()` 以 `=== HEALTH_PATHNAME`（`:29` = `"/health"`）完全相等比對且限 `GET`／`HEAD`；`src/server.ts:35-56` `applyMigrationsOrExit()` 在 `app.listen` 之前呼叫、失敗 `app.log.error` 後 `process.exit(1)`；`Dockerfile:43` `COPY migrations ./migrations`；`src/app.ts:39-43` `ajv.customOptions.coerceTypes: false`。**重跑 r2 的五段（超過要求的三條）**：§1 build／lint 皆 `EXIT=0`；§2 乾淨資料卷（`docker compose -p qal23 down -v` → `up --build`，自用埠 8093／5436）**未執行任何 migrate 指令**即 `GET /api/v1/todos` → `200 []`，`\dt` 有 `todos`＋`schema_migrations`，`schema_migrations` 有 `001`；§3 八種 request-target 中四個 r1 繞過變體（`/foo/../health`、`/.%2e/health`、`/%2e%2e/health`、`/assets/%2e%2e/%2e%2e/health`）**全部 401**、`/health` 與 `/health?x=1` 仍 200、七種方法中僅 `GET`／`HEAD` 為 200 其餘皆 401；§6 unit 76／76；§7 `POST {"title":123}` → 400、`PATCH {"isCompleted":null\|"true"}` → 400、`PATCH {"isCompleted":true}` → 200。**阻擋級 = 0 核實成立**，13／13 已修正屬實。兩處措辭不精確已記入缺陷清單觀察（OBS-5：報告稱「全檔已無 `new URL(`」，實查仍有 2 處但**皆在註解**，可執行碼確已無，結論不受影響）。N-1 已登錄為 D-014（S3、open，Leader 已裁列 P1）。 | worklog/handoff/20260919-1329-T0023-r1-qa-lead.md |
