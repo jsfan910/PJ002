@@ -56,19 +56,22 @@ servers:
       port:
         default: "8080"
         description: 由環境變數 `PORT` 決定，預設 8080。
-  - url: https://todo-app-staging-{hash}-{region}.run.app
+  - url: https://todo-app-{hash}-{region}.a.run.app
     description: >-
-      staging（GCP Cloud Run；ADR-0005）。此處為**佔位符**：`*.run.app` 網址在服務首次部署成功前不存在，
-      **由 dev-ops 首次部署後回填實值**（同時回填 `06_部署架構與CICD.md` 第 1 章環境清單與 GitHub
-      repository variable `STAGING_BASE_URL`）。回填前，CI 的 verify 與監測工作流一律讀
-      `STAGING_BASE_URL`，不得寫死網址。
+      staging（GCP Cloud Run；ADR-0005）。**T-0027（2026-09-19）首次部署成功回填**：
+      實際網址 `https://todo-app-dpevsdhdva-de.a.run.app`（revision `todo-app-00001-tfq`）。
+      `GET /health` 無憑證 200、`GET /` 無憑證 401 已驗證通過；`GET /api/v1/todos` 帶憑證的驗證
+      因 Secret Manager `basic-auth-user` 值含混入的換行字元而暫時失敗（非部署問題，見
+      `docs/specs/06_部署架構與CICD.md` §6.6 與 `docs/reports/20260919-1551-部署紀錄-E001.md`）。
+      GitHub repository variable `STAGING_BASE_URL` 待使用者回填為上述網址；CI 的 verify 與
+      監測工作流一律讀 `STAGING_BASE_URL`，不得寫死網址。
     variables:
       hash:
-        default: xxxxxxxxxx
-        description: Cloud Run 自動產生的服務雜湊，無法事先決定；由 dev-ops 首次部署後回填實值
+        default: dpevsdhdva
+        description: Cloud Run 自動產生的服務雜湊（本次部署實值，日後重新部署可能變動）
       region:
         default: de
-        description: 區域代碼。部署區域為 `asia-east1`（ADR-0005），其對應代碼由平台決定；由 dev-ops 首次部署後回填實值
+        description: 區域代碼。部署區域為 `asia-east1`（ADR-0005），平台回傳的代碼為 `de`（本次部署實值）
 
 tags:
   - name: health

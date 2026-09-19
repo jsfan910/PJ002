@@ -6,7 +6,7 @@ version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run）�
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T15:56:00+08:00
+updated: 2026-09-19T16:14:46+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -24,7 +24,7 @@ updated: 2026-09-19T15:56:00+08:00
 | 環境 | 用途 | 網址 | 誰可部署 | 資料 |
 |---|---|---|---|---|
 | dev | 本機開發與離線驗證 | `http://localhost:8080` | 任何人（`docker compose up`） | 本機 `postgres:16-alpine` 容器，假資料，可任意清空 |
-| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **待首次部署成功後回填**（T-0027，2026-09-19：`deploy-staging.yml` 已跑兩次真實 run，均在 `auth` 階段失敗，原因是 GCP 端 WIF provider 的 `attribute-condition` 仍是字面佔位符 `assertion.repository == '<owner>/<repo>'`，未替換為實際倉庫 `jsfan910/PJ002`，導致所有 OIDC token 都被拒絕。待使用者修正後重新觸發，網址取得方式不變：格式為 `https://<service>-<hash>-<region-code>.a.run.app`，於該次工作流摘要印出。詳見 `docs/reports/20260919-1551-部署紀錄-E001.md`） | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
+| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **`https://todo-app-dpevsdhdva-de.a.run.app`**（T-0027，2026-09-19 首次部署成功，revision `todo-app-00001-tfq`，100% 流量）。`GET /health` 無憑證 200、`GET /` 無憑證 401 已驗證通過；`GET /api/v1/todos` 帶憑證仍回 401（**非部署失敗，是憑證不一致**：已用 Secret Manager 唯讀位元組計數診斷出 `basic-auth-user` 的值含 3 個混入的換行／回車字元，與 GitHub secret `STAGING_BASIC_AUTH_USER` 不一致；未讀取、未顯示任何憑證明文，修法見 `docs/reports/20260919-1551-部署紀錄-E001.md`）。GitHub repository variable `STAGING_BASE_URL` 待使用者回填此網址 | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
 | prod | **本 Epic 不建立** | — | — | — |
 
 **為什麼沒有 prod**：Epic 的成功指標只到 Gate 2「staging 可用瀏覽器操作、P0 UAT 全通過」。建立 prod 屬擴大範圍。本文件的 pipeline 保留一個手動觸發的 `deploy-prod` 位置（第 3 章），但**本輪不實作、不設定**。
@@ -242,6 +242,8 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 - 演練紀錄：2026-09-19（T-0027 覆核），結果：**尚未實際演練**。回滾指令已寫成可執行腳本（`scripts/rollback-staging.sh`，本機等效；工作流層級指令見本節上方）並以 `bash -n` 語法檢查通過；`gcloud run services update-traffic`／`revisions list`／`services describe` 三條指令逐字對照 5.1 節。**本輪阻擋原因已從「缺憑證」精確化為「GCP 端 WIF provider 的 attribute-condition 仍是字面佔位符，未替換為實際倉庫」**（本機 `gcloud` 已登入並確認：Artifact Registry `todo-app`、Secret Manager 三個 secret 皆已就位且有 enabled 版本，`github-deployer` 服務帳號四個角色與 workloadIdentityUser 綁定皆正確；`gcloud run services list` 回傳空清單，證實**目前沒有任何一個 revision 曾經部署成功過**，回滾演練的前提「至少兩個 revision」尚不成立）。待使用者修正 WIF attribute-condition 並讓 `deploy-staging.yml` 至少成功部署一次後，由 dev-ops 或使用者執行一次 5.1 流程（先部署一個會啟動失敗的版本驗證 startup probe 擋下、再部署一個能啟動但行為有誤的版本執行一次 `update-traffic` 回滾），並回填本行日期與結果。詳見 `docs/reports/20260919-1551-部署紀錄-E001.md`、`worklog/handoff/20260919-1551-T0027-r1-dev-ops.md`。
 - **本演練是 Gate 2 的前置條件**，由 **dev-ops** 於 DevOps ② 卡（OPS-03）完成後執行一次 5.1 流程並回填上行。演練內容：刻意部署一個會啟動失敗的版本 → 確認 Cloud Run 因 startup probe（`/health`）不通過而**不把流量切到新 revision**（舊 revision 繼續服務 100%，服務維持可用）→ 再刻意部署一個能啟動但行為有誤的版本，執行一次 5.1 的 `update-traffic` 回滾 → 記錄不可用時間、revision 名稱與資料筆數比對結果。
+
+**現況更新（T-0027，2026-09-19 16:14）**：第一個 revision（`todo-app-00001-tfq`）已部署成功，回滾演練的「至少兩個 revision」前提**部分成立**（目前仍只有 1 個 revision，尚未刻意製造第二個）。本輪優先處理 `/api/v1/todos` 認證不一致的問題（見第 1 章與部署紀錄報告），回滾演練排入下一輪：待 `basic-auth-user` 修正並重新部署（產生 revision 2）後，即可用該次部署與目前 revision 執行一次完整 5.1 演練。
 - **兩種失敗要分開演練**：「啟動失敗」由平台自動擋住（不需回滾），「啟動成功但行為錯誤」才需要 5.1 的回滾。只演練前者等於沒演練回滾。
 
 ---
@@ -294,6 +296,15 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 - **`deploy-staging.yml`**：main 於 `7d620f6` 綠燈後自動觸發，共兩次真實 run（`#1` https://github.com/jsfan910/PJ002/actions/runs/35430432261、`#2` https://github.com/jsfan910/PJ002/actions/runs/35430463010），**皆在 `auth`（WIF）階段失敗**，耗時 18～21 秒，錯誤訊息 `google-github-actions/auth failed with: ... {"error":"unauthorized_client","error_description":"The given credential is rejected by the attribute condition."}`。根因與修法見 `docs/reports/20260919-1551-部署紀錄-E001.md`。`migrate`／`build & push`／`deploy`／`verify` 四個階段皆未執行到，因此本輪無法驗證這幾個階段的真實行為，僅靠 T-0018 的本機驗證與 actionlint 佐證其語法正確。
 - **`monitor-health.yml`**：main 綠燈後至本卡收尾時（約 15 分鐘內）**尚無任何 run**（GitHub 排程觸發器在工作流剛併入時常有數分鐘至數十分鐘的延遲，非本卡程式碼問題）；`workflow_dispatch` 手動觸發需登入 GitHub，agent 不代登入。**首次成功採樣待 cron 自然觸發或使用者手動按 Run workflow**，屬「遠端待驗」清單（交 Leader 追蹤）。
+
+### 6.6 WIF 修正後第二次真實 run（T-0027 續，2026-09-19 16:14）
+
+- 使用者於 GCP 執行 `update-oidc` 修正 attribute-condition 後，Leader 推送 main 至 `95137b8`，`deploy-staging.yml` 第三次真實 run（`#3` https://github.com/jsfan910/PJ002/actions/runs/35431202802，耗時 1m 55s）：`auth`／`migrate`／`docker build & push`／`gcloud run deploy`／`verify（取服務網址）`／`verify（輪詢 /health 至 200）` **全部成功**——WIF 問題已解除，CI/CD 管線本身可跑通。
+- 服務**首次成功部署**：revision `todo-app-00001-tfq`，網址 `https://todo-app-dpevsdhdva-de.a.run.app`，流量 100%。
+- 唯一失敗的步驟是最後一步 `verify（帶憑證呼叫 /api/v1/todos 確認 200）`，`curl -f` 以 exit code 22 中止（HTTP 非 2xx）。用 agent 自己的 curl 重新驗證：`GET /health`（無憑證）200；`GET /`（無憑證）401；`GET /api/v1/todos`（無憑證）401；`GET /api/v1/todos`（刻意帶錯誤憑證）回應 `{"code":"E_UNAUTHORIZED","message":"Invalid username or password"}`（401）——這代表應用程式的 Basic Auth 邏輯本身正常運作（會分辨「沒帶憑證」與「憑證錯誤」兩種訊息），只是**驗證用的憑證組不一致**。
+- 用本機已登入 `gcloud` 對 Secret Manager 三個 secret 做**位元組數比對**（`raw_bytes` vs 去除 `\n`／`\r` 後的 `stripped_bytes`，**全程未讀取、未顯示任何憑證明文**）：`database-url` 與 `basic-auth-pass` 兩者一致（無多餘字元）；**`basic-auth-user` 的 `latest` 版本 raw=12 bytes、stripped=9 bytes，多出 3 個換行／回車字元**。這與 GitHub secret `STAGING_BASIC_AUTH_USER`（workflow 用來呼叫 API 驗證）若無同樣的雜訊，兩邊字串比對必然不相等，Basic Auth 因此判定「使用者名稱或密碼錯誤」。**這解釋了 verify 步驟失敗，且與部署本身、資料庫連線、IAM 角色均無關**。
+- **修法屬憑證值變更，agent 不代為執行**：使用者需以無多餘換行的方式重新建立 `basic-auth-user` 的新版本（README「GCP 指令在哪裡執行」一節已有 `[System.IO.File]::WriteAllText` 寫法可直接套用），並確認新版本與 GitHub secret `STAGING_BASIC_AUTH_USER` 的值完全相同（不含前後空白或換行）。**Cloud Run 的 `--set-secrets` 是在容器啟動時解析 `:latest`，新增 secret 版本後需要重新部署（產生新 revision）才會生效**，單純新增版本不會讓現有 revision 自動讀到新值。
+- 詳細診斷指令與輸出見 `docs/reports/20260919-1551-部署紀錄-E001.md`「r1 續」章節。
 
 ---
 
