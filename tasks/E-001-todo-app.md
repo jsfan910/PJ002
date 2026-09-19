@@ -213,3 +213,10 @@ updated: 2026-09-19T11:45:41+08:00
 - 結果（修正前 main）：integration 85 過／0 敗／4 阻擋（staging）；e2e Chromium+Edge 136/136；perf NFR-001、NFR-007 PASS；README 方式一 27 秒、方式二 6 秒、0 卡點。
 - 裁決：`@playwright/test` 1.63.0 正式列入 devDependencies，dev-tl 合併 T-0021 時安裝並鎖版；Firefox 於非沙盒環境補跑列為 Gate 2 後待辦；TC-080/084/090 需人工部署觸發，待 staging。
 - 修正卡（T-0024～T-0026）合併後：dev-tl 合併 T-0021 → qa-at r2 對最終 main 重跑三類測試 → qa-uat r2 重跑前端三則 → qa-cr r2 複審修正處 → qa-lead T-0023。
+
+### 2026-09-19T12:59:14+08:00 — 修正卡合併完成
+
+- T-0024／T-0025／T-0026 皆 done 並合併，main `4b96b20`；全量 lint 0、unit 76/76、integration 56/56、actionlint 0；乾淨環境自動 migration 與 /health 豁免複驗通過。
+- dev-tl 裁決 `npm run dev` 拆為 `dev:build`／`dev:run`，Leader 追認。
+- D-FE-001 成因說明（dev-tl）：自動化瀏覽器需先以帶帳密網址載入建立認證快取，再以不帶帳密網址操作；供 qa-uat r2 採用、qa-lead T-0023 裁定為「工具限制」參考。
+- 下一步：dev-tl 合併 T-0021 分支（Playwright 列入 devDependencies）→ qa-cr r2、qa-at r2、qa-uat r2 平行 → T-0023。
