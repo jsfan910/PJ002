@@ -16,7 +16,9 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import type { AppConfig } from "./config.js";
+import registerBasicAuth from "./plugins/basic-auth.js";
 import registerErrorHandler from "./plugins/error-handler.js";
+import registerStatic from "./plugins/static.js";
 import healthRoutes from "./routes/health.js";
 
 export function buildApp(config: AppConfig): FastifyInstance {
@@ -33,8 +35,10 @@ export function buildApp(config: AppConfig): FastifyInstance {
   // [ANCHOR:error-handler]   ← WI-02 於此註冊 BE-03（必須最先）
   registerErrorHandler(app);
   // [ANCHOR:auth]            ← WI-05 於此註冊 BE-02 全域 hook（必須早於 static 與 routes）
+  registerBasicAuth(app, config);
   app.register(healthRoutes); // WI-01 註冊 BE-07
   // [ANCHOR:static]          ← WI-05 於此註冊 BE-09
+  registerStatic(app);
   // [ANCHOR:routes]          ← WI-06 於此註冊 BE-04
   // [ANCHOR:p1-auth-routes]  ← P1：BE-10；並由 BE-13 取代 [ANCHOR:auth]
 
