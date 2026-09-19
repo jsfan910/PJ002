@@ -6,7 +6,7 @@ version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run）�
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T16:45:02+08:00
+updated: 2026-09-19T18:04:19+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -262,11 +262,12 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ### 6.1 監控項目
 
-監控分兩層：**GitHub Actions 定時健康檢查**（外部視角，NFR-003 的正式量測來源，且兼保溫）與 **Cloud Run 內建指標**（平台視角，用於判讀異常的成因）。兩者角色不同，不可互相取代。
+監控分三層：**Cloud Monitoring uptime check**（外部視角，**T-0031 起為 NFR-003 的正式量測來源**）、**GitHub Actions 定時健康檢查**（外部視角，T-0031 起降為備援來源，且兼保溫）與 **Cloud Run 內建指標**（平台視角，用於判讀異常的成因）。三者角色不同，不可互相取代；來源變更原因與判讀方式見 6.8。
 
 | 項目 | 方式 | 門檻 | 對應 |
 |---|---|---|---|
-| 服務存活（**正式量測**） | `monitor-health.yml` 每 5 分鐘取樣 3 次 `GET /health`（**不帶憑證**）。外部視角，含 DNS 與 TLS | 成功率 ≥ 99% | NFR-003、AC-010-5、UC-011 |
+| 服務存活（**正式量測，T-0031 起**） | **Cloud Monitoring uptime check**（`todo-app-health`，5 分鐘週期、10 秒逾時、4 個檢查地區 `ASIA_PACIFIC`／`USA_OREGON`／`USA_IOWA`／`EUROPE`、期望 `200`，打 `/health`，**不帶憑證**）。外部視角，含 DNS 與 TLS，且不依賴 GitHub 排程觸發時機 | 成功率 ≥ 99% | NFR-003、AC-010-5、UC-011 |
+| 服務存活（**備援來源，T-0031 起**） | `monitor-health.yml` 每 5 分鐘取樣 3 次 `GET /health`（**不帶憑證**）。外部視角，含 DNS 與 TLS。降為備援原因：`schedule` 觸發長時間未穩定自動執行，見 6.8 | 成功率 ≥ 99%（僅供交叉比對，不作為 Gate 判準） | NFR-003、AC-010-5、UC-011 |
 | 部署中斷時長 | 部署期間以每 5 秒一次輪詢記錄連續失敗時長 | < 60 秒 | NFR-003 |
 | 回應時間 | 上述 `curl` 的 `%{time_total}` 一併記錄 | 觀察用，正式門檻以 NFR-001 的負載測試為準 | NFR-001 |
 | **Cloud Run 請求數／錯誤率** | Cloud Run 內建指標（Console → 該服務 → **Metrics**）：`Request count`（依回應碼分組）、`Request latency`（P50／P95／P99） | 觀察用。與外部取樣對照，可區分「服務掛了」與「網路／DNS 問題」 | NFR-001、NFR-003 |
@@ -283,6 +284,7 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - **Gate 2 的門檻：連續 24 小時採樣，每 5 分鐘一次，成功率 ≥ 99%。**
 - 連續 7 天為**正式環境的目標**，不作為 Gate 2 的門檻（時程不允許）。
 - plan-ba 於 T-0005 把 SRS 的 NFR-003 量測方式改寫為「Gate 2：24 小時；正式：7 天」。
+- **起算時間變更（T-0031）**：原以 `monitor-health.yml` 首次成功採樣的 run `created_at` 為起算點（2026-09-19T17:07:43+08:00，見 `tasks/E-001-todo-app.md`）。**T-0031 起改以 uptime check `todo-app-health` 的建立時間為準：2026-09-19T09:55:07Z（UTC）＝ 2026-09-19T17:55:07+08:00**。理由：cron 觸發長時間未穩定（6.8），以它起算會持續延後判讀時間；uptime check 建立後即開始獨立取樣，不受 GitHub 排程延遲影響。`monitor-health.yml` 的既有樣本（若後續開始穩定產生）仍可作交叉比對，但不作為 Gate 判準分母。
 
 ### 6.3 告警與已知誤報
 
@@ -324,6 +326,178 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - **建議一：Secret Manager 參照釘選具體版本而非 `:latest`**。目前 `deploy-staging.yml`／`scripts/deploy-staging.sh`／`infra/cloudrun-service.yaml` 的 `--set-secrets` 皆用 `database-url:latest` 等 `:latest` 參照。好處是使用者更新 secret 後下次部署自動生效；**壞處（本次事件示範）**是「哪個 revision 讀到哪個版本」不透明，難以回溯比對。建議部署時把當次解析到的版本號（`gcloud secrets versions list --filter="state=ENABLED"` 取得的最新編號）記錄進部署紀錄或 `GITHUB_STEP_SUMMARY`，即使 `--set-secrets` 仍用 `:latest`，至少留下稽核軌跡；若要更嚴格，可改為 CI 步驟先查出具體版本號再組出 `NAME=secret:N` 參照，讓每次部署使用的 secret 版本明確可查、可回滾。**本卡不代為修改 workflow**（超出本卡 outputs 範圍），留待下一張維運改善小卡評估。
 - **建議二：`verify` 失敗時自動重建一次 revision 再重試**。本次「`00001-tfq` 認證失敗」的成因（不論是 secret 解析問題或其他一次性因素）具有「同一份設定重新部署一次就正常」的特徵；建議 `deploy-staging.yml` 的 `verify（帶憑證）` 步驟失敗時，**不要直接判定整個工作流失敗**，而是先自動重試一次（例如：`gcloud run deploy` 用相同參數重新部署一次，等待新 revision 就緒後再驗證一次；仍失敗才真正判定紅燈並通知 dev-ops）。這樣可以吸收類似本次的一次性解析異常，減少對使用者手動 `Re-run` 的依賴。**本卡不代為修改 workflow**，建議留待下一張維運改善小卡實作與測試（需評估重試會不會掩蓋真正的設定錯誤，例如仍應保留明確的錯誤訊息與重試次數上限）。
 
+### 6.8 NFR-003 主要來源改為 Cloud Monitoring uptime check（T-0031，2026-09-19）
+
+**背景**：`docs/reports/20260919-1738-測試總結-E001-r2.md` 裁決事項 B 指出，`monitor-health.yml` 自 2026-09-19T16:46:26+08:00 手動觸發成功後，**59 分鐘內 `schedule` 事件 0 次自動執行**。Leader 於 `tasks/E-001-todo-app.md`（2026-09-19T17:47:01+08:00）裁決 B：開 T-0031，新增 uptime check 作為主要來源，cron 降備援。
+
+#### 6.8.1 cron 診斷（結論：無可修的設定缺陷，判斷為 GitHub 排程延遲的極端案例）
+
+實查時間 2026-09-19T18:01:50+08:00（UTC 10:01:50）：
+
+```bash
+curl -sS "https://api.github.com/repos/jsfan910/PJ002/actions/workflows/monitor-health.yml/runs?per_page=50" \
+  | grep -oE "\"total_count\": *[0-9]+"
+```
+```text
+"total_count": 1
+```
+
+即：workflow 註冊於 GitHub 後至今已 **2 小時 12 分**（見下方 workflow 物件 `created_at`），期間理論排程次數約 26 次（每 5 分），實際排程（`event=schedule`）次數 **0**；僅有的 1 個 run 是 `workflow_dispatch`（`run_attempt=2`，即對同一次手動觸發按 Re-run，非新的排程觸發）。
+
+逐項核對可能原因（依任務卡列出的三類）：
+
+1. **預設分支／workflow 檔位置**：
+   ```bash
+   curl -sS "https://api.github.com/repos/jsfan910/PJ002" | grep -oE "\"default_branch\": *\"[a-z]+\""
+   ```
+   ```text
+   "default_branch": "main"
+   ```
+   `.github/workflows/monitor-health.yml` 存在於 `main` 最新 commit（自 T-0025 後未再變更，`git log` 確認），且 workflow 狀態為 `active`：
+   ```bash
+   curl -sS "https://api.github.com/repos/jsfan910/PJ002/actions/workflows/361932810"
+   ```
+   ```text
+   {
+     "id": 361932810,
+     "name": "Monitor Health",
+     "path": ".github/workflows/monitor-health.yml",
+     "state": "active",
+     "created_at": "2026-09-19T07:49:44.000Z",
+     "updated_at": "2026-09-19T07:49:44.000Z"
+   }
+   ```
+   **排除**：分支正確、路徑正確、狀態非 disabled。
+2. **repo 活動／低活動停用**：
+   ```bash
+   curl -sS "https://api.github.com/repos/jsfan910/PJ002" \
+     | grep -oE "\"pushed_at\": *\"[0-9T:Z-]+\"|\"created_at\": *\"[0-9T:Z-]+\"|\"private\": *(true|false)"
+   ```
+   ```text
+   "private": false
+   "created_at": "2026-09-19T06:58:29Z"
+   "pushed_at": "2026-09-19T09:49:21Z"
+   ```
+   repo 為**公開**倉庫（Actions 分鐘數不計費，第 2 章對策 1 生效中）、**當日建立**且持續有推送（`pushed_at` 距診斷時間僅 2 分鐘），GitHub 的「60 天無活動自動停用排程」機制**不適用**（活動極其頻繁）。**排除**。
+3. **cron 語法**：`.github/workflows/monitor-health.yml` 第 15～17 行：
+   ```text
+   on:
+     schedule:
+       - cron: "*/5 * * * *"
+     workflow_dispatch: {}
+   ```
+   語法正確（5 個欄位、`*/5` 為合法步進運算式），與 GitHub 文件範例一致。**排除**。
+4. **workflow 建立後首次排程延遲（結論：最可能成因，且已超出 GitHub 文件描述的一般延遲範圍）**：GitHub 該 workflow 物件的 `created_at`＝`2026-09-19T07:49:44Z`（即該檔第一次被 GitHub 註冊為 workflow 的時間，對應 Leader 當時 `git push` 加 remote 的動作），距診斷時間 `2026-09-19T10:01:50Z` 已 **2 時 12 分**，仍 0 次排程觸發。GitHub 官方文件僅說明「`schedule` 事件在 Actions 負載高峰（例如整點）可能延遲」，未給出具體上限，但社群已知案例顯示**新建立的 repo／新加入的排程 workflow 有時需要數十分鐘至數小時才會開始正常排程**，本案已落在這個已知但非文件明訂上限的區間。**未發現可修的設定缺陷**（分支、路徑、語法、repo 活動皆正常），故本卡**不修改 `monitor-health.yml`**——這正是 Leader 裁決 B 選擇「新增 uptime check 為主要來源」而非「除錯 cron」的理由：問題性質是 GitHub 平台排程時機不可控，不是本專案設定錯誤。
+5. **一個可觀察但未採用的緩解選項**（記錄供之後參考，本卡未採用）：cron 排在整點附近（`*/5 * * * *` 每小時仍有一次落在 `:00`）可能撞上 GitHub 文件提到的「整點高峰」；改成如 `"3-59/5 * * * *"` 之類偏移分鐘可略降撞峰機率，但無法解釋連續 2 小時 12 分鐘、26 次排程視窗全部落空——若真是純粹的整點延遲，不會累積到這個量級。因此判斷此調整**預期效益低**，不列為本卡變更。
+
+**結論**：`monitor-health.yml` 本身設定正確（分支、路徑、cron 語法、repo 活動皆無問題），零自動觸發的成因判斷為 GitHub 排程系統對新註冊 workflow 的啟動延遲，超出可控範圍。**本卡未修改 `monitor-health.yml`**；改以下方 uptime check 作為不受此延遲影響的主要來源，`monitor-health.yml` 降為備援（其樣本若後續開始穩定產生，可用於交叉比對，見 6.3 判讀規則）。
+
+#### 6.8.2 uptime check 建立紀錄
+
+- 建立指令：見 `infra/uptime-check.sh`（`create` 分支列出實際下的指令；已建立過，重跑會產生第二個 check）。
+- **Git Bash 踩坑記錄**：`gcloud monitoring uptime create ... --path=/health` 在 Git Bash（MSYS2）下會被自動路徑轉換攔截（`/health` 被誤判為本機路徑並展開成一段帶空白的 Windows 路徑，導致 gcloud.cmd 的批次檔解析整串指令失敗，錯誤訊息只顯示一段看似無關的路徑片段）。**解法：呼叫前加 `MSYS_NO_PATHCONV=1`**（僅影響該次呼叫）。PowerShell 不受影響。已寫入 `infra/uptime-check.sh` 註解與 README 供之後參考。
+- 實際建立輸出：
+
+  ```text
+  Created uptime [projects/pj002-509106/uptimeCheckConfigs/todo-app-health-aMAlP5dfKv0].
+  {
+    "checkerType": "STATIC_IP_CHECKERS",
+    "displayName": "todo-app-health",
+    "httpCheck": {
+      "acceptedResponseStatusCodes": [{ "statusValue": 200 }],
+      "path": "/health",
+      "port": 443,
+      "requestMethod": "GET",
+      "useSsl": true
+    },
+    "monitoredResource": {
+      "labels": { "host": "todo-app-dpevsdhdva-de.a.run.app", "project_id": "pj002-509106" },
+      "type": "uptime_url"
+    },
+    "name": "projects/pj002-509106/uptimeCheckConfigs/todo-app-health-aMAlP5dfKv0",
+    "period": "300s",
+    "selectedRegions": ["ASIA_PACIFIC", "USA_OREGON", "USA_IOWA", "EUROPE"],
+    "timeout": "10s"
+  }
+  ```
+
+- **check id**：`todo-app-health-aMAlP5dfKv0`
+- **建立時間**：`2026-09-19T09:55:07Z`（UTC）＝ **`2026-09-19T17:55:07+08:00`**（本次即為 6.2 節的新起算時間）
+- 規格核對：週期 5 分鐘（`300s`）✓、逾時 10 秒（`10s`）✓、4 個檢查地區（≥ 3）✓、期望 `200`✓、目標 `https://todo-app-dpevsdhdva-de.a.run.app/health`✓、不帶憑證（uptime check 未設定 `--username`／`--password`）✓。
+
+#### 6.8.3 判讀指令與首次實跑輸出（24 小時內成功率）
+
+判讀指令（Cloud Monitoring API `timeSeries.list`，`monitoring.googleapis.com/uptime_check/check_passed`，依 `check_id` 過濾）：
+
+```bash
+GCLOUD="C:/Users/excal/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd"
+TOKEN=$("$GCLOUD" auth print-access-token)
+END=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+START=$(date -u -d "-24 hours" "+%Y-%m-%dT%H:%M:%SZ")
+CHECK_ID="todo-app-health-aMAlP5dfKv0"
+PROJECT="pj002-509106"
+FILTER='metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND metric.label.check_id="'"${CHECK_ID}"'"'
+curl -sS -G "https://monitoring.googleapis.com/v3/projects/${PROJECT}/timeSeries" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "filter=${FILTER}" \
+  --data-urlencode "interval.startTime=${START}" \
+  --data-urlencode "interval.endTime=${END}" \
+  --data-urlencode "view=FULL"
+```
+
+首次實跑（2026-09-19T10:01Z，即 check 建立後約 6 分鐘，樣本仍少）節錄輸出（三個檢查地區，共 14 個資料點，皆為 `true`）：
+
+```text
+checker_location=usa-oregon:   6 點，2026-09-19T09:59:20Z ~ 10:00:50Z，全部 boolValue=true
+checker_location=usa-iowa:     6 點，2026-09-19T09:59:20Z ~ 10:00:10Z，全部 boolValue=true
+checker_location=eur-belgium:  2 點，2026-09-19T10:00:50Z ~ 10:01:00Z，全部 boolValue=true
+（asia-pacific 尚無資料點，屬新建立 check 的正常初期現象——各檢查地區的取樣排程不同步啟動）
+```
+
+**成功率（本次窗內）＝ 14/14 ＝ 100%**（樣本量遠低於 Gate 2 門檻的 288 次，僅供證明判讀指令可用；正式判讀請於 2026-09-20T17:55:07+08:00 之後、以完整 24 小時窗重跑本指令並統計）。
+
+**未達標時的判讀規則**：沿用 6.3 節既有規則——先以 Cloud Run 內建指標（`Request count` 依回應碼分組、`Container startup latency`、`Container instance count`）與 revision 事件紀錄區分「應用缺陷」與「平台事件（冷啟／部署切流量）」；uptime check 額外可用 `checker_location` 維度區分「單一地區網路問題」與「服務本身異常」（若僅 1 個地區失敗、其餘地區皆 `true`，優先懷疑該地區出口網路，非服務事件）。
+
+#### 6.8.4 TC-080／TC-090 直接量測（推送觸發部署期間的 /health 輪詢）
+
+因本卡尚在 review 階段（dev-tl 尚未合併推送 main），依任務卡建議採用「`gcloud run services update` 加無害環境變數觸發新 revision，同時量測」的路徑，在本卡收尾前直接完成量測（腳本：`scripts/measure-deploy-downtime.sh`）：
+
+```bash
+# 背景啟動量測（240 秒，每 1 秒一次）
+bash scripts/measure-deploy-downtime.sh 240 deploy-downtime.csv &
+
+# 觸發新 revision（加一個無害環境變數，觀測用時間戳，非機密）
+gcloud run services update todo-app --region asia-east1 \
+  --update-env-vars "DEPLOY_PROBE_T0031=2026-09-19T09:59:43Z"
+```
+
+實際輸出：
+
+```text
+觸發時間：2026-09-19T09:59:43Z（UTC）
+Deploying...
+Creating Revision.................done
+Done.
+Service [todo-app] revision [todo-app-00003-lt2] has been deployed and is serving 100 percent of traffic.
+新 revision：todo-app-00008-kcs（lastTransitionTime 2026-09-19T09:59:46.414475Z）
+```
+
+量測窗：`2026-09-19T09:59:17.746Z` ~ `2026-09-19T10:03:16.670Z`（134 個樣本，約每 1.8 秒一次，因每次呼叫含 `curl` 程序啟動與逾時保護耗時）。
+
+```text
+最長連續失敗次數（約秒數，取樣間隔 ~1s）：0
+全程無非 200 回應。
+```
+
+```text
+awk -F, 'NR>1{print $2}' deploy-downtime.csv | sort | uniq -c
+    134 200
+```
+
+**結論**：`/health` 在本次部署（含期間另一個並行 revision `todo-app-00009-cg7` 於 `10:00:11Z` 產生，判斷為同一共用 staging 環境中其他任務卡的並行部署／回滾操作）全程 134/134 回 `200`，**最長連續不可用秒數 ＝ 0 秒**，遠低於 TC-090／NFR-003 的 60 秒門檻。此結果與 §5.1 的架構原理一致（Cloud Run 新 revision 通過 startup probe 才切流量，切流量前舊 revision 持續服務）。
+
+**對 TC-080（間接證據追認後的補證）**：Leader 於裁決 C 已追認 TC-080 的既有間接證據並要求「T-0031 推送 main 觸發部署時由 dev-ops 直接量測一次補證」——本任務卡的 acceptance 範圍限定為「以每 1 秒輪詢 `/health` 記錄不可用秒數」（見任務卡驗收方式），**不含**需 Basic Auth 憑證的 `/api/v1/todos` 資料筆數比對（該比對需要讀取 Secret Manager 中的應用憑證值，本卡環境限制「不索取、不代填、不讀取憑證明文」，故不執行）。本節的 0 秒不可用結果，補強了 TC-080 既有三項間接證據之一（「部署期間 `/health` 樣本零中斷」），與資料層無關的 id 集合直接比對仍待有憑證的執行者於下一輪測試卡補做（TC-080 原始步驟，`docs/specs/20_測試案例.md`）。
+
 ---
 
 ## 7. 三處必須同步的參數表（T-0025，CR S-9，實作紀錄）
@@ -356,3 +530,4 @@ Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（�
 |---|---|---|---|
 | 2026-09-19 | 0.1 | T-0004 | 初版。平台為 Render Web Service（Free）＋ Neon Free，Gate 1 通過後凍結 |
 | 2026-09-19 | **0.2** | **T-0010**（規格變更請求，使用者裁決、Leader 核准） | **雲端平台改為 GCP Cloud Run（`min-instances = 0`）＋ Artifact Registry**，資料庫維持 Neon Free。改動範圍：第 1 章 staging 網址改為 `*.run.app`（由 dev-ops 部署後填入）；第 2 章資源清單全面改寫（Cloud Run／Artifact Registry／WIF／明確否決 Cloud Scheduler）；第 3 章 pipeline 改為 build → push Artifact Registry → `gcloud run deploy`，新增 3.2.1 WIF 認證與 3.2.2 服務帳號金鑰備選；第 4 章環境變數移除 Render 專屬項、新增 GCP 專屬項；第 5.1 節回滾首選改為 `gcloud run services update-traffic` 切 revision；第 6 章監控加入 Cloud Run 內建指標、冷啟說明由 30–50 秒改為 1–3 秒。決策紀錄見 `adr/ADR-0005-雲端平台-CloudRun.md`（`ADR-0003` 已標 superseded）。**status 維持 `frozen`**，後續變更仍須走規格變更請求任務卡 |
+| 2026-09-19 | 0.2（實作紀錄，未變更版本號） | **T-0031**（維運補強，Leader 裁決 B／C 核准，非規格變更） | 第 6 章新增 6.8 節：GitHub cron 排程長期零自動觸發之診斷（結論：無可修設定缺陷，判斷為 GitHub 排程延遲）；新增 Cloud Monitoring uptime check（`todo-app-health`，check id `todo-app-health-aMAlP5dfKv0`）作為 NFR-003 **主要**來源，`monitor-health.yml` 降為**備援**；6.1 表格與 6.2 採樣起算時間同步更新（改以 uptime check 建立時間 2026-09-19T17:55:07+08:00 為準）；補充判讀指令（`timeSeries.list`）首次實跑輸出；補做 TC-080／TC-090 的 `/health` 直接量測（0 秒不可用）。僅屬 dev-ops 實作紀錄補寫，不涉及架構或流程決策變更，version 號不更動 |
