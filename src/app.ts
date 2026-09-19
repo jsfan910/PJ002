@@ -20,6 +20,7 @@ import registerBasicAuth from "./plugins/basic-auth.js";
 import registerErrorHandler from "./plugins/error-handler.js";
 import registerStatic from "./plugins/static.js";
 import healthRoutes from "./routes/health.js";
+import registerTodoRoutes from "./routes/todos.js";
 
 export function buildApp(config: AppConfig): FastifyInstance {
   const app = Fastify({
@@ -40,6 +41,7 @@ export function buildApp(config: AppConfig): FastifyInstance {
   // [ANCHOR:static]          ← WI-05 於此註冊 BE-09
   registerStatic(app);
   // [ANCHOR:routes]          ← WI-06 於此註冊 BE-04
+  registerTodoRoutes(app, config);
   // [ANCHOR:p1-auth-routes]  ← P1：BE-10；並由 BE-13 取代 [ANCHOR:auth]
 
   return app;
