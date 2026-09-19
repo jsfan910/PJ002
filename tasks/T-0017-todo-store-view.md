@@ -22,6 +22,7 @@ outputs:
   - public/assets/todo-store.js
   - public/assets/todo-view.js
   - tests/unit/todo-store.test.mjs
+  - public/index.html（僅新增載入 todo-view.js 的 script 進入點，Leader 裁決 T-0014-①）
 acceptance:
   - WBS §1.7「驗收方式草案」的每條指令實際執行且結果符合，指令與真實輸出貼交接檔
   - npm run lint 與相關測試全綠；不改本卡 outputs 以外的檔案（git diff --stat 佐證）
