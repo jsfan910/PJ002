@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-at
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0027]
 inputs:
@@ -27,7 +27,7 @@ acceptance:
 reviewer: qa-lead
 branch: task/T-0028-at-staging
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T16:39:33+08:00
+updated: 2026-09-19T17:26:49+08:00
 blocked_reason: null
 ---
 
