@@ -1,0 +1,212 @@
+/*
+ * public/styles.css（FE-01 ui-shell，WI-04／T-0014）
+ *
+ * 版面規則（WBS §1.4 背景與限制）：
+ *   - flexbox 版面，單一 @media 斷點 768px（BR-031、NFR-004）。
+ *   - 全部可互動控制項最小點擊區 44×44 px。
+ *   - 不使用橫向捲動（box-sizing: border-box ＋ 不設定會溢出容器的固定寬度）。
+ *
+ * 本檔只負責骨架排版與可用性（不含任何以 JS 切換的呈現邏輯狀態樣式以外的行為）；
+ * `.loading-indicator`／`.error-message` 的顯示切換（移除 `hidden`）由 T-0017 負責。
+ */
+
+:root {
+  color-scheme: light;
+  --color-bg: #f7f7fb;
+  --color-surface: #ffffff;
+  --color-text: #1f2430;
+  --color-border: #d5d8e2;
+  --color-primary: #3b5bdb;
+  --color-primary-text: #ffffff;
+  --color-error-bg: #ffe8e8;
+  --color-error-text: #9c1c1c;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --min-tap: 44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 100%;
+}
+
+.page__header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+}
+
+.page__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.page__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* 新增表單 */
+.add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.add-form__input {
+  flex: 1 1 auto;
+  min-width: 240px;
+  height: var(--min-tap);
+  padding: 0 var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.add-form__submit {
+  flex: 0 0 auto;
+  min-width: var(--min-tap);
+  min-height: var(--min-tap);
+  padding: 0 var(--spacing-md);
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* 篩選控制 */
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.filter__option {
+  min-width: var(--min-tap);
+  min-height: var(--min-tap);
+  padding: 0 var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.filter__option[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+/* 載入中／錯誤訊息區 */
+.status-region {
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.status-region[hidden] {
+  display: none;
+}
+
+.loading-indicator {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.error-message {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+/* 清單容器（項目由 T-0017 動態插入） */
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-width: 100%;
+}
+
+.todo-list :where(li) {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: var(--min-tap);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  max-width: 100%;
+}
+
+/* 單一斷點：390×844（行動）與 1280×800（桌面）之間的分界，BR-031／NFR-004 */
+@media (max-width: 768px) {
+  .page__main {
+    padding: var(--spacing-md);
+    max-width: 100%;
+  }
+
+  .add-form {
+    flex-direction: column;
+  }
+
+  .add-form__submit {
+    width: 100%;
+  }
+
+  .filter {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .filter__option {
+    flex: 1 1 auto;
+  }
+}

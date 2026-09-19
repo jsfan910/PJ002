@@ -23,6 +23,7 @@ RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY public ./public
 RUN npm run build
 
 # ---- Stage 2: runtime ----
@@ -34,6 +35,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY public ./public
 
 # 非 root 使用者執行（Cloud Run 與本機皆適用）。
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \

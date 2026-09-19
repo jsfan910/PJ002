@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-fe
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0011]
 inputs:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0014-ui-shell-api-client
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:21:44+08:00
+updated: 2026-09-19T08:32:16+08:00
 blocked_reason: null
 ---
 
