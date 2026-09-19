@@ -6,7 +6,7 @@ version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run）�
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T18:04:19+08:00
+updated: 2026-09-19T18:20:00+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -478,9 +478,24 @@ gcloud run services update todo-app --region asia-east1 \
 Deploying...
 Creating Revision.................done
 Done.
-Service [todo-app] revision [todo-app-00003-lt2] has been deployed and is serving 100 percent of traffic.
-新 revision：todo-app-00008-kcs（lastTransitionTime 2026-09-19T09:59:46.414475Z）
+Service [todo-app] revision [todo-app-00008-kcs] has been deployed and is serving 100 percent of traffic.
+新 revision：todo-app-00008-kcs（lastTransitionTime 2026-09-19T09:59:46.414312Z）
 ```
+
+> **訂正（dev-tl 初審，2026-09-19T18:20+08:00）**：上方兩行原寫成 `revision [todo-app-00003-lt2] … 100 percent of traffic` 與 `lastTransitionTime …09:59:46.414475Z`，為貼錯字串（`00003-lt2` 的 `lastTransitionTime` 實為 `2026-09-19T08:33:27.522274Z`，屬 T-0027 回滾演練時期，與本次量測窗無關；`…475Z` 取自並行的 `00009-cg7` 的 `10:00:11.674475Z`）。已依實查訂正為上方內容，證據：
+>
+> ```bash
+> gcloud run revisions list --service todo-app --region asia-east1 --project pj002-509106 \
+>   --format="table(metadata.name,status.conditions[0].lastTransitionTime,spec.containers[0].env.len())"
+> ```
+> ```text
+> todo-app-00010-dr7  2026-09-19T10:08:46.484179Z  6
+> todo-app-00009-cg7  2026-09-19T10:00:11.674475Z  6
+> todo-app-00008-kcs  2026-09-19T09:59:46.414312Z  7   ← 本次量測觸發的 revision（多的 1 個環境變數即 DEPLOY_PROBE_T0031）
+> todo-app-00003-lt2  2026-09-19T08:33:27.522274Z  6
+> ```
+>
+> 本次部署確實發生（`00008-kcs` 的環境變數數為 7、其餘皆 6），故下方「0 秒不可用」的結論不受此筆誤影響。
 
 量測窗：`2026-09-19T09:59:17.746Z` ~ `2026-09-19T10:03:16.670Z`（134 個樣本，約每 1.8 秒一次，因每次呼叫含 `curl` 程序啟動與逾時保護耗時）。
 

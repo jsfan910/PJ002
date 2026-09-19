@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0027]
 inputs:
@@ -29,7 +29,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0031-monitor-ops
 created: 2026-09-19T17:47:01+08:00
-updated: 2026-09-19T18:09:10+08:00
+updated: 2026-09-19T18:20:00+08:00
 blocked_reason: null
 ---
 
@@ -52,3 +52,4 @@ dev-tl：gcloud monitoring uptime list 看到 check；重跑判讀指令；核�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | acceptance 六條全通過（皆由 dev-tl 重跑取得真實輸出）：① cron 診斷四類原因逐項排除、18:13 覆查 `total_count=1` 且唯一 run 為 `workflow_dispatch`（`schedule` 仍 0 次，距 workflow `created_at` 逾 2h24m），結論「無可修設定缺陷、不改 workflow」接受；② `gcloud monitoring uptime list-configs` 實查 check `todo-app-health-aMAlP5dfKv0` 六項參數全符（`/health`、443/SSL、`300s`、`10s`、4 個地區、期望 200、不帶憑證）；③ 重跑 §6.8.3 判讀指令 24h 窗得 70 點全 `true`＝100%（dev-ops 實跑時 14 點，`apac-singapore` 已開始供樣）；④ 06 變更僅落在第 6 章（§6.1／§6.2／新增 §6.8）＋frontmatter＋變更紀錄表；⑤ TC-080 `/health` 輪詢 134/134 回 200、最長不可用 0 秒，並以 `gcloud run revisions list` 佐證 `todo-app-00008-kcs`（09:59:46Z、env=7＝多出 `DEPLOY_PROBE_T0031`）確為該次量測觸發的真實 revision；⑥ 憑證掃描 13 筆命中逐行判讀後零真實命中（僅 `auth print-access-token` 的 shell 變數與敘述文字）。腳本 `bash -n` 通過、`uptime-check.sh list/describe` 實跑成功。非阻擋級一項：06 §6.8.4 貼錯部署輸出（誤寫 `revision [todo-app-00003-lt2]`、`…414475Z`），結論不受影響，依慣例由 dev-tl 於合併後以修正 commit 訂正並附實查證據，不退回 r2。已合併 main（`git merge --no-ff`，merge commit `f0c05dd`），worktree 移除、分支刪除、CHANGELOG 補一行。 | `worklog/handoff/20260919-1814-T0031-r1-dev-tl.md` |
