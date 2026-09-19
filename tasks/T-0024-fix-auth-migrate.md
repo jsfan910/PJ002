@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: in_progress
+status: review
 round: 1
 depends_on: [T-0020]
 inputs:
@@ -35,7 +35,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0024-fix-auth-migrate
 created: 2026-09-19T12:03:12+08:00
-updated: 2026-09-19T12:03:12+08:00
+updated: 2026-09-19T12:17:07+08:00
 blocked_reason: null
 ---
 

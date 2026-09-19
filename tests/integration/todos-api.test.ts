@@ -148,6 +148,22 @@ test("POST /api/v1/todos：缺 title 回 400（schema required）", async () => 
   await app.close();
 });
 
+test("POST /api/v1/todos：title 送數字回 400（CR S-1：關閉 ajv coerceTypes，不得脅迫成字串後放行）", async () => {
+  const app = buildTestApp();
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/v1/todos",
+    headers: { ...authHeaders(), "content-type": "application/json" },
+    payload: { title: 123 }
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().code, "E_VALIDATION");
+
+  await app.close();
+});
+
 test("POST /api/v1/todos：夾帶 id／createdAt 一律忽略，由伺服器產生（BR-003、BR-012）", async () => {
   const app = buildTestApp();
 
@@ -425,6 +441,22 @@ test("PATCH /api/v1/todos/{id}：夾帶 id／createdAt 被忽略，原值不變�
   assert.equal(body.isCompleted, true, "有效欄位 isCompleted 仍生效");
 
   await app.inject({ method: "DELETE", url: `/api/v1/todos/${createdBody.id}`, headers: authHeaders() });
+  await app.close();
+});
+
+test("PATCH /api/v1/todos/{id}：isCompleted 送 null 回 400（CR S-1：關閉 ajv coerceTypes，不得脅迫成 false 後放行）", async () => {
+  const app = buildTestApp();
+
+  const response = await app.inject({
+    method: "PATCH",
+    url: `/api/v1/todos/${NON_EXISTENT_ID}`,
+    headers: { ...authHeaders(), "content-type": "application/json" },
+    payload: { isCompleted: null }
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json().code, "E_VALIDATION");
+
   await app.close();
 });
 
