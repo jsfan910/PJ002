@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-at
 model: sonnet
-status: in_progress
+status: review
 round: 2
 depends_on: [T-0017, T-0018]
 inputs:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: qa-lead
 branch: task/T-0021-automated-tests
 created: 2026-09-19T09:24:01+08:00
-updated: 2026-09-19T13:12:54+08:00
+updated: 2026-09-19T13:25:04+08:00
 blocked_reason: null
 ---
 
