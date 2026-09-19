@@ -106,6 +106,7 @@ Haiku 適用範圍：格式檢查與彙整；**不指派給需要操作外部工
 
 ### 環境
 - **sed 分隔符避開 `#` 與 `|`**：本 repo 文字大量含 `T-####` 與 Markdown 表格 `|`，用它們當分隔符會把該行截斷或報錯；改用 `~` 或 `@`，或改用 Edit 工具。（2026-09-19，Leader 用 `#` 分隔改 CLAUDE.md 權責表，src 列被截成半行並推送出去，下一個 commit 才修回）
+- **同一個 session 內新建或修改的 `.claude/agents/*.md` 不會被載入**：角色定義在 session 啟動時讀取；當場建的定義用 `subagent_type: general-purpose` + 提示詞首行「先讀 .claude/agents/{role}.md 整份視為角色指令」備援，改完角色檔要開新 session 才生效。（2026-09-19，Phase 0 建完 12 個角色檔後 Agent 工具回 not found，整天以備援派工）
 
 - **Bash 指令不得含 ASCII 單引號 `'`**：本環境的 Bash 工具會在含單引號的指令上以「unexpected EOF while looking for matching」失敗（含 heredoc 之外的 `printf '…'`、`$'\t'`）。多檔案、含引號的內容改用 Write 工具寫成腳本再 `bash script.sh`。（2026-09-19，Phase 0 建 agent 定義時連續失敗 3 次後確認）
 - **Bash 裡不要呼叫 `python3`／`python`**：本機未安裝 Python，`python3` 會被 Windows 應用程式執行別名接管而無限等待，整條指令卡到逾時。文字處理一律用 sed／awk／grep，或 Write 工具。（2026-09-19，Leader 裁決寫入時卡 120 秒後以 taskkill 終止）
