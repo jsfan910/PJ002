@@ -134,7 +134,13 @@ table.gantt tr.phase td.tl{border-left:1px solid var(--axis)}
 .axis .now span,.axis .mark span{position:absolute;top:-1px;left:4px;font-family:var(--font-mono);font-size:10px;white-space:nowrap}
 .axis .now span{color:var(--now);font-weight:500;background:var(--paper);padding:0 3px}
 .axis .mark span{color:var(--gate);top:14px}
-.milestones{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11px;color:var(--gate);margin:6px 0 0;font-family:var(--font-mono)}
+.milestones{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--gate);margin:8px 0 0;font-family:var(--font-mono)}
+.milestones span{display:inline-flex;align-items:center;gap:4px}
+.milestones b{font-size:20px;line-height:1;font-weight:400}
+table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
+.msaxis{height:56px}
+.msaxis .m{position:absolute;top:4px;transform:translateX(-50%);font-size:22px;line-height:1;color:var(--gate);background:var(--paper);padding:0 2px;z-index:3;font-family:var(--font-body)}
+.msaxis .m.alt{top:30px}
 @page{size:A4 landscape;margin:10mm}
 @media print{
   :root{--paper:#fff;--plane:#f3f3f0;--ink:#000}
@@ -191,7 +197,10 @@ table.gantt tr.phase td.tl{border-left:1px solid var(--axis)}
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
-      <thead><tr><th>卡號</th><th>階段 ／ 任務</th><th class="mono">派工</th><th class="mono">完成</th><th>狀態</th><th style="padding:0"><div class="axis" id="axis"></div></th></tr></thead>
+      <thead>
+        <tr><th>卡號</th><th>階段 ／ 任務</th><th class="mono">派工</th><th class="mono">完成</th><th>狀態</th><th style="padding:0"><div class="axis" id="axis"></div></th></tr>
+        <tr class="msrow"><th colspan="5" style="color:var(--gate)">里程碑（編號對照見圖下）</th><th style="padding:0"><div class="axis msaxis" id="msaxis"></div></th></tr>
+      </thead>
       <tbody></tbody>
     </table></div>
     <div class="milestones" id="ms"></div>
@@ -263,9 +272,18 @@ for (let h = 4; h <= endH; h++) {
   axis += '<div class="tick" style="left:'+p+'%"><span>'+String(h).padStart(2,"0")+':00</span></div>';
 }
 const circled = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨"];
-DATA.gates.forEach((g, i) => { axis += '<div class="mark" style="left:'+pct(g.t)+'%"><span title="'+esc(g.label)+'">'+circled[i]+'</span></div>'; });
+DATA.gates.forEach((g) => { axis += '<div class="mark" style="left:'+pct(g.t)+'%"></div>'; });
 if (nowIso) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+fmt(nowIso)+'</span></div>';
 document.getElementById("axis").innerHTML = axis;
+let ms = "", prevP = -100, prevAlt = false;
+DATA.gates.forEach((g, i) => {
+  const p = pct(g.t);
+  const alt = (p - prevP) < 3 ? !prevAlt : false;
+  ms += '<div class="mark" style="left:'+p+'%"></div><span class="m'+(alt?' alt':'')+'" style="left:'+p+'%" title="'+esc(g.label)+' '+fmt(g.t)+'">'+circled[i]+'</span>';
+  prevP = p; prevAlt = alt;
+});
+if (nowIso) ms += '<div class="now" style="left:'+pct(nowIso)+'%"></div>';
+document.getElementById("msaxis").innerHTML = ms;
 
 const gridCells = () => {
   let g = "";
@@ -304,7 +322,7 @@ for (const p of phases) {
   }
 }
 document.querySelector("#gantt tbody").innerHTML = grows;
-document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span>'+circled[i]+' '+fmt(g.t)+' '+esc(g.label)+'</span>').join("");
+document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span><b>'+circled[i]+'</b> '+fmt(g.t)+' '+esc(g.label)+'</span>').join("");
 document.getElementById("gen").textContent = "資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC · 「現在」線以開啟頁面時的本機時間計算";
 </script>
 `;
