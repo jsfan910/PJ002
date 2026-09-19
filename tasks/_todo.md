@@ -6,11 +6,13 @@
 
 ## 進行中
 
-- 批次 2：T-0012 錯誤處理器 ｜ dev-be/sonnet ｜ r1；T-0013 資料層 ｜ dev-be/sonnet ｜ r1；T-0014 前端版面＋API client ｜ dev-fe/sonnet ｜ r1 ｜ 08:25 平行派工（各自 worktree）
+（無）
 
 （無）
 
 ## 審核中
+
+- T-0012（ef455ae）、T-0013（7e0a086）、T-0014（eb5988c）｜ reviewer dev-tl ｜ 08:50 依序初審合併中
 
 （無）
 

@@ -153,3 +153,10 @@ updated: 2026-09-19T07:17:55+08:00
 | ① | `tests/unit/todo-repository.test.ts` 併入 T-0013 outputs（dev-tl 審核時視為在範圍內） |
 | ② | `package.json` 的 `migrate` 腳本改為 `node dist/db/migrate.js`（或等效需先 build 的寫法）由 dev-tl 於初審合併 commit 一併修正，並在 README 註明 migrate 前需 build；package.json 單一擁有者規約不變（dev-tl 即仲裁者） |
 | ③ | 不做啟動時自動 migrate；migrate 為部署 pipeline 的獨立階段（06 §3），由 T-0018 實作 |
+
+### 2026-09-19T08:41:59+08:00 — 對 T-0012 兩項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | `.github/workflows/ci.yml` unit job 在 test:unit 前補 `npm run build`，由 dev-tl 於批次 2 合併 commit 一併修（與 T-0013 的 migrate 腳本修法同一 commit） |
+| ② | `src/app.ts` 錨點一行 + 必要 import 一行，接受；acceptance 的意圖是「不動其他邏輯」，import 不算 |
