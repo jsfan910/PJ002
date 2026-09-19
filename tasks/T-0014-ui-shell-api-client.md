@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-fe
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0011]
 inputs:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0014-ui-shell-api-client
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:32:16+08:00
+updated: 2026-09-19T08:53:48+08:00
 blocked_reason: null
 ---
 
@@ -60,3 +60,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | lint/build exit 0、api-client 測試 11/11；四條 grep（innerHTML／寫死網域／DOM／@media）全符合，`@media` 只有 768px 一個；五端點逐一比對 04_API規格.yaml（路徑／方法／StatusFilter／CreateTodoRequest／204 不解析 JSON／Error 四欄轉 ApiError）一致；瀏覽器獨立複測 1280×800 與 390×844 皆 `hasHScroll: false`、五個互動元素高度 44px；11 個 data-testid 齊全；無框架打包器（scripts.length 0）；Dockerfile 僅兩行 COPY 且兩階段位置正確（Leader 裁決 T-0011-①）；假設與決策 6 條全接受。Docker build 依 Leader 裁決 T-0011-② 延後至 CI／T-0018，不阻擋。已合併 main | worklog/handoff/20260919-0853-T0014-r1-dev-tl.md |
