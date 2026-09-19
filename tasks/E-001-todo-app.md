@@ -297,3 +297,9 @@ updated: 2026-09-19T14:06:43+08:00
 - 裁決 B：**開 T-0031（dev-ops 維運卡）**：診斷 GitHub cron；新增 GCP Cloud Monitoring uptime check（免費）每 5 分鐘打 /health 作為 NFR-003 主要資料來源，GitHub cron 降為備援；06 §6 更新判讀來源；採樣起算改以 uptime check 建立時間為準。
 - 裁決 C：TC-080 間接證據追認；T-0031 推送 main 觸發部署時由 dev-ops 直接量測一次補證。
 - 裁決 D：Firefox 4/6 維持 Gate 2 後補跑。
+
+### 2026-09-19T18:11:54+08:00 — T-0031 review；NFR-003 採樣來源切換
+
+- uptime check `todo-app-health-aMAlP5dfKv0` 建立於 2026-09-19T17:55:07+08:00 → **NFR-003 正式起算改為 17:55:07，判讀時間 2026-09-20T17:55:07 之後**（06 §6.8.3 指令）。GitHub cron 為備援，2 小時 12 分零自動觸發，判為排程啟動延遲，不改 workflow。
+- TC-080／TC-090：134 個 /health 樣本全 200，最長連續不可用 0 秒。TC-080 資料層 id 比對需憑證，dev-ops 依安全規則未讀取 Secret Manager，留待有憑證的 qa-at 於明日補驗（非擋關）。
+- 派 dev-tl 審核合併 T-0031（推送會觸發一次部署）。
