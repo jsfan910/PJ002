@@ -214,6 +214,21 @@ Format-Hex "$PWD\secret.txt" | Select-Object -Last 3
 Remove-Item secret.txt
 ```
 
+**檢查「secret 值是否含多餘換行」時，量測方法本身也可能誤導人（T-0027 實測踩到）**：透過管線把 `gcloud secrets versions access` 的輸出接給 `wc -c`（尤其是從 Git Bash 呼叫 Windows 的 `gcloud.cmd`，跨殼層的主控台文字模式換行轉換），量出來的位元組數可能比 secret 實際內容多，造成「誤以為含換行、實際上是乾淨的」假警報；反過來，PowerShell 管線接 `Format-Hex` 若中間經過會轉換換行的 cmdlet，也可能吃掉真正存在的尾端換行，變成「誤以為乾淨、實際上有換行」的漏判。**兩個方向都可能出錯，管線量測不可靠。** 最可靠的作法是**先落地成檔案，再量檔案本身的位元組數**，不要對存活的管線流量測：
+
+```powershell
+gcloud.cmd secrets versions access latest --secret="basic-auth-user" --project "<PROJECT_ID>" --out-file="$PWD\check.txt"
+(Get-Item "$PWD\check.txt").Length   # 直接看檔案位元組數，不經過任何管線轉換
+Remove-Item check.txt
+```
+
+```bash
+# Git Bash 等效：一律先用 --out-file 落地，不要對管線本身的輸出做 wc -c
+gcloud secrets versions access latest --secret=basic-auth-user --out-file=check.txt
+wc -c check.txt
+rm check.txt
+```
+
 ### 前置：GCP 一次性設定（使用者自行執行）
 
 1. **建立 GCP 專案並啟用計費帳戶**（Cloud Run／Artifact Registry 的硬性前提，即使實際費用為 US$0；建議額外設一個 US$1 預算警示，06 §2）。

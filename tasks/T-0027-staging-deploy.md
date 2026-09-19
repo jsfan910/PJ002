@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: blocked
+status: review
 round: 1
 depends_on: [T-0018, T-0025]
 inputs:
@@ -32,25 +32,8 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0027-staging-deploy
 created: 2026-09-19T15:50:02+08:00
-updated: 2026-09-19T16:20:00+08:00
-blocked_reason: >-
-  ［r1 續，2026-09-19 16:20］使用者已修正 WIF attribute-condition，deploy-staging.yml
-  第三次真實 run（35431202802）auth／migrate／build&push／deploy／verify(URL)／
-  verify(/health) 全部成功，staging 首次部署成功：
-  https://todo-app-dpevsdhdva-de.a.run.app（revision todo-app-00001-tfq）。唯一失敗步驟
-  是 verify（帶憑證呼叫 /api/v1/todos），exit code 22。已用 Secret Manager 唯讀位元組
-  計數診斷（未讀取任何憑證明文）確認根因：basic-auth-user 的 latest 版本含 3 個混入的
-  換行／回車字元（raw=12 bytes, stripped=9 bytes），與 GitHub secret
-  STAGING_BASIC_AUTH_USER 不一致，導致 Basic Auth 判定「使用者名稱或密碼錯誤」
-  （已用刻意錯誤憑證測試驗證錯誤訊息型態為「Invalid username or password」而非
-  「Missing or bad formatted authorization header」，排除程式/部署缺陷）。修法屬憑證值
-  變更，agent 不代為執行：使用者需以 README「GCP 指令在哪裡執行」節的
-  [System.IO.File]::WriteAllText 寫法重建乾淨版本並確認與 GitHub secret 相同，
-  再重新觸發 deploy-staging.yml（新增 secret 版本不會讓現有 revision 自動生效）。
-  已回填 06 第 1 章與 04 servers 為真實網址；GitHub variable STAGING_BASE_URL 待使用者
-  設定為上述網址。回滾演練待該次重新部署產生第 2 個 revision 後執行。詳見
-  docs/reports/20260919-1551-部署紀錄-E001.md「r1 續」章節與
-  worklog/handoff/20260919-1551-T0027-r1-dev-ops.md。
+updated: 2026-09-19T16:40:00+08:00
+blocked_reason: null
 ---
 
 ## 目標

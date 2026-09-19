@@ -58,12 +58,12 @@ servers:
         description: 由環境變數 `PORT` 決定，預設 8080。
   - url: https://todo-app-{hash}-{region}.a.run.app
     description: >-
-      staging（GCP Cloud Run；ADR-0005）。**T-0027（2026-09-19）首次部署成功回填**：
-      實際網址 `https://todo-app-dpevsdhdva-de.a.run.app`（revision `todo-app-00001-tfq`）。
-      `GET /health` 無憑證 200、`GET /` 無憑證 401 已驗證通過；`GET /api/v1/todos` 帶憑證的驗證
-      因 Secret Manager `basic-auth-user` 值含混入的換行字元而暫時失敗（非部署問題，見
-      `docs/specs/06_部署架構與CICD.md` §6.6 與 `docs/reports/20260919-1551-部署紀錄-E001.md`）。
-      GitHub repository variable `STAGING_BASE_URL` 待使用者回填為上述網址；CI 的 verify 與
+      staging（GCP Cloud Run；ADR-0005）。**T-0027（2026-09-19）首次部署成功並完整驗證**：
+      實際網址 `https://todo-app-dpevsdhdva-de.a.run.app`。三條驗收全過：`GET /health` 無憑證
+      200；`GET /` 無憑證 401；`GET /api/v1/todos` 帶憑證 200（`deploy-staging.yml` re-run
+      attempt 2 全綠）。過程細節與一次性認證異常的排查見
+      `docs/specs/06_部署架構與CICD.md` §6.6～§6.7 與 `docs/reports/20260919-1551-部署紀錄-E001.md`。
+      GitHub repository variable `STAGING_BASE_URL` 已由使用者回填為上述網址；CI 的 verify 與
       監測工作流一律讀 `STAGING_BASE_URL`，不得寫死網址。
     variables:
       hash:

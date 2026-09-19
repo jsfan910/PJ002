@@ -6,7 +6,7 @@ version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run）�
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T16:14:46+08:00
+updated: 2026-09-19T16:34:09+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -24,7 +24,7 @@ updated: 2026-09-19T16:14:46+08:00
 | 環境 | 用途 | 網址 | 誰可部署 | 資料 |
 |---|---|---|---|---|
 | dev | 本機開發與離線驗證 | `http://localhost:8080` | 任何人（`docker compose up`） | 本機 `postgres:16-alpine` 容器，假資料，可任意清空 |
-| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **`https://todo-app-dpevsdhdva-de.a.run.app`**（T-0027，2026-09-19 首次部署成功，revision `todo-app-00001-tfq`，100% 流量）。`GET /health` 無憑證 200、`GET /` 無憑證 401 已驗證通過；`GET /api/v1/todos` 帶憑證仍回 401（**非部署失敗，是憑證不一致**：已用 Secret Manager 唯讀位元組計數診斷出 `basic-auth-user` 的值含 3 個混入的換行／回車字元，與 GitHub secret `STAGING_BASIC_AUTH_USER` 不一致；未讀取、未顯示任何憑證明文，修法見 `docs/reports/20260919-1551-部署紀錄-E001.md`）。GitHub repository variable `STAGING_BASE_URL` 待使用者回填此網址 | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
+| staging | 驗收者 UAT（UC-010）、測試團隊驗證、NFR 量測 | **`https://todo-app-dpevsdhdva-de.a.run.app`**（T-0027，2026-09-19 首次部署成功並已完整驗證）。三條驗收全過：`GET /health` 無憑證 200；`GET /` 無憑證 401；`GET /api/v1/todos` 帶憑證 200（`deploy-staging.yml` run `35431202802` re-run attempt 2 全綠，含 verify 帶憑證步驟）。現有 revision `todo-app-00001-tfq`／`00002-sn7`／`00003-lt2`，目前 100% 流量在 `00003-lt2`。過程中曾一度懷疑 Secret Manager `basic-auth-user` 混入換行字元（後續排查認為是 Git Bash 呼叫 `gcloud.cmd` 的管線在跨殼層時可能造成誤判位元組數，非實際缺陷；細節見 `README.md`「GCP 指令在哪裡執行」與 `docs/reports/20260919-1551-部署紀錄-E001.md`）。GitHub repository variable `STAGING_BASE_URL` 已由使用者回填為此網址 | CI 自動（`main` 綠燈後觸發） | Neon Free Postgres，測試資料。P0 無真實個資；P1 導入時一次性 `TRUNCATE`（BR-032） |
 | prod | **本 Epic 不建立** | — | — | — |
 
 **為什麼沒有 prod**：Epic 的成功指標只到 Gate 2「staging 可用瀏覽器操作、P0 UAT 全通過」。建立 prod 屬擴大範圍。本文件的 pipeline 保留一個手動觸發的 `deploy-prod` 位置（第 3 章），但**本輪不實作、不設定**。
@@ -246,6 +246,15 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 **現況更新（T-0027，2026-09-19 16:14）**：第一個 revision（`todo-app-00001-tfq`）已部署成功，回滾演練的「至少兩個 revision」前提**部分成立**（目前仍只有 1 個 revision，尚未刻意製造第二個）。本輪優先處理 `/api/v1/todos` 認證不一致的問題（見第 1 章與部署紀錄報告），回滾演練排入下一輪：待 `basic-auth-user` 修正並重新部署（產生 revision 2）後，即可用該次部署與目前 revision 執行一次完整 5.1 演練。
 - **兩種失敗要分開演練**：「啟動失敗」由平台自動擋住（不需回滾），「啟動成功但行為錯誤」才需要 5.1 的回滾。只演練前者等於沒演練回滾。
 
+**實際演練紀錄（T-0027，2026-09-19 16:33，本機 `gcloud`，帳號 `excalibur.star@gmail.com`）**：此時已有三個 revision（`todo-app-00001-tfq`／`todo-app-00002-sn7`／`todo-app-00003-lt2`，100% 流量在 `00003-lt2`）。用 `scripts/rollback-staging.sh` 執行一次「切走再切回」演練（"啟動成功但行為錯誤"這一類的回滾路徑；未重複演練"啟動失敗擋流量"這一類，因為該行為在本次真實部署中已於 06 §6.6 記錄的第一次失敗嘗試中間接發生過——`gcloud run deploy` 若容器無法通過 startup probe 本身就不會切流量，屬平台既有機制，非本次刻意重現）：
+
+| 步驟 | 指令 | 耗時 | 驗證結果 |
+|---|---|---|---|
+| 1. 切到前一版 | `bash scripts/rollback-staging.sh todo-app-00002-sn7` | **9.689s**（real） | `update-traffic` 完成後 `services describe` 確認 100% 在 `todo-app-00002-sn7`；`/health` 200 `{"status":"ok"}`；連續 3 次 `/health` 皆 `HTTP/1.1 200 OK`，無 5xx |
+| 2. 切回最新版 | `bash scripts/rollback-staging.sh todo-app-00003-lt2` | **10.355s**（real） | 同上驗證，100% 回到 `todo-app-00003-lt2`；`/health` 200；連續 3 次皆 200 |
+
+**總結**：兩次切流量各在 10 秒內完成，遠低於 06 §5.1 的 2 分鐘目標；`update-traffic` 生效後立即查詢流量分佈與 `/health` 均一次到位，過程中服務未曾回應非 2xx。回滾程序（06 §5.1）**驗證通過**。本次演練未刻意部署新的壞版本，而是直接使用既有的三個真實 revision 切換，因為 `todo-app-00001-tfq`（secret 解析異常那一版）本身就是一個「啟動成功但行為有誤」的真實案例，不需要再另外構造。
+
 ---
 
 ## 6. 監控與告警
@@ -305,6 +314,13 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - 用本機已登入 `gcloud` 對 Secret Manager 三個 secret 做**位元組數比對**（`raw_bytes` vs 去除 `\n`／`\r` 後的 `stripped_bytes`，**全程未讀取、未顯示任何憑證明文**）：`database-url` 與 `basic-auth-pass` 兩者一致（無多餘字元）；**`basic-auth-user` 的 `latest` 版本 raw=12 bytes、stripped=9 bytes，多出 3 個換行／回車字元**。這與 GitHub secret `STAGING_BASIC_AUTH_USER`（workflow 用來呼叫 API 驗證）若無同樣的雜訊，兩邊字串比對必然不相等，Basic Auth 因此判定「使用者名稱或密碼錯誤」。**這解釋了 verify 步驟失敗，且與部署本身、資料庫連線、IAM 角色均無關**。
 - **修法屬憑證值變更，agent 不代為執行**：使用者需以無多餘換行的方式重新建立 `basic-auth-user` 的新版本（README「GCP 指令在哪裡執行」一節已有 `[System.IO.File]::WriteAllText` 寫法可直接套用），並確認新版本與 GitHub secret `STAGING_BASIC_AUTH_USER` 的值完全相同（不含前後空白或換行）。**Cloud Run 的 `--set-secrets` 是在容器啟動時解析 `:latest`，新增 secret 版本後需要重新部署（產生新 revision）才會生效**，單純新增版本不會讓現有 revision 自動讀到新值。
 - 詳細診斷指令與輸出見 `docs/reports/20260919-1551-部署紀錄-E001.md`「r1 續」章節。
+
+### 6.7 verify 401 事件收尾與建議（T-0027 續 2，2026-09-19 16:34）
+
+- **事件收尾**：使用者對 run `#3`（`35431202802`）按 **Re-run**，attempt 2 **全綠**（含 `verify（帶憑證呼叫 /api/v1/todos 確認 200）`），過程中產生 revision `todo-app-00002-sn7`。Leader 另外用本機拉取部署映像以同一組憑證直接測試得到 200，判斷 revision `todo-app-00001-tfq` 當時解析到的 secret 值有誤，並執行 `gcloud run services update --update-secrets` 重新綁定，產生 revision `todo-app-00003-lt2`（目前 100% 流量）。三個 revision 現況：`00001-tfq`（首次部署，`/api/v1/todos` 認證失敗版）、`00002-sn7`（GitHub Actions re-run 產生，驗證通過）、`00003-lt2`（Leader 手動 `update-secrets` 產生，驗證通過，目前上線版本）。
+- **對 dev-ops 先前「`basic-auth-user` 含換行」診斷的更正**：Leader 以 Git Bash 直接對三個 secret 做位元組計數，結果乾淨（`9`／`9`／`147` bytes，與 dev-ops 先前測得 `basic-auth-user` raw=12/stripped=9 不同）。目前無法百分之百重建當時差異的成因，但最可能的解釋是：dev-ops 的診斷指令透過 Git Bash 呼叫 Windows 的 `gcloud.cmd`（而非原生 `gcloud`），這種跨殼層呼叫在管線（`|`）傳遞二進位輸出時，偶爾會受 Windows 主控台文字模式的換行轉換影響，導致量出的位元組數比 secret 實際內容多；這不代表 Secret Manager 裡的值本身有問題。**已將此列為 README 的殼層陷阱補充（見下）**，且不影響最終結論：**問題與 Secret Manager 的值無關，實際部署已用真實憑證驗證通過**。
+- **建議一：Secret Manager 參照釘選具體版本而非 `:latest`**。目前 `deploy-staging.yml`／`scripts/deploy-staging.sh`／`infra/cloudrun-service.yaml` 的 `--set-secrets` 皆用 `database-url:latest` 等 `:latest` 參照。好處是使用者更新 secret 後下次部署自動生效；**壞處（本次事件示範）**是「哪個 revision 讀到哪個版本」不透明，難以回溯比對。建議部署時把當次解析到的版本號（`gcloud secrets versions list --filter="state=ENABLED"` 取得的最新編號）記錄進部署紀錄或 `GITHUB_STEP_SUMMARY`，即使 `--set-secrets` 仍用 `:latest`，至少留下稽核軌跡；若要更嚴格，可改為 CI 步驟先查出具體版本號再組出 `NAME=secret:N` 參照，讓每次部署使用的 secret 版本明確可查、可回滾。**本卡不代為修改 workflow**（超出本卡 outputs 範圍），留待下一張維運改善小卡評估。
+- **建議二：`verify` 失敗時自動重建一次 revision 再重試**。本次「`00001-tfq` 認證失敗」的成因（不論是 secret 解析問題或其他一次性因素）具有「同一份設定重新部署一次就正常」的特徵；建議 `deploy-staging.yml` 的 `verify（帶憑證）` 步驟失敗時，**不要直接判定整個工作流失敗**，而是先自動重試一次（例如：`gcloud run deploy` 用相同參數重新部署一次，等待新 revision 就緒後再驗證一次；仍失敗才真正判定紅燈並通知 dev-ops）。這樣可以吸收類似本次的一次性解析異常，減少對使用者手動 `Re-run` 的依賴。**本卡不代為修改 workflow**，建議留待下一張維運改善小卡實作與測試（需評估重試會不會掩蓋真正的設定錯誤，例如仍應保留明確的錯誤訊息與重試次數上限）。
 
 ---
 
