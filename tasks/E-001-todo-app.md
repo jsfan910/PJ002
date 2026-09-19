@@ -254,3 +254,12 @@ updated: 2026-09-19T14:06:43+08:00
 - Leader 加 remote origin 並推送 main（觸發 deploy-staging.yml）。建 T-0027（dev-ops）做首次部署驗證、回填、回滾演練、監測啟動。
 - 後續：T-0028（qa-at r3 staging 重跑 + qa-uat r3 staging UAT，24 小時採樣判讀）→ T-0029（qa-lead 測試總結 r2）→ Gate 2 報告 r2。
 - 使用者設定過程沉澱的 README 修正（cmd/PowerShell 用 gcloud.cmd、佔位符、<(echo) 改寫檔、secret 用檔案避免換行）納入 T-0027 outputs。
+
+### 2026-09-19T16:30:09+08:00 — staging 首次部署成功；Leader 介入診斷紀錄
+
+- 時間軸：run 35431202802 attempt 1 部署成功但 verify（帶憑證）401；Leader 診斷：Secret Manager 三個 secret 位元組乾淨（9/9/147，無換行；PowerShell 管線 Format-Hex 看不出尾端換行，改用 Git Bash 計數）、Cloud Run env 對應正確、IAM 齊全、部署映像拉回本機同帳密 200 → 判定為 revision 00001 執行實例解析到的 secret 值有誤。Leader 執行 `gcloud run services update --update-secrets` 建 revision 00003 後帶憑證 200；使用者同時 Re-run 的 attempt 2 全綠（verify 含帶憑證通過）。
+- dev-ops 先前「basic-auth-user 含 3 個換行」的判斷不成立（以位元組計數證偽）。
+- staging 網址：https://todo-app-dpevsdhdva-de.a.run.app（另有 https://todo-app-538912330059.asia-east1.run.app 同服務）。使用者已填 GitHub variable STAGING_BASE_URL。
+- 建議（交 dev-ops 寫進 06 第 6 章）：secret 改釘具體版本而非 latest，並在 deploy 後 verify 失敗時自動再建一個 revision 重試一次。
+- 安全提醒：使用者曾將 staging 帳密貼入對話，驗收後建議輪換（Secret Manager 加新版 + GitHub secrets 更新 + 重新部署）。
+- 注意：Leader 手動 `configure-docker` 曾寫入 docker credHelpers（asia-east1-docker.pkg.dev → gcloud），需 SDK bin 在 PATH 才能運作；不影響 CI。
