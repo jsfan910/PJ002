@@ -279,3 +279,12 @@ updated: 2026-09-19T14:06:43+08:00
 ### 2026-09-19T17:07:43+08:00 — NFR-003 採樣起算
 
 - 使用者修正 STAGING_BASE_URL 後手動觸發 Monitor Health 成功。**NFR-003 24 小時採樣起算：2026-09-19T17:07:43+08:00**（以此 run 的 created_at 為準，見 GitHub Actions）。判讀時間：2026-09-20 同時刻後；Gate 2 門檻 288 次採樣成功率 ≥ 99%（允許失敗 ≤ 2 次）。
+
+### 2026-09-19T17:30:10+08:00 — 對 T-0028（AT r3 staging）與 T-0029 r2 的裁決；派 T-0030
+
+- T-0028 review（worktree 分支）：integration:qa 36 過／1 敗／5 skip；e2e 133/136（TC-067、TC-009 間歇性）；perf NFR-001 GET P95 156ms、寫入 P95 ≤ 317ms 皆達標；NFR-007 PASS；TC-084、TC-090 通過（引回滾演練）；NFR-003 採樣中。
+- 裁決①：TC-079 實測 Cloud Run HTTP→HTTPS 為 302，規格寫 301。**接受 302 等效**（意圖是強制 HTTPS），SRS/06 文字修正列 P1「規格變更請求」，本輪判通過並註記。
+- 裁決②：TC-067／TC-009 間歇性失敗（前端 error-message 出現時序）由 qa-lead 於 T-0030 立 S3 缺陷（不擋 Gate 2），修正列 P1。
+- 裁決③：TC-078／081／105 不屬 qa-at 範圍，由 UAT r2（T-0029，10/10）與部署紀錄佐證。
+- T-0029 r2（sonnet）10/10 通過；r1（haiku）判為工具問題。qa 並行存取 staging 互相刪資料：之後 staging 測試卡錯開時段。
+- 派 dev-tl 合併 T-0028 分支；派 qa-lead T-0030（可直接讀 worktree 內報告）。
