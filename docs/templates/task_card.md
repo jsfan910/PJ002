@@ -5,6 +5,12 @@ epic: E-000
 team: plan            # plan | dev | qa | leader
 role: plan-ba         # plan-ba | plan-sa | plan-sd | dev-tl | dev-be | dev-fe | dev-ops | qa-lead | qa-cr | qa-at | qa-uat | leader
 model: opus           # haiku | sonnet | opus | fable（依 CLAUDE.md 平衡模式表；第 3 輪自動升一級）
+phase: plan           # 本卡屬於哪個階段。常用值：
+                      # plan（規格） | dev-plan（WBS） | qa-plan（測試計畫／案例）
+                      # | dev（開發） | qa（測試） | dev-fix（測試後修正）
+                      # | staging（部署補驗） | qa-staging（staging 重跑）
+                      # | ops（維運改善） | framework（框架／模板本身）
+                      # 必填：時程表（/schedule-report）以本欄分組，缺欄會退回另建對照表
 status: todo          # todo | in_progress | review | rework | blocked | done | cancelled
 round: 1              # 1..3；每次進入 rework 時 +1；達 3 仍未過 → blocked + 升級單
 depends_on: []        # 例：[T-0001, T-0002]；全部 done 才可啟動
@@ -16,7 +22,12 @@ acceptance:           # 驗收條件；審核者逐條驗
   - （條件 1）
   - （條件 2）
 reviewer: plan-sd     # 審核角色
-branch: null          # 開發卡填 task/T-0000-slug；文件卡 null
+branch: null          # 開發卡填 task/T-0000-slug，且**必須在 git worktree 內作業**：
+                      # git worktree add "<專案根目錄>-wt/T-0000" -b task/T-0000-slug
+                      # 所有檔案操作／npm／docker／測試／commit 都在該 worktree 內；
+                      # 專案根目錄永遠停在 main（供文件卡與 Leader 使用）。
+                      # 合併由 dev-tl 在根目錄 git merge --no-ff，之後 git worktree remove。
+                      # 文件卡（只動 docs/、tasks/、.claude/）填 null，直接在 main commit。
 created: 2026-01-01T00:00:00+08:00
 updated: 2026-01-01T00:00:00+08:00
 blocked_reason: null  # blocked 時填原因；升級單路徑寫在審核紀錄表
