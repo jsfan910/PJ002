@@ -269,3 +269,9 @@ updated: 2026-09-19T14:06:43+08:00
 - T-0027 done 並合併推送（main b4b9d41）。追認：acceptance 第 5 條（monitor 至少一次採樣）因 GitHub 排程延遲未達成，不阻擋合併，列追蹤項；已請使用者手動觸發 Monitor Health。
 - **更正 16:30 那段**：依 gcloud run revisions list，Leader 手動 update-secrets 建的是 revision 00002-sn7（08:28:56Z），CI attempt 2 建的是 00003-lt2（08:29:05Z）；原文寫反，以本段與 06 §6.7 為準。結論不變。
 - 三個 revision：00001（首次，verify 401）、00002（Leader）、00003（CI，現 100% 流量；T-0027 合併推送後將再產生 00004）。
+
+### 2026-09-19T16:54:38+08:00 — Monitor Health 失敗、UAT r3 阻擋的處置；看板改表格
+
+- Monitor Health 首次 run 失敗於「連續 3 次全失敗」：疑 STAGING_BASE_URL 含前導空白或結尾斜線（`//health` 不在豁免清單回 401）。已請使用者修正變數並手動重跑。
+- T-0029 r1（qa-uat/haiku）報前端 8/10 阻擋；Leader 以內建瀏覽器實測 staging：頁面載入、GET /api/v1/todos?status=all 200、清單渲染正常 → 判為工具操作問題非缺陷。T-0029 進 r2，模型升 sonnet（Leader 裁量：連兩輪誤判工具限制，不等第 3 輪）。
+- 使用者要求：tasks/_todo.md 與 _done.md 改表格排版，已完成。

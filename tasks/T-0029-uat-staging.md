@@ -4,11 +4,11 @@ title: UAT r3：於 staging 逐 P0 使用者故事操作
 epic: E-001
 team: qa
 role: qa-uat
-model: haiku
-status: blocked
-round: 1
+model: sonnet
+status: in_progress
+round: 2
 depends_on: [T-0027]
-blocked_reason: |
+blocked_reason: null
   前端應用無法通過瀏覽器連接到 staging API。根本原因為認證方案不相容：
   頁面從帶認證信息的 URL 載入時（https://user:pass@host），Chromium 安全模型
   禁止 JavaScript 發送包含認證的 fetch 請求。需前端修正認證方案（如 Authorization
@@ -32,7 +32,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T16:58:00+08:00
+updated: 2026-09-19T16:54:38+08:00
 blocked_reason: null
 ---
 
@@ -53,3 +53,4 @@ qa-lead：抽查 2 個 US 的操作紀錄可重現；核對 P0 十則皆有結�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | rework→r2 | r1 報 8/10 阻擋「前端連不上 API」；Leader 以瀏覽器實測 staging 頁面載入且 GET /api/v1/todos 200，判為工具操作問題；r2 模型升 sonnet | worklog/handoff/20260919-工作交接.md |
