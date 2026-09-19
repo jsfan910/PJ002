@@ -275,3 +275,7 @@ updated: 2026-09-19T14:06:43+08:00
 - Monitor Health 首次 run 失敗於「連續 3 次全失敗」：疑 STAGING_BASE_URL 含前導空白或結尾斜線（`//health` 不在豁免清單回 401）。已請使用者修正變數並手動重跑。
 - T-0029 r1（qa-uat/haiku）報前端 8/10 阻擋；Leader 以內建瀏覽器實測 staging：頁面載入、GET /api/v1/todos?status=all 200、清單渲染正常 → 判為工具操作問題非缺陷。T-0029 進 r2，模型升 sonnet（Leader 裁量：連兩輪誤判工具限制，不等第 3 輪）。
 - 使用者要求：tasks/_todo.md 與 _done.md 改表格排版，已完成。
+
+### 2026-09-19T17:07:43+08:00 — NFR-003 採樣起算
+
+- 使用者修正 STAGING_BASE_URL 後手動觸發 Monitor Health 成功。**NFR-003 24 小時採樣起算：2026-09-19T17:07:43+08:00**（以此 run 的 created_at 為準，見 GitHub Actions）。判讀時間：2026-09-20 同時刻後；Gate 2 門檻 288 次採樣成功率 ≥ 99%（允許失敗 ≤ 2 次）。
