@@ -6,7 +6,7 @@ team: leader
 role: leader
 model: opus
 phase: framework
-status: review
+status: done
 round: 1
 depends_on: []
 inputs:
@@ -40,7 +40,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T18:16:31+08:00
-updated: 2026-09-19T18:22:17+08:00
+updated: 2026-09-19T18:25:47+08:00
 blocked_reason: null
 ---
 
@@ -63,3 +63,4 @@ Leader 逐 F 項核對落點存在且措辭與裁決紀錄一致；抽 2 個角�
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | leader | done | 逐 F 項落點核對通過；跨卡一致（worktree 措辭、qa-uat sonnet、phase 契約）；Leader 追加 epic 欄過濾與 CLAUDE.md 權責表一行 | worklog/handoff/20260919-工作交接.md |

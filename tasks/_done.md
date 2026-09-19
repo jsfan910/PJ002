@@ -35,3 +35,7 @@
 | T-0029 | UAT staging | qa-uat | 2026-09-19 16:41:00 | 2026-09-19 17:38:24 | 2 | r1 haiku 工具問題，r2 sonnet 10/10；審核 qa-lead |
 | T-0030 | 測試總結 r2 | qa-lead | 2026-09-19 17:31:10 | 2026-09-19 17:47:01 | 1 | 審核 leader |
 | T-0031 | 維運：uptime check、cron 診斷、TC-080 | dev-ops | 2026-09-19 17:50:14 | 2026-09-19 18:20:00 | 1 | 審核 dev-tl，已合併 f0c05dd |
+| T-0032 | 角色檔 v1.1：共用環境注意段� | leader 代理（opus） |  | 2026-09-19 18:25:47 | 1 | 審核 leader；E-002 |
+| T-0033 | 模板 v1.1：任務卡加 phase、Epic  | leader 代理（opus） |  | 2026-09-19 18:25:47 | 1 | 審核 leader；E-002 |
+| T-0034 | skill v1.1：dispatch 三行提示詞與 | leader 代理（opus） |  | 2026-09-19 18:25:47 | 1 | 審核 leader；E-002 |
+| T-0035 | 計畫書 v1.1 與 CLAUDE.md：Phase 定 | leader 代理（opus） |  | 2026-09-19 18:25:47 | 1 | 審核 leader；E-002 |

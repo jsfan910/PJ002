@@ -6,7 +6,7 @@ team: leader
 role: leader
 model: opus
 phase: framework
-status: review
+status: done
 round: 1
 depends_on: []
 inputs:
@@ -29,7 +29,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-19T18:16:31+08:00
-updated: 2026-09-19T18:22:45+08:00
+updated: 2026-09-19T18:25:47+08:00
 blocked_reason: null
 ---
 
@@ -53,3 +53,4 @@ Leader 逐 F 項核對落點存在且措辭與裁決紀錄一致；抽 2 個角�
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
 | r1 | leader | 待審 | 計畫書進版 v1.1（§3/§7 worktree、§5.1/5.2 qa-uat→Sonnet 5＋Haiku 適用範圍、§5.4 r2 升級裁量、新增 §7.6 Gate 2 補驗子流程、§9 Phase 2 平行、§11 風險三列、附錄 B 變更紀錄）；CLAUDE.md 模型表 qa-uat→Sonnet 5、固定程序加「規格優先」與「r2 升級裁量」、工作鐵則整理為環境／git／流程／安全四類並新增 5 條 | worklog/handoff/20260919-1818-T0035-r1-leader.md |
+| r1 | leader | done | 逐 F 項落點核對通過；跨卡一致（worktree 措辭、qa-uat sonnet、phase 契約）；Leader 追加 epic 欄過濾與 CLAUDE.md 權責表一行 | worklog/handoff/20260919-工作交接.md |

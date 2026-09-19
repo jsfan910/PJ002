@@ -24,7 +24,8 @@ const phaseOf = (c) => c.phase || (cfg.phaseById || {})[c.id] || (cfg.phaseByTea
 const src = readFileSync(cardsPath, "utf8").trim().split(/\r?\n/).filter(Boolean);
 const cards = [];
 for (const line of src) {
-  const [id, title, team, role, status, phase, round, deps, created, updated, rounds] = line.split("|");
+  const [id, title, team, role, status, phase, round, deps, created, updated, epic, rounds] = line.split("|");
+  if (cfg.epic && epic && epic.trim() !== cfg.epic) continue;
   const segs = [];
   for (const part of (rounds || "").split(";").filter(Boolean)) {
     const [key, times] = part.split("=");
