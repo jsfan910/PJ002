@@ -57,3 +57,4 @@ updated: 2026-09-19T18:16:31+08:00
 ## Leader 裁決紀錄
 
 - 2026-09-19T18:16:31+08:00：qa-uat 預設模型改 sonnet（平衡模式）；Phase 2 與 E-001 24 小時採樣平行進行。
+- 2026-09-19T18:22:51+08:00：T-0033 review（552cc47）。裁決①新增檔（epic.md）不受淨增 ≤60 行限制；②`phase` 值域權威為 docs/templates/task_card.md 註解，gen-schedule.mjs 接受任意字串並以 phaseById／phaseByTeam 回退。Leader 審核待四卡到齊一併做。
