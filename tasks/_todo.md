@@ -6,7 +6,7 @@
 
 ## 進行中
 
-- T-0027 staging 首次部署、回填、回滾演練、監測 ｜ dev-ops/sonnet ｜ r1 ｜ 15:05 派工（worktree）
+（無）
 
 （無）
 
@@ -15,6 +15,8 @@
 （無）
 
 ## 阻塞
+
+- T-0027 staging 部署 ｜ dev-ops ｜ 阻塞：WIF provider 條件為佔位符，待使用者 update-oidc 後重新觸發（分支 task/T-0027-staging-deploy aa330d1 保留）
 
 （無）
 
