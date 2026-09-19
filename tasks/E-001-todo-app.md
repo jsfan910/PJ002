@@ -185,3 +185,13 @@ updated: 2026-09-19T11:45:41+08:00
 | ③ | 部署階段順序以 06 §3.2 為準（auth → migrate → build&push → deploy → verify）；Leader 派工提示詞寫錯，規格優先 |
 
 開發階段結案：T-0011～T-0018 全部 done 並合併，main `df4071b`；全量 lint 0、unit 75/75、integration 47/47。Epic status → testing。
+
+### 2026-09-19T12:03:12+08:00 — 對 Code Review（T-0020）結果的裁決
+
+- CR 結論退回：阻擋級 2（B-1 豁免比對可被點節段／百分號編碼繞過；B-2 未接啟動時自動 migration）、建議級 11。
+- **撤回 Leader 先前裁決 T-0013-③**：凍結規格 05 §3 第 4 條與 SD NFR-008 對策④明文要求「啟動時自動執行 migration」，規格優先；pipeline 的 migrate 階段保留為雙重保險。
+- 修正卡（平行）：T-0024 dev-be（B-1、B-2、S-1、S-2）；T-0025 dev-ops（S-3、S-4、S-7、S-9、S-10、S-11）；T-0026 dev-fe（S-5、S-6）。合併後 T-0020 開 r2 只複審修正處。
+- ① S-1：關閉 ajv coerceTypes（規格 type: string 嚴格讀）。
+- ② S-8：D-01 為權威；不改凍結 SD 文字，改把「D-01 本機佔位值」列入 CR 模板已知例外第 4 類（Leader 更新 docs/templates/code_review_report.md）。
+- ③ 追認 T-0016-①（UUID 格式錯回 400）。
+- 測試線：T-0021／T-0022 對修正前的 main 執行，結果仍有效；修正合併後由 qa-at 對最終 main 重跑一次（T-0021 r2 或由 T-0023 前補跑）。

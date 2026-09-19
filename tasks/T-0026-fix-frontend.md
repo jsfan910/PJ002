@@ -1,0 +1,49 @@
+---
+id: T-0026
+title: CR 修正（前端）：S-5 load 請求序列化防競態、S-6 編輯中草稿不被重繪吃掉
+epic: E-001
+team: dev
+role: dev-fe
+model: sonnet
+status: in_progress
+round: 1
+depends_on: [T-0020]
+inputs:
+  - docs/reports/20260919-1146-CR-E001.md#建議級（S-5、S-6）
+  - public/assets/todo-store.js
+  - public/assets/todo-view.js
+  - tests/unit/todo-store.test.mjs
+  - docs/specs/02_系統分析書_SA.md#5（BR-011 事實來源為後端）
+outputs:
+  - public/assets/todo-store.js
+  - public/assets/todo-view.js
+  - tests/unit/todo-store.test.mjs
+acceptance:
+  - S-5：store 有單調遞增 requestSeq，load 回應若非最新一次不寫入 state；單元測試模擬先發後到的回應，斷言畫面資料為最新篩選
+  - S-6：編輯模式期間其他 store 通知不會清掉已輸入文字（editingDraft 或跳過該筆重繪）；有單元或以 DOM 模擬的測試
+  - 不改 index.html、api-client.js、styles.css；11 個 data-testid 不變；innerHTML 仍為 0
+  - npm run lint 與 node --test tests/unit/todo-store.test.mjs 全綠；git diff main...HEAD --stat 只動 outputs
+reviewer: dev-tl
+branch: task/T-0026-fix-frontend
+created: 2026-09-19T12:03:12+08:00
+updated: 2026-09-19T12:03:12+08:00
+blocked_reason: null
+---
+
+## 目標
+
+消除兩項會讓使用者看到不一致或遺失輸入的前端競態問題。
+
+## 背景與限制
+
+- 分支以 git worktree 建立（…-wt/T-0026，-b task/T-0026-fix-frontend）；禁止 add -A、--amend、reset、rebase。
+- 必須遵守：CLAUDE.md「協作協定」、角色檔 .claude/agents/dev-fe.md 的通用協定。
+
+## 驗收方式
+
+dev-tl 重跑測試；在瀏覽器快速連續切換篩選與編輯中觸發其他更新，實測無不一致與草稿遺失。
+
+## 審核紀錄
+
+| 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
+|---|---|---|---|---|

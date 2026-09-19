@@ -28,3 +28,10 @@
 - [ ] 單元測試存在且有意義（非只測 happy path）
 - [ ] 無硬編碼密鑰／環境值
 - [ ] 遵守 ADR
+
+## 憑證掃描已知例外（命中後逐筆判讀，不在此清單者一律視為真命中）
+
+1. `ci.yml` service container 的 CI 佔位值（`ci`／`ci`）。
+2. GitHub Actions `permissions: id-token: write`。
+3. `gcloud run deploy --set-secrets "ENV=secret-name:version"` 的參照語法。
+4. `.env.example` 與測試檔的本機佔位值（Leader 裁決 D-01；值必須是明顯佔位如 `dev`、`localhost`）。
