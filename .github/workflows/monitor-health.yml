@@ -44,7 +44,7 @@ jobs:
           SUCCESS_COUNT=0
           for attempt in 1 2 3; do
             TS="$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
-            OUTPUT="$(curl -fsS -o /dev/null -w "%{http_code} %{time_total}" "${STAGING_BASE_URL}/health" || echo "000 0")"
+            OUTPUT="$(curl -sS -o /dev/null -w "%{http_code} %{time_total}" "${STAGING_BASE_URL}/health" || echo "000 0")"
             CODE="$(echo "${OUTPUT}" | awk '{print $1}')"
             TIME_TOTAL="$(echo "${OUTPUT}" | awk '{print $2}')"
             echo "${TS},${attempt},${CODE},${TIME_TOTAL}" >> "${RESULT_FILE}"

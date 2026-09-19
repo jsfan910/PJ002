@@ -134,10 +134,12 @@ jobs:
       - name: verify（帶憑證呼叫 /api/v1/todos 確認 200）
         env:
           BASE_URL: ${{ steps.service_url.outputs.url }}
+          BASIC_USER: ${{ secrets.STAGING_BASIC_AUTH_USER }}
+          BASIC_PASS: ${{ secrets.STAGING_BASIC_AUTH_PASSWORD }}
         run: |
           set -euo pipefail
           CODE="$(curl -fsS -o /dev/null -w "%{http_code}" \
-            -u "${{ secrets.STAGING_BASIC_AUTH_USER }}:${{ secrets.STAGING_BASIC_AUTH_PASSWORD }}" \
+            -u "$BASIC_USER:$BASIC_PASS" \
             "${BASE_URL}/api/v1/todos")"
           echo "GET /api/v1/todos -> ${CODE}"
           test "${CODE}" = "200"

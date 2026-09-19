@@ -130,16 +130,16 @@ test("list：status 篩選在 SQL WHERE 做（active／completed／all）", { sk
   await setCompleted(pool!, completed.id, true);
 
   const activeList = await listTodos(pool!, "active");
-  assert.ok(activeList.some((todo) => todo.id === active.id));
-  assert.ok(!activeList.some((todo) => todo.id === completed.id));
+  assert.ok(activeList.some((todo: { id: string }) => todo.id === active.id));
+  assert.ok(!activeList.some((todo: { id: string }) => todo.id === completed.id));
 
   const completedList = await listTodos(pool!, "completed");
-  assert.ok(completedList.some((todo) => todo.id === completed.id));
-  assert.ok(!completedList.some((todo) => todo.id === active.id));
+  assert.ok(completedList.some((todo: { id: string }) => todo.id === completed.id));
+  assert.ok(!completedList.some((todo: { id: string }) => todo.id === active.id));
 
   const allList = await listTodos(pool!, "all");
-  assert.ok(allList.some((todo) => todo.id === active.id));
-  assert.ok(allList.some((todo) => todo.id === completed.id));
+  assert.ok(allList.some((todo: { id: string }) => todo.id === active.id));
+  assert.ok(allList.some((todo: { id: string }) => todo.id === completed.id));
 
   await deleteTodo(pool!, active.id);
   await deleteTodo(pool!, completed.id);
@@ -193,8 +193,8 @@ test(
     // 時回傳的 id 集合排序結果一致」這個決定性規則）。
     const insertedIdSet = new Set(insertedIds);
     const actualOrderAmongInserted = allTodos
-      .filter((todo) => insertedIdSet.has(todo.id))
-      .map((todo) => todo.id);
+      .filter((todo: { id: string }) => insertedIdSet.has(todo.id))
+      .map((todo: { id: string }) => todo.id);
     assert.deepEqual(actualOrderAmongInserted, expectedDescOrder);
 
     await Promise.all(insertedIds.map((id) => deleteTodo(pool!, id)));
