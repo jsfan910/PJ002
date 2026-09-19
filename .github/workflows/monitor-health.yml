@@ -1,0 +1,83 @@
+# monitor-health.yml（T-0018，OPS-04，06_部署架構與CICD.md §3.3）
+#
+# NFR-003 的正式量測來源（外部視角，含 DNS／TLS）兼保溫。
+# 每 5 分鐘一次，每次連續取樣 3 次、間隔 20 秒，打 STAGING_BASE_URL/health。
+# **不帶任何憑證**（/health 是唯一未保護路徑，帶憑證等於沒驗證 BR-017
+# 的豁免是否生效）；**不附加任何查詢字串**。
+# 連續 3 次全失敗才以 ::error:: 標記工作流（單次失敗是資料而非事故）。
+#
+# 頻率若因倉庫為私有而需節流為每 10 分鐘（06 §2 對策 2），修改下方
+# cron 運算式即可；取樣分母的變更須回報 Leader（O-009 裁決）。
+
+name: Monitor Health
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    name: sample
+    runs-on: ubuntu-latest
+    steps:
+      - name: 連續取樣 3 次（間隔 20 秒，不帶憑證，不附查詢字串）
+        id: sample
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${STAGING_BASE_URL}" ]; then
+            echo "::notice::STAGING_BASE_URL 尚未設定（尚未首次部署），本次取樣略過。"
+            echo "success_count=0" >> "$GITHUB_OUTPUT"
+            echo "total_count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RESULT_FILE="health-samples.csv"
+          echo "timestamp_utc,attempt,http_code,time_total_seconds" > "${RESULT_FILE}"
+
+          SUCCESS_COUNT=0
+          for attempt in 1 2 3; do
+            TS="$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
+            OUTPUT="$(curl -fsS -o /dev/null -w "%{http_code} %{time_total}" "${STAGING_BASE_URL}/health" || echo "000 0")"
+            CODE="$(echo "${OUTPUT}" | awk '{print $1}')"
+            TIME_TOTAL="$(echo "${OUTPUT}" | awk '{print $2}')"
+            echo "${TS},${attempt},${CODE},${TIME_TOTAL}" >> "${RESULT_FILE}"
+            echo "取樣 ${attempt}/3：${CODE}（${TIME_TOTAL}s）"
+            if [ "${CODE}" = "200" ]; then
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+
+          echo "success_count=${SUCCESS_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "total_count=3" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### monitor-health 取樣結果"
+            echo ""
+            echo "| 次數 | 時間（UTC） | HTTP 狀態碼 | 回應時間（秒） |"
+            echo "|---|---|---|---|"
+            tail -n +2 "${RESULT_FILE}" | awk -F, '{printf "| %s | %s | %s | %s |\n", $2, $1, $3, $4}'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上傳取樣結果（供 NFR-003 24 小時／7 天統計）
+        if: always() && hashFiles('health-samples.csv') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-samples-${{ github.run_id }}
+          path: health-samples.csv
+          retention-days: 90
+
+      - name: 連續 3 次全失敗才標記錯誤
+        if: steps.sample.outputs.total_count == '3' && steps.sample.outputs.success_count == '0'
+        run: |
+          echo "::error::連續 3 次取樣（間隔 20 秒）全部失敗，服務可能不可用，請查 Cloud Run 內建指標（06 §6）。"
+          exit 1

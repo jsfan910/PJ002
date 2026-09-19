@@ -40,12 +40,18 @@ Invoke-WebRequest -UseBasicParsing http://localhost:8080/health | Select-Object 
 
 ### 方式二：本機 Node（不需 Docker；health 端點不查資料庫，可獨立驗證）
 
+**本卡（T-0018）補充**：`src/config.ts` 直接讀 `process.env`，不使用 `dotenv` 套件，
+`.env` 檔**不會被 `npm start` 自動載入**——`cp .env.example .env` 只是複製檔案，
+仍須把檔內變數逐一帶進目前終端機的環境變數，`npm start` 才能讀到。下列兩種
+shell 的載入寫法已各自實測一次（見交接檔驗證方式，含耗時）。
+
 **Git Bash**
 
 ```bash
 cp .env.example .env
 npm ci
 npm run build
+set -a; . ./.env; set +a        # 把 .env 逐行載入目前 shell 的環境變數
 npm start                       # 另開一個終端機視窗執行下一步
 curl -sS http://localhost:8080/health
 ```
@@ -56,6 +62,17 @@ curl -sS http://localhost:8080/health
 Copy-Item .env.example .env
 npm ci
 npm run build
+# 逐行把 .env（複製自 .env.example）的每一個變數設進目前 PowerShell
+# session（沒有 dotenv，需手動設；值請照抄 .env 檔內同名那一行，
+# 不要另外鍵入——本檔不重複列出，以免與 .env.example 兩處要同步維護）。
+# 注意：改用 [System.IO.File]::ReadAllLines()，不要用 Get-Content .env——
+# Windows PowerShell 5.1 的 Get-Content 對「UTF-8 不含 BOM ＋ 含中文註解」
+# 的檔案會誤判編碼，把部分行併讀成一行，導致變數讀不到（本卡實測發現，
+# 逐字重現：Get-Content .env 只讀到 25 行，ReadAllLines 讀到正確的 30 行）：
+[System.IO.File]::ReadAllLines("$PWD\.env") | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
+  $name, $value = $_ -split '=', 2
+  Set-Item -Path "env:$name" -Value $value
+}
 npm start                       # 另開一個終端機視窗執行下一步
 (Invoke-WebRequest -UseBasicParsing http://localhost:8080/health).Content
 ```
@@ -106,9 +123,132 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 見 `.env.example`（本機佔位值）與 `docs/specs/06_部署架構與CICD.md` 第 4 章（名稱、用途，**不含任何值**）。`DATABASE_URL`／`BASIC_AUTH_USER`／`BASIC_AUTH_PASSWORD` 在 staging 只存在於 GCP Secret Manager 與 GitHub secrets，agent 不索取、不代填。
 
-## 部署與雲端資源
+## 部署與 secrets（T-0018）
 
-staging 部署於 GCP Cloud Run（WIF 認證、Artifact Registry 存放映像），詳細的資源建立指令、GitHub secrets／variables 設定與回滾程序，見 `docs/specs/06_部署架構與CICD.md` 與本文件後續由部署卡（T-0018）補上的章節。
+staging 部署於 **GCP Cloud Run**（`min-instances = 0`，免費額度）＋ **Artifact Registry**（映像存放）＋ **Neon Serverless Postgres（Free）**；CI/CD 為 **GitHub Actions**，GCP 認證採 **Workload Identity Federation（WIF）**，倉庫中不存在任何長期金鑰。完整設計見 `docs/specs/06_部署架構與CICD.md`（第 2～6 章）與 `docs/specs/adr/ADR-0005-雲端平台-CloudRun.md`。**下列指令中的憑證與雲端帳號一律由使用者自行設定，agent 不索取、不代填。**
+
+### 前置：GCP 一次性設定（使用者自行執行）
+
+1. **建立 GCP 專案並啟用計費帳戶**（Cloud Run／Artifact Registry 的硬性前提，即使實際費用為 US$0；建議額外設一個 US$1 預算警示，06 §2）。
+
+2. **啟用 API**（Git Bash 與 PowerShell 指令相同，皆為 `gcloud`）：
+
+   ```bash
+   gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
+     iamcredentials.googleapis.com sts.googleapis.com secretmanager.googleapis.com \
+     --project "<你的 GCP_PROJECT_ID>"
+   ```
+
+3. **建立 Artifact Registry repository**（區域與 Cloud Run 同區，保留最近 5 版）：
+
+   ```bash
+   gcloud artifacts repositories create todo-app \
+     --repository-format=docker --location=asia-east1 \
+     --project "<你的 GCP_PROJECT_ID>"
+   gcloud artifacts repositories set-cleanup-policies todo-app \
+     --location=asia-east1 --project "<你的 GCP_PROJECT_ID>" \
+     --policy=<(echo '[{"name":"keep-last-5","action":{"type":"Keep"},"mostRecentVersions":{"keepCount":5}}]')
+   ```
+
+4. **Workload Identity Federation（六步，06 §3.2.1；`<PROJECT_ID>`／`<PROJECT_NUMBER>`／`<owner>/<repo>` 換成實際值）**：
+
+   ```bash
+   # ① 建立 workload identity pool
+   gcloud iam workload-identity-pools create github-pool \
+     --project="<PROJECT_ID>" --location="global" --display-name="GitHub Actions Pool"
+
+   # ② 建立 OIDC provider（attribute condition 務必限定本倉庫，這是最容易出錯也最嚴重的一步）
+   gcloud iam workload-identity-pools providers create-oidc github-provider \
+     --project="<PROJECT_ID>" --location="global" --workload-identity-pool="github-pool" \
+     --issuer-uri="https://token.actions.githubusercontent.com" \
+     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+     --attribute-condition="assertion.repository == '<owner>/<repo>'"
+
+   # ③ 建立部署用服務帳號
+   gcloud iam service-accounts create github-deployer \
+     --project="<PROJECT_ID>" --display-name="GitHub Actions deployer"
+
+   # ④ 把服務帳號綁給「本倉庫的 principalSet」
+   gcloud iam service-accounts add-iam-policy-binding \
+     "github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" \
+     --project="<PROJECT_ID>" --role="roles/iam.workloadIdentityUser" \
+     --member="principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/<owner>/<repo>"
+
+   # ⑤ 授服務帳號三個角色（＋ Secret Manager 存取，見下）
+   for role in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser roles/secretmanager.secretAccessor; do
+     gcloud projects add-iam-policy-binding "<PROJECT_ID>" \
+       --member="serviceAccount:github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" --role="$role"
+   done
+
+   # ⑥ 取得 WIF provider 完整資源名（填進 GitHub secret GCP_WIF_PROVIDER）
+   gcloud iam workload-identity-pools providers describe github-provider \
+     --project="<PROJECT_ID>" --location="global" --workload-identity-pool="github-pool" \
+     --format="value(name)"
+   ```
+
+   PowerShell 語法相同（`gcloud` 是同一份執行檔），僅需把上面的 Git Bash `for` 迴圈改成：
+
+   ```powershell
+   foreach ($role in "roles/run.admin","roles/artifactregistry.writer","roles/iam.serviceAccountUser","roles/secretmanager.secretAccessor") {
+     gcloud projects add-iam-policy-binding "<PROJECT_ID>" `
+       --member="serviceAccount:github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" --role=$role
+   }
+   ```
+
+   **若卡關超過 15 分鐘（NFR-008 門檻）**：改用備選路徑（06 §3.2.2）——建立同一服務帳號的 JSON 金鑰，整份內容放進 GitHub secret `GCP_SA_KEY`，並在部署卡的交接檔記錄「採備選路徑」與待辦「日後補做 WIF 並刪除金鑰」。**兩條路徑二選一，不並存。**
+
+5. **Secret Manager**：建立三個 secret（名稱刻意採小寫連字號，避免與應用程式的環境變數全大寫名稱同形造成憑證掃描誤判），並把值填入（值由使用者自行決定，不由 agent 代填）：
+
+   ```bash
+   for name in database-url basic-auth-user basic-auth-pass; do
+     gcloud secrets create "$name" --project "<PROJECT_ID>" --replication-policy="automatic"
+   done
+   # 之後用下列指令新增版本（互動輸入值，不會出現在 shell history 的參數裡）：
+   #   gcloud secrets versions add database-url --project "<PROJECT_ID>" --data-file=-
+   ```
+
+   `infra/cloudrun-service.yaml` 與 `.github/workflows/deploy-staging.yml` 的 `--set-secrets` 皆以這三個名稱參照（`DATABASE_URL=database-url:latest`、`BASIC_AUTH_USER=basic-auth-user:latest`、`BASIC_AUTH_PASSWORD=basic-auth-pass:latest`）。
+
+6. **Neon**：建立專案、複製連線字串，作為 GitHub secret `NEON_DATABASE_URL`（CI migrate 用）與上面 Secret Manager 的 `database-url`（Cloud Run 執行期用，可與 `NEON_DATABASE_URL` 同一條連線字串）。
+
+### GitHub repository 設定（06 §4.2）
+
+**Settings → Secrets and variables → Actions**，Variables 分頁新增：
+
+| 名稱 | 值 |
+|---|---|
+| `GCP_PROJECT_ID` | 你的 GCP 專案 ID |
+| `GCP_REGION` | `asia-east1` |
+| `GCP_AR_REPOSITORY` | `todo-app` |
+| `GCP_RUN_SERVICE` | `todo-app` |
+| `STAGING_BASE_URL` | 留空；**首次部署成功後**由 dev-ops／使用者回填 Cloud Run 給的 `*.run.app` 網址 |
+
+Secrets 分頁新增：
+
+| 名稱 | 值 |
+|---|---|
+| `GCP_WIF_PROVIDER` | 上面 WIF 設定第 ⑥ 步取得的完整資源名 |
+| `GCP_SERVICE_ACCOUNT` | `github-deployer@<PROJECT_ID>.iam.gserviceaccount.com` |
+| `GCP_SA_KEY` | **僅備選路徑使用**，採 WIF 時不建立 |
+| `NEON_DATABASE_URL` | Neon 連線字串（CI migrate 用） |
+| `STAGING_BASIC_AUTH_USER` | staging 的 Basic Auth 帳號（與 Secret Manager `basic-auth-user` 同值） |
+| `STAGING_BASIC_AUTH_PASSWORD` | staging 的 Basic Auth 密碼（與 Secret Manager `basic-auth-pass` 同值） |
+
+**倉庫可見性（06 §2 對策二選一）**：建議設為**公開**（本專案為框架試跑範例，無機密內容，憑證一律在 secrets），公開倉庫的 Actions 分鐘數不計費，`monitor-health.yml` 每 5 分鐘一次不會超額；若必須私有，改為每 10 分鐘一次並回報 Leader（NFR-003 取樣分母需同步調整）。
+
+### 首次部署後（`.github/workflows/deploy-staging.yml` 自動觸發於 `main` 綠燈）
+
+1. 從該次執行的 `GITHUB_STEP_SUMMARY` 或 `gcloud run services describe todo-app --region asia-east1 --format="value(status.url)"` 取得網址。
+2. 回填三處：GitHub repository variable `STAGING_BASE_URL`；`docs/specs/06_部署架構與CICD.md` 第 1 章環境清單 staging 列；`docs/specs/04_API規格.yaml` 的 `servers` 區塊 staging 項（該值原為佔位符）。
+
+### 本機等效指令（不需 GitHub Actions，直接重現部署／回滾）
+
+- `scripts/deploy-staging.sh`：與 `deploy-staging.yml` 相同的 migrate → build & push → deploy → verify 順序，需先 `export` 好 `GCP_PROJECT_ID`／`GCP_REGION`／`GCP_AR_REPOSITORY`／`GCP_RUN_SERVICE`／`NEON_DATABASE_URL`／`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD`，並已 `gcloud auth login`。
+- `scripts/rollback-staging.sh`：回滾程序（06 §5.1）的本機等效，不帶參數列出 revision 清單，帶一個 revision 名稱參數即執行 `update-traffic` 切流量並驗證。
+
+### 監測
+
+`.github/workflows/monitor-health.yml` 每 5 分鐘連續取樣 3 次 `GET /health`（不帶憑證、不附查詢字串），結果寫入該次執行的 artifact 與摘要，供 NFR-003（Gate 2：連續 24 小時、成功率 ≥ 99%）判讀；連續 3 次全失敗才標記工作流為錯誤。
 
 ## 文件地圖
 
