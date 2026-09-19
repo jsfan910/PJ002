@@ -195,3 +195,10 @@ updated: 2026-09-19T11:45:41+08:00
 - ② S-8：D-01 為權威；不改凍結 SD 文字，改把「D-01 本機佔位值」列入 CR 模板已知例外第 4 類（Leader 更新 docs/templates/code_review_report.md）。
 - ③ 追認 T-0016-①（UUID 格式錯回 400）。
 - 測試線：T-0021／T-0022 對修正前的 main 執行，結果仍有效；修正合併後由 qa-at 對最終 main 重跑一次（T-0021 r2 或由 T-0023 前補跑）。
+
+### 2026-09-19T12:18:14+08:00 — 對 UAT（T-0022 r1）的裁決
+
+- P0 十則：API 層 7 通過、前端 3 阻擋（qa-uat 主張 api-client 缺 credentials: "include"）。
+- 與 dev-tl 審核 T-0017 時在 Chrome 逐 AC 實測 34 條全過（含攔到 PATCH 本文）矛盾；同源 fetch 預設 credentials: same-origin 會帶瀏覽器已持有的 HTTP 認證。**D-FE-001 標「待重現」**，交 qa-lead 於 T-0023 以兩造證據裁定；若確認為工具限制則記「阻擋（工具）」非缺陷。
+- 修正卡合併後，qa-uat 以帶帳密網址的瀏覽器工具重跑前端 3 則（T-0022 r2）。
+- staging 就緒時間取決於使用者提供 GCP／GitHub 設定；未就緒前維持「本機替代」。
