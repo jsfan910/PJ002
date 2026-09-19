@@ -132,3 +132,10 @@ updated: 2026-09-19T07:17:55+08:00
 | ① | Dockerfile 的 `COPY public ./public` 由 T-0014（建立 public/ 的卡）補一行；T-0014 outputs 追加 Dockerfile（僅該行） |
 | ② | 本機 Docker daemon 不可用：docker build／compose 兩條驗證延後到 CI（使用者提供 GitHub repo 後）與 T-0018；不阻擋合併。使用者若要本機驗證請啟動 Docker Desktop |
 | ③ | 接受 `node --test` glob 寫法；dev-tl 審核 T-0011 時同步修正 WBS §1.1 與 §3.3 文字 |
+
+### 2026-09-19T08:23:28+08:00 — 對 dev-tl 審核 T-0011 提出兩項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | README「方式二：本機 Node」補 `.env` 載入步驟（Git Bash `set -a; . ./.env; set +a`；PowerShell 逐行 `$env:` 設定），不改 package.json；交 T-0018（該卡本就擁有 README 部署章節寫入權），並在 T-0018 acceptance 加一條「逐字照 README 方式二可啟動」 |
+| ② | D-01 擴及 `ci.yml` 的 CI service container 佔位值（`ci`／`ci`），性質同本機佔位值；憑證掃描改用 dev-tl 交接檔的補強樣式（含可選引號），qa-cr 檢查表採用 |

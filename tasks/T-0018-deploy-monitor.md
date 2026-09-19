@@ -23,13 +23,14 @@ outputs:
   - .github/workflows/deploy-staging.yml
   - .github/workflows/monitor-health.yml
   - docs/specs/06_部署架構與CICD.md（僅第 1 章網址、第 5 章演練紀錄、第 6 章實作紀錄三處）
-  - README.md（僅部署與 secrets 章節）
+  - README.md（部署與 secrets 章節；並依 Leader 裁決 T-0011-dev-tl-① 在「方式二：本機 Node」補 .env 載入步驟）
 acceptance:
   - WBS §1.8「驗收方式草案」的每條指令實際執行且結果符合，指令與真實輸出貼交接檔
   - npm run lint 與相關測試全綠；不改本卡 outputs 以外的檔案（git diff --stat 佐證）
   - workflow 通過 actionlint 或等效語法檢查；認證用 Workload Identity Federation，倉庫無任何金鑰
   - 離線可驗證到最後一步：本機 docker build、cloudrun-service.yaml 語法檢查；實際部署需使用者提供 GCP 專案與 GitHub repo，缺則在交接檔明列「被憑證阻擋的最後一步」與使用者要做的事
   - 回滾程序（revision 切流量）寫成可執行指令；有 GCP 時實際演練一次並記錄
+  - README 方式二逐字照做可在乾淨 shell 啟動並 curl /health 回 200（Git Bash 與 PowerShell 各實測一次）
 reviewer: dev-tl
 branch: task/T-0018-deploy-monitor
 created: 2026-09-19T07:39:05+08:00
