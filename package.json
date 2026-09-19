@@ -1,0 +1,33 @@
+{
+  "name": "todo-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "E-001 待辦事項 Web 應用（Fastify + TypeScript，ESM）",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "eslint . && tsc --noEmit -p tsconfig.json",
+    "test:unit": "node --test \"tests/unit/**/*.test.ts\"",
+    "test:integration": "node --test \"tests/integration/**/*.test.ts\"",
+    "migrate": "node src/db/migrate.ts",
+    "verify:health": "node scripts/verify-health.ts"
+  },
+  "dependencies": {
+    "@fastify/basic-auth": "^6.3.0",
+    "@fastify/static": "^10.1.4",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.11.0",
+    "typescript": "~5.6.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}
