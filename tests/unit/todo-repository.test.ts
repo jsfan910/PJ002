@@ -52,7 +52,7 @@ function createMockDb(
   const calls: RecordedCall[] = [];
   return {
     calls,
-    async query<T extends Record<string, unknown>>(
+    async query<T = Record<string, unknown>>(
       text: string,
       values: unknown[] = []
     ): Promise<QueryResultLike<T>> {

@@ -292,6 +292,30 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ---
 
+## 7. 三處必須同步的參數表（T-0025，CR S-9，實作紀錄）
+
+Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（文件化 IaC，第 2 章已註明事實來源為工作流參數）、`.github/workflows/deploy-staging.yml` 的 `gcloud run deploy` 步驟、`scripts/deploy-staging.sh` 的同一段 `gcloud run deploy`。三者本應完全一致；下表逐項對照本卡驗收時的現況，供之後任何一處變更時比對，避免無聲飄移。
+
+| 參數 | `infra/cloudrun-service.yaml` | `deploy-staging.yml` | `scripts/deploy-staging.sh` | 現況 |
+|---|---|---|---|---|
+| 區域 | 圖片路徑硬編 `asia-east1`（Knative manifest 本身無 region 欄位，套用時由 `--region` 指定） | `--region "${GCP_REGION}"`（repository variable，值為 `asia-east1`） | `--region "${GCP_REGION}"`（使用者 export，值為 `asia-east1`） | 一致 |
+| 容器埠 | `containerPort: 8080` | `--port 8080` | `--port 8080` | 一致 |
+| CPU | `resources.limits.cpu: "1"` | `--cpu 1` | `--cpu 1` | 一致 |
+| 記憶體 | `resources.limits.memory: 512Mi` | `--memory 512Mi` | `--memory 512Mi` | 一致 |
+| min-instances | `autoscaling.knative.dev/minScale: "0"` | `--min-instances 0` | `--min-instances 0` | 一致 |
+| max-instances | `autoscaling.knative.dev/maxScale: "2"` | `--max-instances 2` | `--max-instances 2` | 一致 |
+| 並行數 | `containerConcurrency: 80` | `--concurrency 80` | `--concurrency 80` | 一致 |
+| 請求逾時 | `timeoutSeconds: 60` | `--timeout 60s` | `--timeout 60s` | 一致 |
+| 非機密環境變數 | `env: NODE_ENV=production, LOG_LEVEL=info, CORS_ALLOWED_ORIGINS=""` | `--set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS="` | `--set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS="` | 一致 |
+| 機密（Secret Manager 參照） | `secretKeyRef`：`DATABASE_URL←database-url:latest`、`BASIC_AUTH_USER←basic-auth-user:latest`、`BASIC_AUTH_PASSWORD←basic-auth-pass:latest` | `--set-secrets "DATABASE_URL=database-url:latest,BASIC_AUTH_USER=basic-auth-user:latest,BASIC_AUTH_PASSWORD=basic-auth-pass:latest"` | 同左（逐字相同） | 一致 |
+| ingress／未驗證存取 | `annotations: run.googleapis.com/ingress: all`（僅控制入口來源，**不等同 IAM 的 `roles/run.invoker` 綁定**） | `--allow-unauthenticated`（gcloud 會同時綁 `allUsers` 的 `roles/run.invoker`） | `--allow-unauthenticated`（同左） | **飄移**：套用 IaC 檔（`gcloud run services replace`）不會自動把服務設為允許未驗證呼叫；日常自動部署走 `deploy-staging.yml`／`deploy-staging.sh` 的 `gcloud run deploy`，皆帶 `--allow-unauthenticated`，故實際服務狀態一致；但若有人改用 `services replace` 手動套用 IaC 檔，需另外執行一次 `gcloud run services add-iam-policy-binding <service> --member=allUsers --role=roles/run.invoker`，否則平台層會擋在應用層 Basic Auth 之前 |
+| startup／liveness probe | `startupProbe`（`GET /health`，`initialDelaySeconds: 0`、`periodSeconds: 5`、`timeoutSeconds: 3`、`failureThreshold: 3`）＋ `livenessProbe`（同路徑，`periodSeconds: 30`、`timeoutSeconds: 3`、`failureThreshold: 3`） | 無對應 `gcloud run deploy` flag（`gcloud` 目前不支援以旗標設定自訂 probe；套用 `gcloud run deploy` 時 Cloud Run 使用平台預設探測） | 同左（無對應 flag） | **飄移（已知，ADR-0005 授權 dev-ops 決定去留的取捨之一）**：探測設定**只存在於 IaC 檔**。日常部署路徑（`gcloud run deploy`）目前吃 Cloud Run 平台預設的啟動探測（對容器埠打 TCP 或依映像宣告），並非本檔宣告的 `/health` HTTP 探測。若要讓 `/health` 探測實際生效，須改用 `gcloud run services replace infra/cloudrun-service.yaml`（並先手動代入 `<GCP_PROJECT_ID>`／`<IMAGE_TAG>`）取代 `gcloud run deploy`，或等 `gcloud run deploy` 支援對應旗標後再收斂為單一事實來源。此項為既有已知落差，本卡未變更任何一處部署邏輯，僅在此列表存查 |
+| 服務帳號執行身分 | 不宣告（由映像的 `USER appuser` 決定，非 root），本檔亦不重複宣告 | 同左（不由 `gcloud run deploy` 指定容器內執行身分） | 同左 | 一致（皆委由 Dockerfile） |
+
+**維護規則**：日後任何人變更上表任一參數，須同時檢查其餘兩處是否需要跟進；若刻意留下差異（例如 probe 一項），須在本表「現況」欄註明理由與影響範圍，不得無聲飄移。
+
+---
+
 ## 變更紀錄
 
 | 日期 | version | 任務卡 | 變更摘要 |

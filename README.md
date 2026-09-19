@@ -11,7 +11,7 @@
 - **`package.json` 的 `type`：`module`**（ESM）。
 - **`tsconfig.json` 的 `module`／`moduleResolution`：`NodeNext`**（配合 ESM，`target: ES2022`）。
 - 因此前端測試檔命名為 **`*.test.mjs`**（Leader 裁決 D-03），後端測試檔為 `*.test.ts`（以 Node 內建的 TypeScript 型別剝除直接執行，見下方「已知平台限制」）。
-- Node.js：本機開發用 `>=22`（`engines.node`），`Dockerfile`／CI 一律釘選 `node:22-alpine`（ADR-0001）。
+- Node.js：本機開發用 `>=22.18`（`engines.node`；T-0025 由 `>=22` 收緊，因 `scripts/verify-health.ts` 直接以 `node` 執行 `.ts`，依賴 Node 22.18+ 才預設開啟的型別剝除），`Dockerfile`／CI 一律釘選 `node:22-alpine`（ADR-0001）。
 - 版本釘選：`fastify@^5`、`@fastify/basic-auth@^6`、`@fastify/static@^10`、`pg@^8`（執行期）；`typescript@~5.6`、`eslint@^10`、`typescript-eslint@^8`（開發期）。實際鎖定版本以 `package-lock.json` 為準；**`package.json`／`package-lock.json` 定案後不再更動**（單一擁有者，新增相依需先向 dev-tl 提出）。
 
 ## 快速開始
@@ -82,10 +82,10 @@ npm start                       # 另開一個終端機視窗執行下一步
 | 目的 | 指令 |
 |---|---|
 | 安裝相依 | `npm ci` |
-| 開發模式（自動重啟） | `npm run dev` |
+| 開發模式（自動重啟，**需開兩個終端機**，見下方但書） | `npm run dev:build`（終端機一）＋ `npm run dev:run`（終端機二） |
 | 建置（`tsc`） | `npm run build` |
 | 啟動（讀 `dist/`） | `npm start` |
-| Lint（ESLint ＋ `tsc --noEmit`） | `npm run lint` |
+| Lint（ESLint ＋ `tsc --noEmit`，同時檢查 `src/` 與 `tests/`） | `npm run lint` |
 | 單元測試（後端 `*.test.ts` ＋ 前端 `*.test.mjs`，需先 `npm run build`） | `npm run build && npm run test:unit` |
 | 整合測試（需先 `npm run build`，見下方限制） | `npm run test:integration` |
 | Migration（**需先 `npm run build`**，腳本讀 `dist/db/migrate.js`） | `npm run build && npm run migrate` |
@@ -99,6 +99,8 @@ npm start                       # 另開一個終端機視窗執行下一步
 - `tests/integration/health.test.ts` 匯入路徑指向 `../../dist/`（編譯後產物）而非 `../../src/`：Node 原生的 TypeScript 型別剝除不會把 `.js` 匯入規格自動對應回同名 `.ts` 檔（這是 TypeScript 5.7 的 `rewriteRelativeImportExtensions` 才有的能力；本專案釘選 `~5.6`，尚無此功能）。因此**跑整合測試前務必先 `npm run build`**（`npm run test:integration` 之前的所有本文件範例皆已按此順序排列）。
 - 同一原因，**`npm run migrate` 前也必須先 `npm run build`**：`src/db/migrate.ts` 以 `.js` 規格匯入 `../config.js`，直接執行 `.ts` 會 `ERR_MODULE_NOT_FOUND`。`migrate` 腳本已改為讀 `dist/db/migrate.js`（與 `npm start` 同模式，Leader 裁決 T-0013-②）。部署時的順序固定為 **build → migrate → deploy**（06 §3）。
 - 同一原因，`npm run test:unit` 也需先 `npm run build`（部分單元測試檔匯入 `dist/`）；`.github/workflows/ci.yml` 的 `unit` job 已於 `test:unit` 前加一步 `npm run build`（Leader 裁決 T-0012-①）。
+- **`npm run dev` 已拆成兩個 script**（T-0025，CR S-11）：原 `node --watch src/server.ts` 必然失敗，同一 `ERR_MODULE_NOT_FOUND` 原因——`src/server.ts` 以 `.js` 規格匯入，Node 的型別剝除不會對應回 `.ts`。本專案未安裝 `concurrently`／`npm-run-all`（package.json 為單一擁有者，新增相依需先向 dev-tl 提出），因此開發模式改為**兩個終端機分別執行**：終端機一 `npm run dev:build`（`tsc -w`，持續編譯到 `dist/`）；終端機二等第一次編譯完成後執行 `npm run dev:run`（`node --watch dist/server.js`，`dist/` 變動時自動重啟）。兩者都需先設好環境變數（同「方式二：本機 Node」章節）。
+- **`npm run lint` 現在也需要先 `npm run build`**（T-0025，CR S-4）：新增的 `tsconfig.test.json` 讓 `lint` 一併對 `tests/**/*.ts` 執行 `tsc --noEmit`，而多數整合測試與部分單元測試以 `../../dist/...` 匯入編譯產物（見上面兩點的同一原因），`dist/` 不存在時會是 `TS2307 Cannot find module`。本文件與 `scripts/deploy-staging.sh` 的既有順序（`npm ci && npm run build` 在前）不受影響；**`.github/workflows/ci.yml` 的 `lint` job 目前是 `npm ci` 後直接 `npm run lint`、尚未加 `npm run build`**，此缺口已寫入本卡（T-0025）交接檔「需要 Leader 裁決的事」，因 `ci.yml` 不在本卡 `outputs` 範圍，需由 dev-tl 另行補一步 `npm run build`（比照 `unit`／`integration` 兩個 job 已有的做法，Leader 裁決 T-0012-①同案）。
 
 ## 目錄結構
 
@@ -142,6 +144,8 @@ npm start                       # 另開一個終端機視窗執行下一步
 ## 環境變數
 
 見 `.env.example`（本機佔位值）與 `docs/specs/06_部署架構與CICD.md` 第 4 章（名稱、用途，**不含任何值**）。`DATABASE_URL`／`BASIC_AUTH_USER`／`BASIC_AUTH_PASSWORD` 在 staging 只存在於 GCP Secret Manager 與 GitHub secrets，agent 不索取、不代填。
+
+**`POSTGRES_HOST_PORT`（T-0025，CR S-10）**：`docker-compose.yml` 的 `db` 服務對外埠已改為 `"${POSTGRES_HOST_PORT:-5432}:5432"`（容器內部埠固定 5432 不受影響，`DATABASE_URL` 內的 `db:5432` 也不用改）。本機多專案／多 git worktree 平行開發若撞埠，在 `.env` 設一個未被占用的值（例如 `POSTGRES_HOST_PORT=5433`）即可，未設定時預設仍為 `5432`。
 
 ## 部署與 secrets（T-0018）
 
