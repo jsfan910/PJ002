@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-fe
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0014, T-0016]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0017-todo-store-view
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T11:05:00+08:00
+updated: 2026-09-19T11:32:00+08:00
 blocked_reason: null
 ---
 
@@ -59,3 +59,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | lint／24＋75 單元測試全綠；WBS §1.7 六條 grep 逐字重跑符合；`index.html` diff 僅一行 script、11 個 data-testid 未變、`api-client.js`／`styles.css` 未改；憑證掃描零命中。實際起 docker compose 以瀏覽器逐 US-001～US-008 共 34 條 AC 操作，全部通過（含 PATCH 送目標值 `{"isCompleted":false}`、刪除二次確認可取消、停掉後端的網路錯誤顯示與重試復原、375／1280 兩尺寸無橫向捲動、XSS 原樣顯示）。7 條假設與決策全部接受。已合併 main（1ad255d） | worklog/handoff/20260919-1130-T0017-r1-dev-tl.md |
