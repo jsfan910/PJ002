@@ -6,13 +6,15 @@
 
 ## 進行中
 
-- 批次 3：T-0015 Basic Auth／靜態託管 ｜ dev-be/sonnet ｜ r1 ｜ 09:05 派工（worktree）
+（無）
 
 （無）
 
 （無）
 
 ## 審核中
+
+- T-0015 Basic Auth／靜態託管（bf09880）｜ reviewer dev-tl ｜ 09:20 初審中
 
 （無）
 
