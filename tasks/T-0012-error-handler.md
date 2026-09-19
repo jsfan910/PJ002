@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0011]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0012-error-handler
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T08:39:04+08:00
+updated: 2026-09-19T08:46:00+08:00
 blocked_reason: null
 ---
 
@@ -59,3 +59,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 重跑 WBS §1.2 六條驗收指令全數符合（404 統一結構、grep 堆疊為 0、redact／Internal Server Error 有輸出）；lint exit 0、build exit 0、unit 7/7、integration 8/8；Error 契約與 04 逐欄一致（enum 五值、additionalProperties:false、5xx 無 details 且固定字面值）；app.ts 僅新增錨點一行＋import 一行（Leader 裁決 T-0012-②）、既有行零改動；假設與決策 5 條全接受；憑證掃描唯一命中為測試假字串。已合併 main | worklog/handoff/20260919-0843-T0012-r1-dev-tl.md |
