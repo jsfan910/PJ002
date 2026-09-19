@@ -263,3 +263,9 @@ updated: 2026-09-19T14:06:43+08:00
 - 建議（交 dev-ops 寫進 06 第 6 章）：secret 改釘具體版本而非 latest，並在 deploy 後 verify 失敗時自動再建一個 revision 重試一次。
 - 安全提醒：使用者曾將 staging 帳密貼入對話，驗收後建議輪換（Secret Manager 加新版 + GitHub secrets 更新 + 重新部署）。
 - 注意：Leader 手動 `configure-docker` 曾寫入 docker credHelpers（asia-east1-docker.pkg.dev → gcloud），需 SDK bin 在 PATH 才能運作；不影響 CI。
+
+### 2026-09-19T16:51:26+08:00 — T-0027 done；紀錄更正
+
+- T-0027 done 並合併推送（main b4b9d41）。追認：acceptance 第 5 條（monitor 至少一次採樣）因 GitHub 排程延遲未達成，不阻擋合併，列追蹤項；已請使用者手動觸發 Monitor Health。
+- **更正 16:30 那段**：依 gcloud run revisions list，Leader 手動 update-secrets 建的是 revision 00002-sn7（08:28:56Z），CI attempt 2 建的是 00003-lt2（08:29:05Z）；原文寫反，以本段與 06 §6.7 為準。結論不變。
+- 三個 revision：00001（首次，verify 401）、00002（Leader）、00003（CI，現 100% 流量；T-0027 合併推送後將再產生 00004）。
