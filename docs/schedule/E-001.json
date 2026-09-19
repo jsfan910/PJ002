@@ -1,0 +1,39 @@
+{
+  "epic": "E-001",
+  "title": "E-001 待辦事項 Web 應用 專案時程表",
+  "tz": "+08:00",
+  "epicStatus": "gate2 · staging 補驗中",
+  "staging": "todo-app-dpevsdhdva-de.a.run.app",
+  "artifactUrl": "https://claude.ai/artifact/N1rVG41MPit4djNJEKGZxV",
+  "output": "docs/專案時程表_{date}.html",
+  "phases": [
+    { "key": "plan", "label": "規劃階段（規格包，Gate 1）" },
+    { "key": "dev-plan", "label": "開發準備（WBS）" },
+    { "key": "qa-plan", "label": "測試準備（測試計畫、案例、追溯）" },
+    { "key": "dev", "label": "開發（五批次）" },
+    { "key": "qa", "label": "測試（CR / AT / UAT / 總結）" },
+    { "key": "dev-fix", "label": "Code Review 修正" },
+    { "key": "staging", "label": "staging 部署" },
+    { "key": "qa-staging", "label": "staging 補驗（Gate 2 r2）" },
+    { "key": "ops", "label": "維運" }
+  ],
+  "phaseByTeam": { "leader": "plan", "plan": "plan", "dev": "dev", "qa": "qa" },
+  "phaseById": {
+    "T-0008": "dev-plan",
+    "T-0009": "qa-plan", "T-0019": "qa-plan",
+    "T-0024": "dev-fix", "T-0025": "dev-fix", "T-0026": "dev-fix",
+    "T-0027": "staging",
+    "T-0028": "qa-staging", "T-0029": "qa-staging", "T-0030": "qa-staging",
+    "T-0031": "ops"
+  },
+  "extraCards": [
+    { "id": "T-0000", "title": "團隊協作計畫書（Phase 0 框架）", "team": "leader", "role": "leader", "status": "done", "round": 1, "deps": [], "created": "2026-09-19T04:01:00", "updated": "2026-09-19T05:12:00", "segs": [{ "round": 1, "who": "leader", "start": "2026-09-19T04:01:00", "end": "2026-09-19T05:12:00", "review": false }] }
+  ],
+  "gates": [
+    { "t": "2026-09-19T06:57:00", "label": "Gate 1 報告" },
+    { "t": "2026-09-19T14:10:00", "label": "Gate 2 報告 r1" },
+    { "t": "2026-09-19T16:29:00", "label": "staging 上線" },
+    { "t": "2026-09-19T16:46:00", "label": "NFR-003 採樣起算" }
+  ],
+  "notes": "NFR-003 24 小時採樣自 2026-09-19 16:46 起算，判讀時間 2026-09-20 16:46 之後。"
+}

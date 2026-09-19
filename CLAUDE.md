@@ -19,7 +19,7 @@
 - 規格文件：`docs/specs/`（01 SRS、01a 澄清、02 SA、03 SD、04 API、05 DB、06 部署、07 測試計畫、10 WBS、20 測試案例、24 缺陷、adr/、traceability.md）
 - 模板：`docs/templates/`（任務卡、交接、升級單、Gate 報告、各規格與報告）
 - 報告：`docs/reports/yyyymmdd-HHmm-{主題}.md`（給決策者閱讀，不是事實來源）
-- 角色定義：`.claude/agents/{role}.md`；流程技能：`.claude/skills/{dispatch,handoff,review-round,takeover}/`
+- 角色定義：`.claude/agents/{role}.md`；流程技能：`.claude/skills/{dispatch,handoff,review-round,takeover,schedule-report}/`（schedule-report 產出 WBS＋甘特圖時程表）
 - 文件封存：`docs/archive/*`（已被取代之舊版文件，登錄檔 `docs/archive/_index.md`）。 **該目錄僅供歷史查閱，禁止作為引用之依據。**
 
 ## 協作協定（摘要；完整版見計畫書第 6、7 章）
