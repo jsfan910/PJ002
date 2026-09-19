@@ -26,6 +26,18 @@ process.env.BASIC_AUTH_USER ??= "test";
 process.env.BASIC_AUTH_PASSWORD ??= "test";
 process.env.LOG_LEVEL ??= "silent";
 
+// T-0015 收尾：全站 Basic Auth（BE-02）自 [ANCHOR:auth] 生效後涵蓋**全部**
+// 路由，`/health` 是唯一豁免（SD §6.2、ADR-0004）。本檔的測試用路由與
+// `/no-such-path` 都不是豁免路徑，因此每個 app.inject() 都必須帶憑證，
+// 否則會先被 401 擋下、驗不到錯誤契約本身。憑證由上方測試預設的環境變數
+// 組出（不寫入任何字面值，硬前提 5）；斷言邏輯未變動。
+const AUTH_HEADERS = {
+  authorization: `Basic ${Buffer.from(
+    `${process.env.BASIC_AUTH_USER}:${process.env.BASIC_AUTH_PASSWORD}`,
+    "utf-8"
+  ).toString("base64")}`
+};
+
 function buildTestApp() {
   const app = buildApp(loadConfig());
 
@@ -64,7 +76,7 @@ function buildTestApp() {
 test("未知路徑：統一結構 404，含 requestId，不含 details／堆疊", async () => {
   const app = buildTestApp();
 
-  const response = await app.inject({ method: "GET", url: "/no-such-path" });
+  const response = await app.inject({ method: "GET", url: "/no-such-path", headers: AUTH_HEADERS });
 
   assert.equal(response.statusCode, 404);
   const body = response.json();
@@ -81,7 +93,7 @@ test("未知路徑：統一結構 404，含 requestId，不含 details／堆疊"
 test("AppError(E_VALIDATION)：400，details 逐欄一致（code/message/details/requestId）", async () => {
   const app = buildTestApp();
 
-  const response = await app.inject({ method: "GET", url: "/__test/app-error" });
+  const response = await app.inject({ method: "GET", url: "/__test/app-error", headers: AUTH_HEADERS });
 
   assert.equal(response.statusCode, 400);
   assert.deepEqual(Object.keys(response.json()).sort(), ["code", "details", "message", "requestId"]);
@@ -97,7 +109,7 @@ test("AppError(E_VALIDATION)：400，details 逐欄一致（code/message/details
 test("AppError(E_NOT_FOUND)：404，無 details 欄位", async () => {
   const app = buildTestApp();
 
-  const response = await app.inject({ method: "GET", url: "/__test/not-found-error" });
+  const response = await app.inject({ method: "GET", url: "/__test/not-found-error", headers: AUTH_HEADERS });
 
   assert.equal(response.statusCode, 404);
   const body = response.json();
@@ -111,7 +123,7 @@ test("AppError(E_NOT_FOUND)：404，無 details 欄位", async () => {
 test("未預期例外：500 固定訊息 Internal Server Error，不洩漏例外訊息／堆疊／SQL", async () => {
   const app = buildTestApp();
 
-  const response = await app.inject({ method: "GET", url: "/__test/boom" });
+  const response = await app.inject({ method: "GET", url: "/__test/boom", headers: AUTH_HEADERS });
 
   assert.equal(response.statusCode, 500);
   const body = response.json();
@@ -130,6 +142,7 @@ test("Fastify schema 驗證失敗：400 E_VALIDATION，details 只含欄位與�
   const response = await app.inject({
     method: "POST",
     url: "/__test/validated",
+    headers: AUTH_HEADERS,
     payload: { title: "" }
   });
 
@@ -146,7 +159,7 @@ test("Fastify schema 驗證失敗：400 E_VALIDATION，details 只含欄位與�
 test("requestId 與 pino 的 reqId 為同一值（NFR-005）", async () => {
   const app = buildTestApp();
 
-  const response = await app.inject({ method: "GET", url: "/__test/not-found-error" });
+  const response = await app.inject({ method: "GET", url: "/__test/not-found-error", headers: AUTH_HEADERS });
   const body = response.json();
 
   // Fastify 的 request.id 即 pino 子日誌所綁定的 reqId（同一個值，非另外生成）。

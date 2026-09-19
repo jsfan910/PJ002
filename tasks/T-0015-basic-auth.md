@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-be
 model: sonnet
-status: review
+status: done
 round: 1
 depends_on: [T-0011, T-0012, T-0014]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0015-basic-auth
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T09:08:02+08:00
+updated: 2026-09-19T09:30:00+08:00
 blocked_reason: null
 ---
 
@@ -59,3 +59,4 @@ blocked_reason: null
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
+| r1 | dev-tl | done | 五條 acceptance 全通過。WBS §1.5 十條驗收指令實際起服務重跑全符合（health-no-cred=200／health-with-query=200／healthz-secret=401／root-no-cred=401／asset-no-cred=401／root-with-cred=200／`WWW-Authenticate: Basic realm="staging"`／timingSafeEqual 有命中／禁前綴 grep 無輸出／auth-basic 13 綠）；lint 0、build 0、單元 33/33、health 2/2。安全重點自行加驗全通過：豁免邊界 `//health`／`///health`／`/health/`／`/healthx`／`/HEALTH`／`/health%20`／`/%68ealth`／`/health;x=1` 皆正確回 401；常數時間比較（長度不等仍等長比較）；憑證只從 config 讀、outputs 無硬編碼憑證；`redact` 實測日誌 0 次憑證外洩；`/assets/` 無目錄列表回統一 404；`src/app.ts` 僅 4 個 `+` 行、0 個 `-` 行且錨點順序未動。交接檔六條「假設與決策」全部接受。發現 1 項非阻擋級邊界：帶點節段且正規化為 `/health` 的原始路徑（如 `/a/../health`）會被豁免，但經 `--path-as-is` 實測只能落到靜態萬用路由並被 `@fastify/send` 以 403 擋下、不讀取任何檔案，**不構成保護繞過**，已寫入審核交接檔「下一步建議」第 2 點供 T-0016 順手強化。 | worklog/handoff/20260919-0912-T0015-r1-dev-tl.md |
