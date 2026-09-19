@@ -9,7 +9,7 @@
 - T-0021 r2 AT 對最終 main 重跑 ｜ qa-at/sonnet ｜ 13:15 派工
 
 （無）
-- T-0022 r2 UAT 前端三則重跑 ｜ qa-uat/haiku ｜ 13:00 派工
+（無）
 
 （無）
 
@@ -17,6 +17,7 @@
 ## 審核中
 
 - T-0020 r2 CR（5a346b1，阻擋 0）｜ reviewer qa-lead（T-0023）
+- T-0022 r2 UAT（10/10）｜ reviewer qa-lead（T-0023）
 
 （無）
 
