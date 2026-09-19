@@ -5,7 +5,7 @@ epic: E-001
 team: qa
 role: qa-uat
 model: sonnet
-status: in_progress
+status: review
 round: 2
 depends_on: [T-0027]
 blocked_reason: null
@@ -32,7 +32,7 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-19T16:31:34+08:00
-updated: 2026-09-19T16:54:38+08:00
+updated: 2026-09-19T17:12:47+08:00
 blocked_reason: null
 ---
 
