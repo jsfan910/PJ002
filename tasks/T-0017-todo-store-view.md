@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-fe
 model: sonnet
-status: todo
+status: in_progress
 round: 1
 depends_on: [T-0014, T-0016]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0017-todo-store-view
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T07:39:05+08:00
+updated: 2026-09-19T09:47:42+08:00
 blocked_reason: null
 ---
 

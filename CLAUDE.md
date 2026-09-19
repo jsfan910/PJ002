@@ -102,3 +102,4 @@
 - **Bash 裡不要呼叫 `python3`／`python`**：本機未安裝 Python，`python3` 會被 Windows 應用程式執行別名接管而無限等待，整條指令卡到逾時。文字處理一律用 sed／awk／grep，或 Write 工具。（2026-09-19，Leader 裁決寫入時卡 120 秒後以 taskkill 終止）
 - **Agent 的 git 只准 append：禁止 `--amend`、`reset`、`rebase`、`checkout -- <file>`**。平行作業時 HEAD 可能已是別人的 commit，amend／reset 會把別人的提交移出分支。commit 訊息打錯就再開一個修正 commit；只 `git add` 自己卡的 outputs，永不 `add -A`。（2026-09-19，T-0006 amend 撞掉平行的 T-0007 commit，Leader 以工作區比對後重提交復原）
 - **開發卡（有 branch 的卡）一律在 git worktree 內作業，不在專案根目錄切分支**：`git worktree add "<根目錄>-wt/T-####" -b task/T-####-slug`，所有檔案操作、npm、docker、測試、commit 都在該 worktree 內；根目錄永遠停在 main 供文件卡與 Leader 使用。合併由 dev-tl 在根目錄 `git merge --no-ff task/...`，合併後 `git worktree remove`。（2026-09-19，T-0011 派工時發現根目錄切分支會讓平行文件卡的 commit 落到錯的分支）
+- **多行 commit 訊息一律寫進檔案再 `git commit -F <file>`**：Bash 工具是 Git Bash，PowerShell here-string（`@'…'@`）會把 `@` 當成訊息首行；`-m` 多行又受單引號限制。（2026-09-19，T-0016 收尾 commit 首行誤植 `@`，因禁止 amend 以空 commit 更正）

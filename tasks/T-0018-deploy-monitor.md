@@ -5,7 +5,7 @@ epic: E-001
 team: dev
 role: dev-ops
 model: sonnet
-status: todo
+status: in_progress
 round: 1
 depends_on: [T-0010, T-0011, T-0015, T-0016]
 inputs:
@@ -34,7 +34,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0018-deploy-monitor
 created: 2026-09-19T07:39:05+08:00
-updated: 2026-09-19T07:39:05+08:00
+updated: 2026-09-19T09:47:42+08:00
 blocked_reason: null
 ---
 
