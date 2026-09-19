@@ -124,3 +124,11 @@ updated: 2026-09-19T07:17:55+08:00
 | 2 | 保溫維持每 5 分鐘（與 NFR-003 監測同頻）；每 10 分鐘僅作私有倉庫節流備案 |
 | 3 | 04_API規格.yaml 的 staging servers 佔位符同次修正改為 Cloud Run 形式（https://todo-app-staging-<hash>-<region>.run.app，dev-ops 部署後回填實值） |
 | 4 | 不建立 infra/render.yaml；T-0018 outputs 只有 infra/cloudrun-service.yaml |
+
+### 2026-09-19T08:13:18+08:00 — 對 T-0011 三項的裁決
+
+| # | 裁決 |
+|---|---|
+| ① | Dockerfile 的 `COPY public ./public` 由 T-0014（建立 public/ 的卡）補一行；T-0014 outputs 追加 Dockerfile（僅該行） |
+| ② | 本機 Docker daemon 不可用：docker build／compose 兩條驗證延後到 CI（使用者提供 GitHub repo 後）與 T-0018；不阻擋合併。使用者若要本機驗證請啟動 Docker Desktop |
+| ③ | 接受 `node --test` glob 寫法；dev-tl 審核 T-0011 時同步修正 WBS §1.1 與 §3.3 文字 |

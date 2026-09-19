@@ -23,6 +23,7 @@ outputs:
   - public/styles.css
   - public/assets/api-client.js
   - tests/unit/api-client.test.mjs
+  - Dockerfile（僅新增 COPY public ./public 一行，Leader 裁決 T-0011-①）
 acceptance:
   - WBS §1.4「驗收方式草案」的每條指令實際執行且結果符合，指令與真實輸出貼交接檔
   - npm run lint 與相關測試全綠；不改本卡 outputs 以外的檔案（git diff --stat 佐證）

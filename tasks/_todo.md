@@ -6,9 +6,11 @@
 
 ## 進行中
 
-- T-0011 專案骨架＋CI＋/health＋README ｜ dev-ops/sonnet ｜ r1 ｜ 07:45 派工（批次 1）
+（無）
 
 ## 審核中
+
+- T-0011 專案骨架 ｜ dev-ops/sonnet ｜ r1 ｜ reviewer dev-tl（審核中，分支 task/T-0011-project-skeleton）
 
 （無）
 
