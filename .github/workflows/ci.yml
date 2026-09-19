@@ -42,6 +42,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # 單元測試需先 build：部分測試檔匯入 dist/（NodeNext 的 .js 匯入規格
+      # 無法由 Node 原生型別剝除解析回同名 .ts）。Leader 裁決 T-0012-①。
+      - run: npm run build
       - run: npm run test:unit
 
   build:
