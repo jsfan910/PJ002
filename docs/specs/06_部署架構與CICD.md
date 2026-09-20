@@ -2,11 +2,11 @@
 doc: DEPLOY
 title: 部署架構與 CI/CD
 epic: E-001
-version: 0.2           # T-0010 規格變更（雲端平台改 GCP Cloud Run），變更紀錄見文末
+version: 0.3           # T-0040 規格變更（cron 定位、secret 版本釘定、3xx 導向、IAM 角色補列），變更紀錄見文末
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-19T18:20:00+08:00
+updated: 2026-09-20T19:27:03+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -42,14 +42,47 @@ GCP 專案與計費帳戶由**使用者**提供。以下每項資源的**建立�
 | 資源 | 規格 | 用途 | 費用估計 |
 |---|---|---|---|
 | **Cloud Run service**（名稱建議 `todo-app`） | 區域 `asia-east1`；容器埠 `8080`；記憶體 `512Mi`；CPU `1`（僅請求期間計費）；**`min-instances = 0`**、`max-instances = 2`；並行數 `80`；請求逾時 `60s`；startup probe 指向 `GET /health`；`--allow-unauthenticated`（應用層自行以 Basic Auth 擋整站，ADR-0004） | **單一**對外服務，同時供應單頁前端（`public/`）與 REST API（`/api/v1/*`）。同源部署（Leader 裁決 O-004） | **US$0**。每月免費額度：200 萬次請求、360,000 GB-秒記憶體、180,000 vCPU-秒。本案用量（監測 288–576 次／日＋UAT 手動操作）約為額度的千分之一 |
-| **Cloud Run 自動 TLS 憑證＋網址** | `*.run.app` 平台憑證，自動配發與更新；HTTP 請求由 Google 前端 301 導向 HTTPS | AC-010-2、BR-025、NFR-002① —— **由平台滿足，團隊零程式碼** | US$0（含於上） |
+| **Cloud Run 自動 TLS 憑證＋網址** | `*.run.app` 平台憑證，自動配發與更新；HTTP 請求由 Google 前端以 **3xx（實測 302 Found）** 導向 HTTPS。**判準為「回 3xx 且 `Location` 為對應的 `https://` 網址」，不寫死單一狀態碼**（T-0040／D-016：原文寫死 301，AT r3 與 qa-lead 各自獨立實測皆為 302；Leader 2026-09-19T17:30:10 裁決①接受 302 等效，規範意圖是強制 HTTPS，團隊零程式碼可改） | AC-010-2、BR-025、NFR-002① —— **由平台滿足，團隊零程式碼** | US$0（含於上） |
 | **Artifact Registry repository**（名稱建議 `todo-app`） | 格式 `DOCKER`；區域 `asia-east1`（**與 Cloud Run 同區**，避免跨區流量費）；完整路徑 `asia-east1-docker.pkg.dev/<PROJECT_ID>/todo-app/todo-app`；映像以 **commit SHA** 標記，另推一個 `latest`；**清理政策：保留最近 5 個版本** | 存放 CI 建置的容器映像。Cloud Run 從此處拉映像部署；**回滾依賴舊映像仍在**，故保留數不得少於 3 | **US$0**。每月 0.5 GB 儲存免費；本映像約 150 MB（`node:22-alpine` 多階段），保留 5 版仍在額度內（層共用，實際佔用遠低於 5 × 150 MB） |
 | **Neon Serverless Postgres** | Free 方案、PostgreSQL 16、0.5 GB 儲存、閒置自動暫停。**不變（ADR-0002）** | `todos`、（P1）`users` 的持久化。**與運算實例分離**，重新部署與回滾都不觸碰資料（NFR-006、AC-010-3） | **US$0**。免費方案無到期日 |
-| **GCP IAM：Workload Identity Federation 一組** | Workload identity pool ＋ OIDC provider（`token.actions.githubusercontent.com`），綁定條件限定本倉庫；一個部署用服務帳號，授三個角色：`roles/run.admin`、`roles/artifactregistry.writer`、`roles/iam.serviceAccountUser` | GitHub Actions 免長期金鑰認證 GCP（第 3 章） | **US$0**。IAM 與 WIF 不計費 |
+| **GCP IAM：Workload Identity Federation 一組** | Workload identity pool ＋ OIDC provider（`token.actions.githubusercontent.com`），綁定條件限定本倉庫；一個部署用服務帳號，授**五個角色**（見下方「部署服務帳號角色清單」） | GitHub Actions 免長期金鑰認證 GCP（第 3 章） | **US$0**。IAM 與 WIF 不計費 |
 | **GitHub Actions** | 公開倉庫免費；私有倉庫每月 2000 分鐘免費額度 | CI（lint／unit／build／integration）、部署、定時健康檢查（兼保溫） | US$0（CI 每次約 3–5 分鐘；監測每次約 1 分鐘 × 288 次／日 ≈ 私有倉庫需注意額度，見下） |
 | ~~Cloud Scheduler~~ | **不採用** | 定時喚醒的候選方案 | — |
 
 **合計經常性費用：US$0。**
+
+### 2.1 部署服務帳號角色清單（`github-deployer@<專案ID>.iam.gserviceaccount.com`）
+
+**五個角色缺一不可，每個角色對應 pipeline 中一個具體的 API 呼叫。**少授任何一個，`deploy-staging.yml` 會在對應階段紅燈（T-0040 補列；第 5 項的實例見 §6.9.1）。
+
+| 角色 | 用途（pipeline 中哪一步需要它） | 少了會怎樣 |
+|---|---|---|
+| `roles/run.admin` | `gcloud run deploy`、`gcloud run services describe`／`update-traffic`（§3.2 deploy 階段、§5.1 回滾） | 部署與回滾皆失敗 |
+| `roles/artifactregistry.writer` | `docker push` 映像到 Artifact Registry（§3.2 build & push 階段） | 推映像失敗，不產生新 revision |
+| `roles/iam.serviceAccountUser` | `gcloud run deploy` 需以 Cloud Run 執行期服務帳號的身分部署服務 | deploy 階段因無法「act as」服務帳號而失敗 |
+| `roles/secretmanager.secretAccessor` | **Cloud Run 容器啟動時**解析 `--set-secrets` 參照、實際讀取 secret 值（`secretmanager.versions.access`） | 新 revision 無法啟動（讀不到 `DATABASE_URL`／Basic Auth 憑證），startup probe 不通過 |
+| `roles/secretmanager.viewer`（**T-0040 新增**） | **CI 的 `resolve secret versions` 步驟**執行 `gcloud secrets versions list` 查出當次要釘定的版本號（§3.2、§4.2）。此權限為 `secretmanager.versions.list`，**只存在於本角色**——`secretAccessor` 的 `includedPermissions` 只有 `resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.versions.access`，能讀值但不能列版本 | `resolve secret versions` 步驟以 exit 1 中止，其後 migrate／build & push／deploy／verify 全數 skipped（**已實際發生：run `35506278351`，根因與實查輸出見 §6.9.1**）。備援路徑：填 `SECRET_VERSION_*` repository variables 直接指定版本號，跳過查詢 |
+
+**授權指令**（使用者於自己的 GCP 專案執行；**agent 不代為執行，屬使用者側的雲端安全設定**）：
+
+```bash
+for R in run.admin artifactregistry.writer iam.serviceAccountUser \
+         secretmanager.secretAccessor secretmanager.viewer; do
+  gcloud projects add-iam-policy-binding "<GCP_PROJECT_ID>" \
+    --member="serviceAccount:github-deployer@<GCP_PROJECT_ID>.iam.gserviceaccount.com" \
+    --role="roles/${R}"
+done
+```
+
+**既有專案要補跑一次**：本清單第 5 項於 T-0040 才補進規格，在此之前建立的專案只授了前四個角色，須補跑上述指令（只補 `secretmanager.viewer` 亦可）才會生效。核對指令：
+
+```bash
+gcloud projects get-iam-policy "<GCP_PROJECT_ID>" --flatten="bindings[].members" \
+  --format="table(bindings.role)" \
+  --filter="bindings.members:github-deployer@<GCP_PROJECT_ID>.iam.gserviceaccount.com"
+```
+
+**為什麼不自訂角色**：五個預定義角色的權限面雖略大於實際所需，但自訂角色要多一份 YAML、多一處要維護、且權限清單會隨 GCP API 演進而失效。本案為 staging、單一專案、無真實個資，取「可維護」而非「最小權限的極致」。**若日後導入 prod，此處應改為自訂角色並重新評估**。
 
 **為什麼不用 Cloud Scheduler 做定時喚醒**（任務卡列為可選項，此處明確否決）：它會多一個 GCP 資源、多一組 IAM 綁定、多一處要在 README 教使用者建立的東西；而 GitHub Actions 的 `schedule` 已經在用（NFR-003 的量測本來就要打 `/health`）、已經免費、且量測結果與保溫行為在**同一個地方觀測**。多一個資源換不到任何東西。若日後 GitHub 排程延遲成為量測品質的瓶頸，再回頭評估。
 
@@ -82,15 +115,17 @@ GCP 專案與計費帳戶由**使用者**提供。以下每項資源的**建立�
 | 階段 | 觸發 | 做什麼 | 失敗時 |
 |---|---|---|---|
 | auth | `ci.yml` 於 `main` 全綠 | `google-github-actions/auth`（WIF，見 3.2.1）取得 GCP 短期憑證 → `google-github-actions/setup-gcloud` → `gcloud auth configure-docker asia-east1-docker.pkg.dev` | **中止部署**；前一版服務維持可用。通知 dev-ops（多半是 WIF 綁定條件寫錯） |
+| **resolve secret versions**（T-0040 補列） | auth 成功、`configure-docker` 之前 | 對 `database-url`／`basic-auth-user`／`basic-auth-pass` 三個 secret 各執行 `gcloud secrets versions list "<secret>" --filter="state=ENABLED" --sort-by="~createTime" --limit=1 --format="value(name)"`，取得**當次要釘定的具體版本號**；寫入 `$GITHUB_STEP_SUMMARY`（表格：secret／版本）與 step outputs，供 deploy 階段組出 `NAME=secret:N`。可由 repository variables `SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`（選填，只填版本號）覆寫 | **中止部署**（任一 secret 查不到 `ENABLED` 版本即以 `::error::` 中止，不回退到 `:latest`）。需 `roles/secretmanager.viewer`（§2.1 第 5 項），錯誤訊息含 gcloud 原始訊息與修復指引 |
 | migrate | auth 成功 | 以 `NEON_DATABASE_URL` 執行 `npm run migrate`（forward-only，單一交易逐檔套用） | **中止部署**，不推映像、不部署；前一版服務維持可用。通知 dev-ops |
 | build & push | migrate 成功 | `docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .` → `docker push` 兩個標籤到 Artifact Registry。`$IMAGE` = `asia-east1-docker.pkg.dev/<GCP_PROJECT_ID>/todo-app/todo-app` | **中止部署**。服務仍在舊 revision。通知 dev-ops |
-| deploy | push 成功 | `gcloud run deploy todo-app --image "$IMAGE:${{ github.sha }}" --region "$GCP_REGION" --platform managed --allow-unauthenticated --port 8080 --memory 512Mi --cpu 1 --min-instances 0 --max-instances 2 --concurrency 80 --timeout 60s --set-env-vars ... --set-secrets ...`。Cloud Run 端流程：建立新 revision → 啟動容器並通過 startup probe（`GET /health`）→ **才把 100% 流量切到新 revision** → 舊 revision 保留但不接流量（可秒級切回） | **新 revision 啟動失敗時 Cloud Run 不切流量**，舊 revision 繼續服務 100%，服務不中斷。工作流標紅並通知 dev-ops |
-| verify | deploy 成功 | 取 `gcloud run services describe todo-app --format="value(status.url)"` 作為基底網址（與 `STAGING_BASE_URL` 比對，不一致即警告）；輪詢 `<base>/health` 直到回 200（每 10 秒一次，**上限 5 分鐘** —— Cloud Run 冷啟只要 1–3 秒，不需要 Render 時代的 10 分鐘）；再以 secrets 中的 Basic Auth 憑證呼叫 `GET /api/v1/todos` 確認回 200（確認認證與資料庫皆正常） | 逾時即工作流失敗並通知 dev-ops；**流量雖已切到新 revision，回滾只需一行 `update-traffic`**（第 5.1 節） |
+| deploy ＋ verify（**單一步驟，T-0040 依 T-0039 實作更新**） | push 成功 | ① `gcloud run deploy todo-app --image "$IMAGE:${{ github.sha }}" --region "$GCP_REGION" --platform managed --allow-unauthenticated --port 8080 --memory 512Mi --cpu 1 --min-instances 0 --max-instances 2 --concurrency 80 --timeout 60s --set-env-vars ... --set-secrets "DATABASE_URL=database-url:${DB_VERSION},BASIC_AUTH_USER=basic-auth-user:${USER_VERSION},BASIC_AUTH_PASSWORD=basic-auth-pass:${PASS_VERSION}"`（**版本號來自 resolve 階段，不得用 `:latest`**，理由見下方「為什麼 secret 參照要釘具體版本」）。Cloud Run 端流程：建立新 revision → 啟動容器並通過 startup probe（`GET /health`）→ **才把 100% 流量切到新 revision** → 舊 revision 保留但不接流量（可秒級切回）。② 取 `gcloud run services describe todo-app --format="value(status.url)"` 作為基底網址（與 `STAGING_BASE_URL` 比對，不一致即警告）；③ 輪詢 `<base>/health` 直到回 200（每 10 秒一次，**上限 5 分鐘**）；④ 再以 secrets 中的 Basic Auth 憑證呼叫 `GET /api/v1/todos` 確認回 200。**④ 失敗時自動以相同參數、相同已釘定的版本號重跑一次 ①→②→③→④（上限 1 次，無迴圈）**，吸收一次性的 secret 解析異常（§6.7 建議二，事件見 §6.6／§6.7）；③ 失敗**不觸發**重試，直接中止 | **新 revision 啟動失敗時 Cloud Run 不切流量**，舊 revision 繼續服務 100%，服務不中斷。重試後仍失敗才印 `::error::` 判紅並通知 dev-ops；**流量雖已切到新 revision，回滾只需一行 `update-traffic`**（第 5.1 節）。`$GITHUB_STEP_SUMMARY` 依 `retried`／`retry_result` 兩個 output 區分「重試後通過」與「重試後仍失敗」 |
 | deploy-prod | **手動（本輪不實作）** | 保留位置。本 Epic 無 prod 環境 | — |
 
 **為什麼 migrate 在 build & push 之前**：forward-only 的 migration 一律是「加欄位／加表／加索引」，對舊版程式碼是相容的（expand-contract 的 expand 階段）。先 migrate 再部署，可確保新程式碼啟動時 schema 已就緒；即使部署失敗，舊程式碼在新 schema 上仍能運作。
 
 **為什麼映像要同時打 commit SHA 與 `latest` 兩個標籤**：SHA 標籤是**部署與回滾的事實來源**（revision 與映像一一對應，「線上跑的是哪一版」可回推到 commit）；`latest` 只給人手動拉取除錯用，**部署指令一律用 SHA 標籤，不得用 `latest`**——用 `latest` 會讓 revision 指向一個會變動的標籤，回滾就不再是確定性的。
+
+**為什麼 secret 參照要釘具體版本（T-0040 規格變更，落實 §6.7 建議一）**：與映像標籤同一個道理。`--set-secrets NAME=secret:latest` 是在**容器啟動當下**才解析的，同一個 revision 定義在不同時間拉起，可能讀到不同的值；「哪個 revision 讀到哪個版本」不透明，出事時無法回溯比對——§6.6／§6.7 的 verify 401 事件就是在這個不透明之下耗掉大半天。改為 `NAME=secret:N` 後：① revision 定義中即記載了確切版本號，**稽核與回滾都是確定性的**；② 版本號一併寫進 `$GITHUB_STEP_SUMMARY`，不必事後查 GCP 也能知道那次部署用了什麼。**代價（明白承擔）**：使用者新增 secret 版本後，**不會**自動被既有 revision 採用，必須重新部署一次（原本用 `:latest` 也一樣要重新部署才生效，故此代價其實只是「多一次 list 呼叫」與「多一個 IAM 角色」，見 §2.1 第 5 項）。**緊急略過路徑**：若 IAM 一時無法調整，填 `SECRET_VERSION_*` repository variables 直接指定版本號即可跳過 list 查詢；此時釘定的是人填的版本號，仍非 `:latest`。
 
 #### 3.2.1 GCP 認證：Workload Identity Federation（主線）
 
@@ -105,7 +140,9 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 | WIF provider 完整資源名 | `GCP_WIF_PROVIDER` | repository **secret** | 形如 `projects/<專案編號>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`。**非真正機密，但含專案編號，仍置於 secrets 以免誤貼** |
 | 部署用服務帳號 email | `GCP_SERVICE_ACCOUNT` | repository **secret** | 形如 `github-deployer@<專案ID>.iam.gserviceaccount.com` |
 
-使用者一次性設定（**約 6 步，指令由 dev-ops 寫進 README**）：建立 workload identity pool → 建立 OIDC provider（issuer `https://token.actions.githubusercontent.com`，**attribute condition 限定為本倉庫**）→ 建立服務帳號 → 以 `roles/iam.workloadIdentityUser` 把該服務帳號綁給「本倉庫的 principalSet」→ 授服務帳號三個角色（`roles/run.admin`、`roles/artifactregistry.writer`、`roles/iam.serviceAccountUser`）→ 把上表六個值填進 GitHub。
+使用者一次性設定（**約 6 步，指令由 dev-ops 寫進 README**）：建立 workload identity pool → 建立 OIDC provider（issuer `https://token.actions.githubusercontent.com`，**attribute condition 限定為本倉庫**）→ 建立服務帳號 → 以 `roles/iam.workloadIdentityUser` 把該服務帳號綁給「本倉庫的 principalSet」→ **授服務帳號 §2.1 表列的五個角色**（`roles/run.admin`、`roles/artifactregistry.writer`、`roles/iam.serviceAccountUser`、`roles/secretmanager.secretAccessor`、`roles/secretmanager.viewer`）→ 把上表六個值填進 GitHub。
+
+> **角色數由三改五（T-0040）**：原文只列前三個。`secretmanager.secretAccessor`（容器啟動讀 secret 值）原被放在 §4.1 的註腳、`secretmanager.viewer`（CI 列 secret 版本）則在 §6.9.1 的真實紅燈事件後才確認必要。**五個角色的完整清單與各自用途現以 §2.1 為單一事實來源**，本節與 §4.1 只做指向。
 
 **attribute condition 必須限定倉庫**（例如 `assertion.repository == "<owner>/<repo>"`）。少了這一條，**任何 GitHub 倉庫的工作流都能換到你的 GCP 憑證** —— 這是 WIF 設定最常見也最嚴重的錯誤，dev-ops 的 CR 須逐字檢查這一行。
 
@@ -118,18 +155,30 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - 若採此路徑，dev-ops 須在骨架卡記錄「採備選路徑」與原因，並在該卡列一條待辦：**日後補做 WIF 並刪除金鑰**。
 - 兩條路徑**二選一，不並存**。並存等於留了一把沒人在看的鑰匙。
 
-### 3.3 `monitor-health.yml` — NFR-003 的量測與保溫
+### 3.3 `monitor-health.yml` — 保溫與人工抽查（**不是** NFR-003 的量測來源，也**不是**備援來源）
 
 | 階段 | 觸發 | 做什麼 | 失敗時 |
 |---|---|---|---|
-| sample | `schedule: cron "*/5 * * * *"` ＋ `workflow_dispatch` | **連續取樣 3 次，間隔 20 秒**，`curl -fsS -o /dev/null -w "%{http_code} %{time_total}" "$STAGING_BASE_URL/health"`（**不帶任何憑證** —— `/health` 是唯一未保護路徑）。結果 append 進 artifact | 記錄失敗次數，**工作流本身不標紅**（單次失敗是資料而非事故），連續 3 次全失敗才以 `::error::` 標記 |
+| sample | `schedule: cron "*/5 * * * *"` ＋ `workflow_dispatch`（**實際可依賴的是後者**） | **連續取樣 3 次，間隔 20 秒**，`curl -fsS -o /dev/null -w "%{http_code} %{time_total}" "$STAGING_BASE_URL/health"`（**不帶任何憑證** —— `/health` 是唯一未保護路徑）。結果 append 進 artifact | 記錄失敗次數，**工作流本身不標紅**（單次失敗是資料而非事故），連續 3 次全失敗才以 `::error::` 標記 |
+
+**定位（T-0040 規格變更，落實 Leader 2026-09-20T18:18:13 對裁決事項 C 的選項 1）**：本工作流的用途是 **① 保溫（降低冷啟命中率）與 ② 人工抽查（`workflow_dispatch` 手動觸發，用來快速確認「現在服務還活著嗎」）**。**它不具備援能力，不得被當成 NFR-003 的替代量測來源。**
+
+**為什麼改口**（原文寫「NFR-003 的量測與保溫」、§6.1 原寫「備援來源」）：
+
+- T-0031（2026-09-19）實測：workflow 註冊後 **2 小時 12 分內 `event=schedule` 觸發 0 次**，理論應約 26 次（§6.8.1 完整診斷，已逐項排除分支、路徑、cron 語法、repo 活動四類設定錯誤）。
+- T-0037（2026-09-20）在完整 24 小時窗內複測：`event=schedule` 的 run **實際 8 次，理論約 258 次，達成率約 3%**；這 8 次的 `conclusion` 全部 `success`。**即：它會跑，只是幾乎不跑。**不是壞掉，是頻率完全不可信。
+- 一個「3% 機率會在你需要時存在」的東西，寫成「備援」比沒有備援更危險——**因為沒有人會再去補一個真的備援**。故本次把文字改到與事實一致。
+- 成因判斷為 GitHub 平台對排程的啟動與尖峰延遲，**團隊不可控、無可修的設定缺陷**（§6.8.1）。CLAUDE.md 工作鐵則已沉澱同一結論，本輪為其第二次驗證。
 
 設計說明：
 
-- **為何每次取樣 3 次**：GitHub 的 `schedule` 觸發在尖峰時段可能延遲數分鐘。單次取樣遇到延遲會產生資料空洞；連續 3 次取樣讓單一排程延遲不至於造成整段漏測。NFR-003 的成功率**以實際取樣次數為分母**，不以理論次數（2016 次／7 日）為分母。
-- **監測兼保溫**：Cloud Run 在 `min-instances = 0` 下，閒置一段時間後容器會被回收，下次請求需冷啟 **1–3 秒**。定時打 `/health` 讓實例維持存活，把冷啟的命中機率壓低。**但性質與 Render 時代不同**：Render Free 是「15 分鐘無流量即休眠、冷啟 30–50 秒」，保溫是**必要的遮蔽手段**；Cloud Run 沒有固定的休眠門檻，冷啟只有 1–3 秒，保溫是**錦上添花** —— 就算保溫完全失效，使用者撞上的也只是一次 1–3 秒的等待，不是白畫面。
-- **頻率**：維持 **每 5 分鐘**（Leader 對 O-009 的裁決：NFR-003 每 5 分鐘取樣一次）。**若因私有倉庫的 Actions 分鐘數而需改為每 10 分鐘**（第 2 章對策 2），保溫效果不受影響，但**取樣分母的變更須回報 Leader**。
-- **不帶憑證是刻意的**：若監測帶 Basic Auth 憑證，就等於沒有驗證 BR-017 的豁免是否真的生效。**不帶憑證仍得 200，才證明豁免正確**。
+- **保溫仍然有效，且不受 cron 不可靠影響到嚴重程度**：Cloud Run 在 `min-instances = 0` 下，閒置一段時間後容器會被回收，下次請求需冷啟 **1–3 秒**。定時打 `/health` 把冷啟命中機率壓低。**但性質與 Render 時代不同**：Render Free 是「15 分鐘無流量即休眠、冷啟 30–50 秒」，保溫是**必要的遮蔽手段**；Cloud Run 沒有固定的休眠門檻，冷啟只有 1–3 秒，保溫是**錦上添花** —— 就算保溫完全失效（cron 幾乎不跑就是這個狀態），使用者撞上的也只是一次 1–3 秒的等待，不是白畫面。**附帶效果**：Cloud Monitoring uptime check 每 5 分鐘從 4 個地區打 `/health`，本身就在保溫，實際保溫工作已由它承擔。
+- **為何每次取樣 3 次**：保留原設計（連續 3 次取樣讓單一排程延遲不至於造成整段漏測），但**這些樣本現在只作交叉比對，不進入 NFR-003 的分母**。
+- **頻率**：維持 **每 5 分鐘**（不因降級而調整，改它沒有收益）。若因私有倉庫的 Actions 分鐘數而需改為每 10 分鐘（第 2 章對策 2），**不再需要回報 Leader 調整取樣分母**——分母已不由本工作流決定。
+- **不帶憑證是刻意的**：若監測帶 Basic Auth 憑證，就等於沒有驗證 BR-017 的豁免是否真的生效。**不帶憑證仍得 200，才證明豁免正確**。此設計保留。
+- **NFR-003 的正式量測來源是 Cloud Monitoring uptime check `todo-app-health`**（§6.1、§6.8.2、§6.8.3）。
+
+> **待 Leader 裁決：要不要建第二個 uptime check 作為真備援？**（本卡不自行決定，見 §6.1.1）
 
 ---
 
@@ -154,7 +203,9 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 | `JWT_EXPIRES_IN` (P1) | access token 有效期，固定 `24h`（BR-021、Q-010）。**無 refresh token** | staging | `--set-env-vars` 明文（非機密） |
 | `BCRYPT_COST` (P1) | bcrypt 成本因子，預設 `12`（BR-018 要求 ≥ 10） | staging | `--set-env-vars` 明文（非機密） |
 
-註：若採 Secret Manager，部署用服務帳號需額外授 `roles/secretmanager.secretAccessor`（第 2 章的三個角色之外）。dev-ops 於骨架卡擇定「Secret Manager」或「Cloud Run 服務設定直接填」並記錄在該卡。
+註（**T-0040 更新**）：本案採 **Secret Manager**（dev-ops 於骨架卡已擇定）。部署用服務帳號因此需要 `roles/secretmanager.secretAccessor`（容器啟動讀值）**與** `roles/secretmanager.viewer`（CI 列版本號）兩個角色；**完整的五個角色清單與各自用途見 §2.1，該表為單一事實來源**，本註不重複列舉。
+
+**機密項的掛載一律釘具體版本**：`--set-secrets` 的參照形如 `DATABASE_URL=database-url:3`（版本號由 §3.2 的 `resolve secret versions` 階段查出），**不使用 `:latest`**，理由見 §3.2「為什麼 secret 參照要釘具體版本」。使用者新增 secret 版本後需重新部署一次（觸發一次 `deploy-staging.yml`，或本機執行 `scripts/deploy-staging.sh`）才會生效。
 
 ### 4.2 CI/CD（GitHub repository secrets ／ variables）
 
@@ -171,6 +222,9 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 | `STAGING_BASE_URL` | staging 的基底網址（Cloud Run 的 `*.run.app`）。**首次部署後由 dev-ops 回填**；verify 與監測工作流讀它，不寫死 | **variable**（非機密） | GitHub repository variables |
 | `STAGING_BASIC_AUTH_USER` | **機密**。verify 階段呼叫受保護端點用 | **secret** | GitHub repository secrets |
 | `STAGING_BASIC_AUTH_PASSWORD` | **機密**。同上 | **secret** | GitHub repository secrets |
+| `SECRET_VERSION_DATABASE_URL` | **選填**（T-0040 補列）。覆寫 `database-url` 的釘定版本號，**只填數字**（例：`1`）。填了就跳過該 secret 的 `gcloud secrets versions list` 查詢。用途：IAM 一時無法補 `roles/secretmanager.viewer` 時的緊急略過路徑，或刻意釘回舊版本 | **variable**（非機密；只是版本號，不是值） | GitHub repository variables |
+| `SECRET_VERSION_BASIC_AUTH_USER` | **選填**。同上，對應 `basic-auth-user` | **variable**（非機密） | GitHub repository variables |
+| `SECRET_VERSION_BASIC_AUTH_PASS` | **選填**。同上，對應 `basic-auth-pass` | **variable**（非機密） | GitHub repository variables |
 
 **使用者一次性設定清單（交付 README 須逐項列出，兩種 shell 寫法）**：GCP 帳號 → 建立專案 → **啟用計費帳戶（必要，即使費用為 US$0）** → 啟用 API（`run`、`artifactregistry`、`iamcredentials`、`sts`，採 Secret Manager 時另加 `secretmanager`）→ 建立 Artifact Registry repository（`asia-east1`、DOCKER 格式、保留 5 版的清理政策）→ 完成 WIF 六步設定（3.2.1）→ 填 4.1 的機密（Secret Manager 或 Cloud Run 設定）；Neon 帳號 → 建立專案 → 複製連線字串；GitHub → 填入 4.2 的 secrets 與 variables；**首次部署成功後回填 `STAGING_BASE_URL`**。**agent 不索取、不代填。**
 
@@ -262,12 +316,12 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ### 6.1 監控項目
 
-監控分三層：**Cloud Monitoring uptime check**（外部視角，**T-0031 起為 NFR-003 的正式量測來源**）、**GitHub Actions 定時健康檢查**（外部視角，T-0031 起降為備援來源，且兼保溫）與 **Cloud Run 內建指標**（平台視角，用於判讀異常的成因）。三者角色不同，不可互相取代；來源變更原因與判讀方式見 6.8。
+監控分三層：**Cloud Monitoring uptime check**（外部視角，**T-0031 起為 NFR-003 的正式且唯一量測來源**）、**GitHub Actions 定時健康檢查**（外部視角，**T-0040 起定位為「保溫與人工抽查用，不具備援能力」**）與 **Cloud Run 內建指標**（平台視角，用於判讀異常的成因）。三者角色不同，不可互相取代；來源變更原因與判讀方式見 6.8，cron 降級的實測依據見 §3.3。
 
 | 項目 | 方式 | 門檻 | 對應 |
 |---|---|---|---|
-| 服務存活（**正式量測，T-0031 起**） | **Cloud Monitoring uptime check**（`todo-app-health`，5 分鐘週期、10 秒逾時、4 個檢查地區 `ASIA_PACIFIC`／`USA_OREGON`／`USA_IOWA`／`EUROPE`、期望 `200`，打 `/health`，**不帶憑證**）。外部視角，含 DNS 與 TLS，且不依賴 GitHub 排程觸發時機 | 成功率 ≥ 99% | NFR-003、AC-010-5、UC-011 |
-| 服務存活（**備援來源，T-0031 起**） | `monitor-health.yml` 每 5 分鐘取樣 3 次 `GET /health`（**不帶憑證**）。外部視角，含 DNS 與 TLS。降為備援原因：`schedule` 觸發長時間未穩定自動執行，見 6.8 | 成功率 ≥ 99%（僅供交叉比對，不作為 Gate 判準） | NFR-003、AC-010-5、UC-011 |
+| 服務存活（**正式量測，唯一來源；T-0031 起**） | **Cloud Monitoring uptime check**（`todo-app-health`，5 分鐘週期、10 秒逾時、4 個檢查地區 `ASIA_PACIFIC`／`USA_OREGON`／`USA_IOWA`／`EUROPE`、期望 `200`，打 `/health`，**不帶憑證**）。外部視角，含 DNS 與 TLS，且不依賴 GitHub 排程觸發時機 | 成功率 ≥ 99% | NFR-003、AC-010-5、UC-011 |
+| 服務存活（**保溫與人工抽查用，不具備援能力；T-0040 起**） | `monitor-health.yml` 每 5 分鐘取樣 3 次 `GET /health`（**不帶憑證**）。**定位變更理由**：`schedule` 在 24 小時窗內實際只觸發 **8 次**（理論約 258 次，達成率約 3%；8 次全 `success`），成因為 GitHub 平台排程延遲、團隊不可控且無可修設定缺陷（§3.3、§6.8.1）。**「幾乎不跑」的東西不是備援**，故不再以「備援來源」稱之 | 無門檻。樣本**不進入 NFR-003 分母**，僅供人工交叉比對與異常時的手動抽查（`workflow_dispatch`） | NFR-003（僅交叉比對）、保溫 |
 | 部署中斷時長 | 部署期間以每 5 秒一次輪詢記錄連續失敗時長 | < 60 秒 | NFR-003 |
 | 回應時間 | 上述 `curl` 的 `%{time_total}` 一併記錄 | 觀察用，正式門檻以 NFR-001 的負載測試為準 | NFR-001 |
 | **Cloud Run 請求數／錯誤率** | Cloud Run 內建指標（Console → 該服務 → **Metrics**）：`Request count`（依回應碼分組）、`Request latency`（P50／P95／P99） | 觀察用。與外部取樣對照，可區分「服務掛了」與「網路／DNS 問題」 | NFR-001、NFR-003 |
@@ -277,7 +331,21 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 | 資料庫容量 | **不監控**。500 筆上限約 125 KB，Neon Free 為 0.5 GB，餘裕約 1000 倍 | — | NFR-007 |
 | **雲端費用** | 計費帳戶的 US$1 預算警示（第 2 章） | 出現即查（代表某項用量意外暴衝，或 `min-instances` 被改動） | Epic「免費額度可部署」 |
 
-**不引入 Cloud Monitoring 告警政策**：它要多建通知管道、多一組 IAM，而本案的告警需求只有「服務連續掛掉要有人知道」，`monitor-health.yml` 的 `::error::` ＋ GitHub 寄信已經滿足。Cloud Run 內建指標**只作為判讀依據**，不設自動告警。
+#### 6.1.1 備援缺口與告警缺口：NFR-003 的量測來源目前是**單點**（T-0040 提列，**待 Leader 裁決，本卡不自行決定**）
+
+**事實**：cron 降級為保溫用之後，NFR-003 的量測來源只剩 `todo-app-health` 一個 uptime check。**若它被誤刪、被配額變動停用、或 GCP 專案設定被改動，NFR-003 會直接失去量測能力，而且沒有任何東西會告訴我們**——因為現在唯一會「叫」的 `monitor-health.yml` 一天只跑 8 次。這是一個**沉默失效**的單點。
+
+**選項與代價**（供 Leader 擇一）：
+
+| 選項 | 做法 | 代價 |
+|---|---|---|
+| **A. 新增第二個 uptime check 作為真備援** | 以 `infra/uptime-check.sh` 再建一個 check（建議 `todo-app-health-backup`，改用不同的檢查地區組合與稍微錯開的週期，避免兩者同時受同一個地區事件影響） | ① **免費額度**：Cloud Monitoring 的 uptime check 每個計費帳戶每月有 **100 萬次執行**的免費額度；現有 1 個 check × 4 地區 × 每 5 分鐘 ≈ 每月 3.5 萬次，加一個仍在額度內，**費用維持 US$0**。② **告警重複**：兩個 check 打同一個 `/health`，服務真掛掉時兩邊同時失敗，若日後加上告警政策會收到兩份通知；本案目前不設告警政策，此代價暫不發生。③ 多一個要在 README 教使用者建立、也要記得一起刪的資源 |
+| **B. 不新增，改為定期人工核對** | 在 Gate 2 後的維運清單加一條「每週確認 `gcloud monitoring uptime list-configs` 至少有一個 ENABLED 的 check」 | 零成本，但**依賴人不忘記**——這正是沉默失效最容易吃掉的東西 |
+| **C. 維持現狀（接受單點）** | 什麼都不做，於本節明載「NFR-003 量測為單點，已知並接受」 | 零成本。對 staging、對本 Epic 的剩餘時程而言風險可接受；但若 E-001 之後要延用這套監測到任何更正式的環境，這筆債會被繼承 |
+
+**plan-sd 的傾向（不是決定）**：選 A。理由是它是三者中唯一「一次性成本、之後不需要人記得」的做法，且實測費用為零；B 與 C 的真實差別只在有沒有寫下來。**但這是維運資源與注意力的配置問題，屬 Leader 職權，本卡依任務卡 acceptance 明文「不自行決定」。**
+
+**不引入 Cloud Monitoring 告警政策**：它要多建通知管道、多一組 IAM，而本案的告警需求只有「服務連續掛掉要有人知道」。**注意（T-0040）**：原文寫「`monitor-health.yml` 的 `::error::` ＋ GitHub 寄信已經滿足」——這個前提**在 cron 降級後已不成立**（一天 8 次的取樣不構成告警）。目前的實況是：**本案沒有自動告警**，服務掛掉要靠人主動查 uptime check 或打 `/health`。此缺口與本節上半的備援缺口是同一件事的兩面，一併交 Leader 於選項 A／B／C 裁決時考量。Cloud Run 內建指標**只作為判讀依據**，不設自動告警。
 
 ### 6.2 採樣期（Leader 裁決 O-009）
 
@@ -289,12 +357,13 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 ### 6.3 告警與已知誤報
 
 - 告警方式：`monitor-health.yml` 在**連續 3 次取樣全部失敗**時以 `::error::` 標記工作流，GitHub 自動寄信給倉庫關注者。**不引入第三方告警服務、不設 Cloud Monitoring 告警政策**（避免額外帳號與憑證，符合 Epic 限制）。
+  - **⚠️ T-0040 更正：此告警機制實質已失效。** cron 一天只觸發約 8 次（§3.3），「連續 3 次取樣全失敗」這個條件平均要等數小時才有一次被求值的機會。**現況等同沒有自動告警**，缺口與處置選項見 §6.1.1，待 Leader 裁決。本條保留原文不刪，是為了讓「當初以為有告警」這件事留在紀錄裡。
 - **已知誤報來源 —— Cloud Run 的冷啟**（ADR-0005 明確承擔的代價）：
   - `min-instances = 0` 時，閒置一段時間後容器會被回收；下一次請求需冷啟 **1–3 秒**，該次取樣的 `time_total` 會明顯偏高。
   - **與 Render 時代的差異**：冷啟從 30–50 秒降為 1–3 秒，**已不足以讓 `curl` 逾時**，因此冷啟**基本上不再造成取樣失敗**，只會造成回應時間的離群值。這也是 SD-04 的風險等級下降的原因。
   - **判讀規則**：NFR-003 未達標時，**須先區分是應用缺陷還是平台事件**，再決定是否調整設定。判讀依據為 **Cloud Run 內建指標**（`Request count` 依回應碼分組、`Container startup latency`、`Container instance count`）與 **revision 事件紀錄**，以及該時段 GitHub 排程的取樣間隔是否異常拉長。
   - 此判讀規則同步寫入 `03_系統設計書_SD.md` 第 7 章 NFR-003。
-- **另一個誤報來源 —— GitHub 排程延遲**：GitHub 的 `schedule` 在尖峰時段可能延遲數分鐘，造成取樣間隔拉長。這是**取樣器的問題，不是服務的問題**，成功率以實際取樣次數為分母即可吸收（第 3.3 節）。
+- **另一個誤報來源 —— GitHub 排程延遲**：GitHub 的 `schedule` 在尖峰時段可能延遲數分鐘甚至數小時，造成取樣間隔拉長。這是**取樣器的問題，不是服務的問題**。**T-0040 起此項已不影響 NFR-003 判讀**——正式量測改用 uptime check，`monitor-health.yml` 的樣本不進入分母（§3.3、§6.1）。本條保留，供判讀 cron 樣本的交叉比對結果時參考。
 - **NFR-001 的量測不受此誤報影響**：負載測試腳本規定**先暖身 10 秒再開始取樣**，排除冷啟與 Neon 喚醒的離群值（SD 第 7 章 NFR-001）。此規定**保留不動** —— 成本為零，且對 Neon 的冷啟仍有意義。
 
 ### 6.4 實作紀錄（T-0018）
@@ -327,6 +396,8 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - **建議二：`verify` 失敗時自動重建一次 revision 再重試**。本次「`00001-tfq` 認證失敗」的成因（不論是 secret 解析問題或其他一次性因素）具有「同一份設定重新部署一次就正常」的特徵；建議 `deploy-staging.yml` 的 `verify（帶憑證）` 步驟失敗時，**不要直接判定整個工作流失敗**，而是先自動重試一次（例如：`gcloud run deploy` 用相同參數重新部署一次，等待新 revision 就緒後再驗證一次；仍失敗才真正判定紅燈並通知 dev-ops）。這樣可以吸收類似本次的一次性解析異常，減少對使用者手動 `Re-run` 的依賴。**本卡不代為修改 workflow**，建議留待下一張維運改善小卡實作與測試（需評估重試會不會掩蓋真正的設定錯誤，例如仍應保留明確的錯誤訊息與重試次數上限）。
 
 ### 6.8 NFR-003 主要來源改為 Cloud Monitoring uptime check（T-0031，2026-09-19）
+
+> **本節為 T-0031（2026-09-19）當時的診斷與建置紀錄，其中「cron 降為備援」一語已由 T-0040 取代為「保溫與人工抽查用，不具備援能力」**（依 24 小時窗實測 8 次／理論 258 次；見 §3.3 與 §6.1）。本節文字不改寫，保留診斷脈絡；**現行定位一律以 §3.3、§6.1 為準。**
 
 **背景**：`docs/reports/20260919-1738-測試總結-E001-r2.md` 裁決事項 B 指出，`monitor-health.yml` 自 2026-09-19T16:46:26+08:00 手動觸發成功後，**59 分鐘內 `schedule` 事件 0 次自動執行**。Leader 於 `tasks/E-001-todo-app.md`（2026-09-19T17:47:01+08:00）裁決 B：開 T-0031，新增 uptime check 作為主要來源，cron 降備援。
 
@@ -517,7 +588,7 @@ awk -F, 'NR>1{print $2}' deploy-downtime.csv | sort | uniq -c
 
 ### 6.9 實作紀錄：secret 釘版本與 verify 自動重試（T-0039，2026-09-20 18:43）
 
-落實 §6.7 建議一、建議二。**本節僅為實作紀錄，§1～§6.8 文字不動；§7 參數表與「變更紀錄」表仍寫 `:latest`，尚未同步，留待 T-0040（plan-sd）依本節內容一併調整規格文字（非本卡 outputs 範圍）。**
+落實 §6.7 建議一、建議二。**本節為 dev-ops 的實作紀錄。規格文字的同步已由 T-0040（plan-sd，2026-09-20，version 0.3）完成：§2.1 補列部署服務帳號五個角色、§3.2 補 `resolve secret versions` 階段與 deploy＋verify 合併步驟、§3.2「為什麼 secret 參照要釘具體版本」、§4.1／§4.2 補 `SECRET_VERSION_*` 覆寫變數、§7 參數表「機密（Secret Manager 參照）」列改為版本釘定敘述。**
 
 **建議一：釘具體版本**：
 
@@ -528,7 +599,7 @@ awk -F, 'NR>1{print $2}' deploy-downtime.csv | sort | uniq -c
   取得目前 `ENABLED` 的最新版本號，寫入 `GITHUB_STEP_SUMMARY`（表格：secret／版本）與 step outputs，供後續 `gcloud run deploy` 步驟以 `NAME=secret:N` 組出 `--set-secrets`（不再用 `:latest`）。可用 repository variables `SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`（選填，只填版本號）覆寫釘定版本，任一 secret 找不到 `ENABLED` 版本時整個 job 以 `::error::` 中止。
   - `scripts/deploy-staging.sh` 加入同邏輯的 `resolve_version()` 函式（環境變數同名），本機執行時印出三個版本號。
   - `infra/cloudrun-service.yaml` 的 `secretKeyRef.key` 三項改為 `"<SECRET_VERSION>"` 佔位符（此檔為文件化 IaC、非自動套用，手動套用前需人工查版本號替換，檔內已補註解與指令）。
-  - 三處參數同步的「現況」文字（§7 表格的「機密（Secret Manager 參照）」列）與「變更紀錄」表尚未更新，仍寫 `:latest`——**待 T-0040 一併調整**（本卡 outputs 不含 §7、變更紀錄表）。
+  - 三處參數同步的「現況」文字（§7 表格的「機密（Secret Manager 參照）」列）與「變更紀錄」表當時尚未更新、仍寫 `:latest`——**已於 T-0040（2026-09-20，version 0.3）同步完成**。
 - **實測**（本機已登入之 `gcloud`，帳號 `excalibur.star@gmail.com`，project `pj002-509106`；**僅列版本號與狀態，未讀取任何 secret 值**，符合 CLAUDE.md 安全鐵則）：
   ```bash
   for s in database-url basic-auth-user basic-auth-pass; do
@@ -643,12 +714,12 @@ Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（�
 | 並行數 | `containerConcurrency: 80` | `--concurrency 80` | `--concurrency 80` | 一致 |
 | 請求逾時 | `timeoutSeconds: 60` | `--timeout 60s` | `--timeout 60s` | 一致 |
 | 非機密環境變數 | `env: NODE_ENV=production, LOG_LEVEL=info, CORS_ALLOWED_ORIGINS=""` | `--set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS="` | `--set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS="` | 一致 |
-| 機密（Secret Manager 參照） | `secretKeyRef`：`DATABASE_URL←database-url:latest`、`BASIC_AUTH_USER←basic-auth-user:latest`、`BASIC_AUTH_PASSWORD←basic-auth-pass:latest` | `--set-secrets "DATABASE_URL=database-url:latest,BASIC_AUTH_USER=basic-auth-user:latest,BASIC_AUTH_PASSWORD=basic-auth-pass:latest"` | 同左（逐字相同） | 一致 |
+| 機密（Secret Manager 參照）<br>**T-0039 實作／T-0040 規格同步：一律釘具體版本，不得用 `:latest`** | `secretKeyRef`：`DATABASE_URL←database-url`、`BASIC_AUTH_USER←basic-auth-user`、`BASIC_AUTH_PASSWORD←basic-auth-pass`，三者的 `key` 皆為佔位符 **`"<SECRET_VERSION>"`**（本檔為文件化 IaC、非自動套用；手動 `services replace` 前須先以 `gcloud secrets versions list` 查出版本號逐一替換，檔內已附註解與指令） | `resolve secret versions` 階段查出 `${DB_VERSION}`／`${USER_VERSION}`／`${PASS_VERSION}` 後組出 `--set-secrets "DATABASE_URL=database-url:${DB_VERSION},BASIC_AUTH_USER=basic-auth-user:${USER_VERSION},BASIC_AUTH_PASSWORD=basic-auth-pass:${PASS_VERSION}"`；版本號寫入 `$GITHUB_STEP_SUMMARY`；可由 repository variables `SECRET_VERSION_*` 覆寫 | 同左：`resolve_version()` 函式邏輯逐字相同，覆寫用環境變數同名（`SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`） | **一致（語意層面）**：三處皆為「具體版本號」而非 `:latest`。差異僅在**版本號的取得時機**——workflow 與腳本在執行時自動查、IaC 檔留佔位符由人套用前替換；這是「自動部署」與「文件化 IaC」的本質差別，不是飄移。查版本號需 `roles/secretmanager.viewer`（§2.1 第 5 項） |
 | ingress／未驗證存取 | `annotations: run.googleapis.com/ingress: all`（僅控制入口來源，**不等同 IAM 的 `roles/run.invoker` 綁定**） | `--allow-unauthenticated`（gcloud 會同時綁 `allUsers` 的 `roles/run.invoker`） | `--allow-unauthenticated`（同左） | **飄移**：套用 IaC 檔（`gcloud run services replace`）不會自動把服務設為允許未驗證呼叫；日常自動部署走 `deploy-staging.yml`／`deploy-staging.sh` 的 `gcloud run deploy`，皆帶 `--allow-unauthenticated`，故實際服務狀態一致；但若有人改用 `services replace` 手動套用 IaC 檔，需另外執行一次 `gcloud run services add-iam-policy-binding <service> --member=allUsers --role=roles/run.invoker`，否則平台層會擋在應用層 Basic Auth 之前 |
 | startup／liveness probe | `startupProbe`（`GET /health`，`initialDelaySeconds: 0`、`periodSeconds: 5`、`timeoutSeconds: 3`、`failureThreshold: 3`）＋ `livenessProbe`（同路徑，`periodSeconds: 30`、`timeoutSeconds: 3`、`failureThreshold: 3`） | 無對應 `gcloud run deploy` flag（`gcloud` 目前不支援以旗標設定自訂 probe；套用 `gcloud run deploy` 時 Cloud Run 使用平台預設探測） | 同左（無對應 flag） | **飄移（已知，ADR-0005 授權 dev-ops 決定去留的取捨之一）**：探測設定**只存在於 IaC 檔**。日常部署路徑（`gcloud run deploy`）目前吃 Cloud Run 平台預設的啟動探測（對容器埠打 TCP 或依映像宣告），並非本檔宣告的 `/health` HTTP 探測。若要讓 `/health` 探測實際生效，須改用 `gcloud run services replace infra/cloudrun-service.yaml`（並先手動代入 `<GCP_PROJECT_ID>`／`<IMAGE_TAG>`）取代 `gcloud run deploy`，或等 `gcloud run deploy` 支援對應旗標後再收斂為單一事實來源。此項為既有已知落差，本卡未變更任何一處部署邏輯，僅在此列表存查 |
 | 服務帳號執行身分 | 不宣告（由映像的 `USER appuser` 決定，非 root），本檔亦不重複宣告 | 同左（不由 `gcloud run deploy` 指定容器內執行身分） | 同左 | 一致（皆委由 Dockerfile） |
 
-**維護規則**：日後任何人變更上表任一參數，須同時檢查其餘兩處是否需要跟進；若刻意留下差異（例如 probe 一項），須在本表「現況」欄註明理由與影響範圍，不得無聲飄移。
+**維護規則**：日後任何人變更上表任一參數，須同時檢查其餘兩處是否需要跟進；若刻意留下差異（例如 probe 一項），須在本表「現況」欄註明理由與影響範圍，不得無聲飄移。**第四處要一起檢查的是本文件**——T-0039 改了三處程式、T-0040 才補上規格文字，中間留了一段「文件與事實不符」的窗，這是本表要避免的同一類問題。
 
 ---
 
@@ -659,3 +730,4 @@ Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（�
 | 2026-09-19 | 0.1 | T-0004 | 初版。平台為 Render Web Service（Free）＋ Neon Free，Gate 1 通過後凍結 |
 | 2026-09-19 | **0.2** | **T-0010**（規格變更請求，使用者裁決、Leader 核准） | **雲端平台改為 GCP Cloud Run（`min-instances = 0`）＋ Artifact Registry**，資料庫維持 Neon Free。改動範圍：第 1 章 staging 網址改為 `*.run.app`（由 dev-ops 部署後填入）；第 2 章資源清單全面改寫（Cloud Run／Artifact Registry／WIF／明確否決 Cloud Scheduler）；第 3 章 pipeline 改為 build → push Artifact Registry → `gcloud run deploy`，新增 3.2.1 WIF 認證與 3.2.2 服務帳號金鑰備選；第 4 章環境變數移除 Render 專屬項、新增 GCP 專屬項；第 5.1 節回滾首選改為 `gcloud run services update-traffic` 切 revision；第 6 章監控加入 Cloud Run 內建指標、冷啟說明由 30–50 秒改為 1–3 秒。決策紀錄見 `adr/ADR-0005-雲端平台-CloudRun.md`（`ADR-0003` 已標 superseded）。**status 維持 `frozen`**，後續變更仍須走規格變更請求任務卡 |
 | 2026-09-19 | 0.2（實作紀錄，未變更版本號） | **T-0031**（維運補強，Leader 裁決 B／C 核准，非規格變更） | 第 6 章新增 6.8 節：GitHub cron 排程長期零自動觸發之診斷（結論：無可修設定缺陷，判斷為 GitHub 排程延遲）；新增 Cloud Monitoring uptime check（`todo-app-health`，check id `todo-app-health-aMAlP5dfKv0`）作為 NFR-003 **主要**來源，`monitor-health.yml` 降為**備援**；6.1 表格與 6.2 採樣起算時間同步更新（改以 uptime check 建立時間 2026-09-19T17:55:07+08:00 為準）；補充判讀指令（`timeSeries.list`）首次實跑輸出；補做 TC-080／TC-090 的 `/health` 直接量測（0 秒不可用）。僅屬 dev-ops 實作紀錄補寫，不涉及架構或流程決策變更，version 號不更動 |
+| 2026-09-20 | **0.3** | **T-0040**（規格變更請求，Leader 2026-09-20T18:18:13 裁決 C 選項 1 ＋ D-016 ＋ T-0039 實作同步，另含 Leader 派工時追加兩項） | **三項主變更＋兩項追加**：①**`monitor-health.yml` 定位**由「NFR-003 的備援來源」改為「**保溫與人工抽查用，不具備援能力**」（§3.3 標題與全節、§6.1 前言與表格第 2 列、§6.3 告警條補「此告警機制實質已失效」更正）。依據：T-0037 24 小時窗實測 `event=schedule` **8 次／理論約 258 次（約 3%）**，8 次皆 success，成因為 GitHub 平台排程延遲、無可修設定缺陷（§6.8.1）。NFR-003 主要且唯一量測來源明寫 Cloud Monitoring uptime check `todo-app-health`。**另於 §6.1 新增「備援缺口」小節**，列出「新增第二個 uptime check／定期人工核對／接受單點」三選項與各自代價（免費額度、告警重複），**交 Leader 裁決，本卡不自行決定**。②**secret 參照由 `:latest` 改為版本釘定**（§3.2 新增 `resolve secret versions` 階段列、deploy 與 verify 合併為單一步驟並含一次自動重試、新增「為什麼 secret 參照要釘具體版本」、§4.1 註改寫、§4.2 補三個 `SECRET_VERSION_*` repository variables、**§7 參數表「機密（Secret Manager 參照）」列改寫**），與 T-0039 的 main 現況一致。③**HTTPS 導向判準**：§2 資源表「Google 前端 301 導向 HTTPS」改為「**3xx（實測 302 Found）**，判準為『回 3xx 且 `Location` 為對應的 `https://` 網址』」（D-016、Leader 2026-09-19T17:30:10 裁決①）。④**（Leader 追加）§2 新增 2.1 節「部署服務帳號角色清單」**：由三個角色補列為**五個**，逐項寫明用途與「少了會怎樣」，新增的 `roles/secretmanager.viewer` 對應 `secretmanager.versions.list`（§6.9.1 真實紅燈 run `35506278351` 的根因），並附授權與核對指令、「既有專案要補跑一次」說明；§3.2.1 六步設定與 §4.1 註同步指向 §2.1。⑤**（Leader 追加）§7 三處參數同步表**同④之②。**未改動**：`01_需求規格書_SRS.md`（實查無「301」字面，原文即寫「觀察 3xx 導向」）、`20_測試案例.md` TC-079 判準（依任務卡由 qa-lead 於下一輪測試計畫同步卡處理）、`03_系統設計書_SD.md` §7 NFR-002①（非本卡 outputs，已列交接檔下一步建議）。**status 維持 `frozen`** |

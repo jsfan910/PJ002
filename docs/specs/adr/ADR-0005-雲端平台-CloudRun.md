@@ -77,7 +77,17 @@ date: 2026-09-19
    - **保留服務帳號 JSON 金鑰作為備選**：若使用者在 WIF 設定上卡關超過 15 分鐘（NFR-008 的門檻），改用 `GCP_SA_KEY` secret 即可完成部署。備選路徑的代價（長期憑證、需手動輪替）寫在 `06_部署架構與CICD.md` 第 3 章。**有備選路徑，才不會讓一個一次性設定阻擋整條交付。**
    - 一次性設定的逐步指令由 **dev-ops 寫進 README**（Git Bash 與 PowerShell 兩種寫法，Epic 限制），`gcloud` CLI 只在使用者做這次一次性設定時需要；日常部署全在 CI runner 上，runner 已內建 `gcloud`。
 6. **保溫（降低冷啟命中率）**：以 **GitHub Actions cron 定時打 `/health`** 維持實例存活。頻率：NFR-003 的量測工作流本身即為保溫來源（每 5 分鐘一次，Leader 對 O-009 的裁決，不得自行更動）；若倉庫必須為私有而需節流 Actions 分鐘數，**降為每 10 分鐘仍足以保溫**——因為 Cloud Run 沒有 Render Free 那種「15 分鐘休眠門檻」，保溫只是把冷啟的命中機率壓低，而冷啟本身只有 1–3 秒。**不引入 Cloud Scheduler**：它會多一個 GCP 資源、多一組 IAM 綁定，而 GitHub Actions 的排程已經在用、已經免費、已經在同一個地方觀測。
-7. **HTTPS（AC-010-2／BR-025）**：Cloud Run 為 `*.run.app` 自動配發並更新憑證，且**預設不接受明文 HTTP**（HTTP 請求由 Google 前端以 301 導向 HTTPS）。與 ADR-0003 相同，團隊零程式碼。
+
+   > **附註（T-0040，2026-09-20）**：本點寫「NFR-003 的量測工作流本身即為保溫來源」這個前提**已不成立**。GitHub Actions 的 `schedule` 在 24 小時窗內實測只觸發 **8 次／理論約 258 次（約 3%）**，NFR-003 的量測來源已於 T-0031 改為 **Cloud Monitoring uptime check**，`monitor-health.yml` 於 T-0040 定位為「保溫與人工抽查用，**不具備援能力**」（`06` §3.3、§6.1）。**本決定的結論不變**（仍不引入 Cloud Scheduler），但理由要更正：實際承擔保溫的是每 5 分鐘從 4 個地區打 `/health` 的 uptime check，不是 cron。另：「NFR-003 的量測來源只剩單一 uptime check」形成的備援缺口與三個處置選項，列於 `06` §6.1「備援缺口」，待 Leader 裁決。
+7. **HTTPS（AC-010-2／BR-025）**：Cloud Run 為 `*.run.app` 自動配發並更新憑證，且**預設不接受明文 HTTP**（HTTP 請求由 Google 前端以 **3xx** 導向 HTTPS）。與 ADR-0003 相同，團隊零程式碼。
+
+   > **附註（T-0040，2026-09-20，規格變更請求）**：本點原文寫「由 Google 前端以 **301** 導向 HTTPS」，**該狀態碼字面與實測不符**。qa-at 於 r3（2026-09-19T17:19）與 qa-lead 於 T-0030（2026-09-19T17:32）各自獨立實測 `curl -sSI "http://todo-app-dpevsdhdva-de.a.run.app/health"`，兩次皆得 **`HTTP/1.1 302 Found`**，`location: https://todo-app-dpevsdhdva-de.a.run.app/health`。
+   >
+   > **判準據此改為：回 `3xx`（301 或 302 皆視為合規）且 `Location` 為對應的 `https://` 網址。** 依據 `docs/specs/24_缺陷清單.md#D-016`（已 closed，登錄為「規格文字待修」而非產品缺陷）與 **Leader 2026-09-19T17:30:10 裁決①「接受 302 等效（意圖是強制 HTTPS），TC-079 判通過並註記」**。
+   >
+   > **為什麼不改成寫死 302**：導向狀態碼是 Google 前端的平台行為，團隊零程式碼可改、亦無平台承諾其不變；把判準綁在單一狀態碼上，等於讓規格對一個我們不控制的實作細節做出承諾——這次是 301 寫成 302，下次就是 302 寫成 308。**規範意圖是「明文 HTTP 不得直接服務、必須被導到 HTTPS」，判準就該寫到這個層級為止。**
+   >
+   > 連帶影響：`06_部署架構與CICD.md` §2 資源表已同步（T-0040，version 0.3）；`20_測試案例.md` TC-079 判準由 qa-lead 於下一輪測試計畫同步卡處理；`03_系統設計書_SD.md` §7 NFR-002① 尚有「301」字面，非 T-0040 的 outputs 範圍，已列該卡交接檔「下一步建議」；`01_需求規格書_SRS.md` 實查無「301」字面（NFR-002 原文即寫「觀察 3xx 導向」），無須修正。
 8. **區域**：`asia-east1`（台灣）。理由：對本案使用者 RTT 最低，且 Artifact Registry 放同一區域可免跨區流量費。Neon 的區域由使用者於建立專案時選擇，建議同樣選擇亞太區以壓低 DB RTT（不強制，因 Neon Free 的區域選項與 GCP 不完全對齊）。
 9. **與 ADR-0004 完全相容**：Basic Auth 仍是應用層 Fastify 全域 `onRequest` hook、`/health` 仍是唯一豁免路徑、仍不註冊 CORS。Cloud Run 不提供也不需要平台級存取保護。`/health` 同時作為 Cloud Run 的 startup probe 路徑。
 

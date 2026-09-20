@@ -6,7 +6,7 @@ team: plan
 role: plan-sd
 model: opus
 phase: plan
-status: todo
+status: review
 round: 1
 depends_on: []   # 原依賴 T-0039 done；T-0039 程式已合併 main（3345022）但因使用者 IAM 授權待辦而 blocked，Leader 2026-09-20 19:5x 裁決解除依賴，以 main 現況為準
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T18:35:00+08:00
+updated: 2026-09-20T19:33:47+08:00
 blocked_reason: null
 ---
 
