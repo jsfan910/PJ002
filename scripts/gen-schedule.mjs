@@ -125,8 +125,8 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .bar.active .fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
 .mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--gate)}
 .now{position:absolute;top:0;bottom:0;border-left:2px solid var(--now);z-index:2}
-/* 時間軸刻度列只放「現在」的文字標籤（.now-lbl），不畫線；線只畫在資料列（gridCells） */
-.axis .now-lbl{position:absolute;top:-1px;font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--now);font-weight:500;background:var(--paper);padding:0 3px;z-index:2}
+/* 「現在」線只畫在資料列（gridCells）；時間軸刻度列不放線也不放標籤，產表時刻寫在圖例 */
+.legend #now-legend{font-family:var(--font-mono);color:var(--ink)}
 /* 里程碑：每筆一列（tr.ms），時間軸上以菱形（.dia）標示時間位置，旁邊附時刻標籤（.dia-lbl） */
 .dia{position:absolute;top:8px;width:10px;height:10px;background:var(--gate);border:1px solid var(--paper);transform:translateX(-50%) rotate(45deg);z-index:3}
 .dia-lbl{position:absolute;top:6px;line-height:14px;font-family:var(--font-mono);font-size:10px;color:var(--gate);white-space:nowrap;background:var(--paper);padding:0 3px;z-index:3}
@@ -186,7 +186,7 @@ table.gantt tr.ms td.name{color:var(--gate)}
       <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
       <span><i class="sw rev"></i>審核回合</span>
       <span><i class="sw dia-sw"></i>里程碑（每筆一列，菱形＝時間位置；虛線為其貫穿全圖的對齊線）</span>
-      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻）</span>
+      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻）<b id="now-legend"></b></span>
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
@@ -276,9 +276,9 @@ if (!dayMode) axisEl.classList.add("two");
 for (const dy of days) axis += '<div class="day" style="left:'+pct(dy.t)+'%;width:'+(pct(dy.end)-pct(dy.t))+'%"><span>'+dy.label+'</span></div>';
 for (const tk of ticks) axis += '<div class="tick'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
 // 里程碑虛線只畫在資料列（gridCells），不延伸進時間軸刻度列。
-// 「現在」標籤靠近右緣（>80%）時改以右側錨定放在線的左邊，避免超出時間軸。
-if (showNow) { const np = pct(nowIso); axis += '<span class="now-lbl" style="'+(np > 80 ? 'right:calc('+(100-np)+'% + 2px)' : 'left:calc('+np+'% + 2px)')+'">現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span>'; }
+// 時間軸刻度列不放「現在」標籤；產表時刻寫在圖例「現在」項後面（見 #now-legend）。
 document.getElementById("axis").innerHTML = axis;
+document.getElementById("now-legend").textContent = nowIso.slice(0,16).replace("T"," ");
 
 const gridCells = () => {
   let g = "";
