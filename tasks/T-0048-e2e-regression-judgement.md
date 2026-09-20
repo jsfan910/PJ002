@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: review
+status: done
 round: 1
 depends_on: [T-0046]
 inputs:
@@ -31,7 +31,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T22:12:00+08:00
-updated: 2026-09-20T22:28:54+08:00
+updated: 2026-09-20T22:34:00+08:00
 blocked_reason: null
 ---
 
@@ -53,4 +53,4 @@ Leader：核對三條判定各有證據引用；`grep -n "TC-091" docs/specs/tra
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | done | 六條 acceptance 全過：第 1 項 105/105、第 10 項 6/6、TC-037 判測試前置競態（OBS-8，不立 D-019）、OBS-9、追溯與孤兒檢查。裁決 A 追認、B 出 Gate 2 r3、C 接受。瑕疵：traceability updated 時戳超前，P1 同步卡更正。 | worklog/handoff/20260920-2231-T0048-r1-leader.md |
