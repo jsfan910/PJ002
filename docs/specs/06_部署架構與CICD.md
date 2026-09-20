@@ -6,7 +6,7 @@ version: 0.3           # T-0040 規格變更（cron 定位、secret 版本釘定
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-20T19:27:03+08:00
+updated: 2026-09-20T20:26:13+08:00   # T-0044 實作紀錄補寫（§6.1.1／§6.3／§6.9.1），不涉及架構或流程決策變更，version 號不更動
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -331,21 +331,29 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 | 資料庫容量 | **不監控**。500 筆上限約 125 KB，Neon Free 為 0.5 GB，餘裕約 1000 倍 | — | NFR-007 |
 | **雲端費用** | 計費帳戶的 US$1 預算警示（第 2 章） | 出現即查（代表某項用量意外暴衝，或 `min-instances` 被改動） | Epic「免費額度可部署」 |
 
-#### 6.1.1 備援缺口與告警缺口：NFR-003 的量測來源目前是**單點**（T-0040 提列，**待 Leader 裁決，本卡不自行決定**）
+#### 6.1.1 備援缺口與告警缺口：**已採選項 A（T-0044，2026-09-20）**
 
-**事實**：cron 降級為保溫用之後，NFR-003 的量測來源只剩 `todo-app-health` 一個 uptime check。**若它被誤刪、被配額變動停用、或 GCP 專案設定被改動，NFR-003 會直接失去量測能力，而且沒有任何東西會告訴我們**——因為現在唯一會「叫」的 `monitor-health.yml` 一天只跑 8 次。這是一個**沉默失效**的單點。
+> **裁決與落地**：Leader 於 2026-09-20T19:37:36+08:00（`tasks/E-001-todo-app.md`）就下方三選項裁決採 **A，並加告警政策**（不綁通知管道，email 由使用者一次性自行建立與綁定）。T-0044（dev-ops）已實際建立：
+> - **第二個 uptime check** `todo-app-health-backup`：`projects/pj002-509106/uptimeCheckConfigs/todo-app-health-backup-yvjsI-2xna0`。設定與主 check 相同（https、443、path `/health`、期望 `200`、period 5 分鐘、timeout 10 秒），**檢查地區組合刻意不同**：`ASIA_PACIFIC`／`SOUTH_AMERICA`／`USA_VIRGINIA`（主 check 為 `ASIA_PACIFIC`／`USA_OREGON`／`USA_IOWA`／`EUROPE`），避免兩者同時受同一組地區的網路事件影響。建立時間 2026-09-20T12:19Z（UTC）＝ 2026-09-20T20:19+08:00。指令與完整 `describe` 輸出見 `infra/uptime-check.sh`（`create-backup`／`describe-backup`）。
+> - **告警政策** `todo-app uptime check failure`：`projects/pj002-509106/alertPolicies/8479925612924794663`。`combiner: OR`，兩條 `conditionThreshold`（各對應一個 check 的 `check_id`），皆為「10 分鐘對齊窗（`alignmentPeriod: 600s`）內，`crossSeriesReducer: REDUCE_COUNT_FALSE` 統計到的失敗檢查地區數 > 0」即觸發（`comparison: COMPARISON_GT`、`thresholdValue: 0`、`trigger.count: 1`）——即任一 check 只要有 1 個檢查地區在該 10 分鐘窗內回報失敗就觸發，對兩個 check 皆生效。**未綁定任何通知管道**（`gcloud alpha monitoring policies describe` 的 `notificationChannels` 欄位為空）；使用者一次性建立 email 通知管道並綁定的指令見 README「告警通知管道（使用者一次性設定）」。政策 JSON 的 `documentation.content` 刻意只用英文／ASCII——本機 Windows `gcloud` 在未設 `PYTHONUTF8=1 PYTHONIOENCODING=utf-8` 時，會把 `--policy-from-file` 內的中文字元在讀檔／印出階段換成字面 `?`（非終端機顯示問題，經 `describe` 重新讀回逐位元組核對證實；設定該兩個環境變數後讀回內容正確）。
+> - **費用**：兩個 check 皆為每 5 分鐘、多地區輪詢，月執行次數仍在 Cloud Monitoring 每帳戶每月 100 萬次免費額度內（現況：4 地區＋3 地區、各每 5 分鐘 ≈ 每月合計 6 萬次量級）；告警政策本身免費（Cloud Monitoring 未對政策評估或 `notificationChannels` 為空的政策收費）。**費用估計維持 US$0**。
+> - **告警重複**（選項 A 原列代價②）：兩個 check 打同一個 `/health`，服務真掛掉時兩邊會各自觸發一次告警政策的求值，但因兩個 condition 以 `OR` 合併在**同一個**政策內，GCP 只會開一個 incident（不會產生兩份重複通知）；此代價已透過「單一政策、兩條件 OR」的設計吸收，不需要使用者額外處理。
+>
+> 以下維持三選項的原始比較文字，供之後回顧裁決脈絡：
 
-**選項與代價**（供 Leader 擇一）：
+**事實（裁決前）**：cron 降級為保溫用之後，NFR-003 的量測來源當時只剩 `todo-app-health` 一個 uptime check。**若它被誤刪、被配額變動停用、或 GCP 專案設定被改動，NFR-003 會直接失去量測能力，而且沒有任何東西會告訴我們**——因為當時唯一會「叫」的 `monitor-health.yml` 一天只跑 8 次。這是一個**沉默失效**的單點（**現況：T-0044 已落地選項 A，此單點已解除**）。
+
+**選項與代價**（Leader 裁決時的比較基礎）：
 
 | 選項 | 做法 | 代價 |
 |---|---|---|
-| **A. 新增第二個 uptime check 作為真備援** | 以 `infra/uptime-check.sh` 再建一個 check（建議 `todo-app-health-backup`，改用不同的檢查地區組合與稍微錯開的週期，避免兩者同時受同一個地區事件影響） | ① **免費額度**：Cloud Monitoring 的 uptime check 每個計費帳戶每月有 **100 萬次執行**的免費額度；現有 1 個 check × 4 地區 × 每 5 分鐘 ≈ 每月 3.5 萬次，加一個仍在額度內，**費用維持 US$0**。② **告警重複**：兩個 check 打同一個 `/health`，服務真掛掉時兩邊同時失敗，若日後加上告警政策會收到兩份通知；本案目前不設告警政策，此代價暫不發生。③ 多一個要在 README 教使用者建立、也要記得一起刪的資源 |
+| **A. 新增第二個 uptime check 作為真備援（已採用，見上方）** | 以 `infra/uptime-check.sh` 再建一個 check（建議 `todo-app-health-backup`，改用不同的檢查地區組合與稍微錯開的週期，避免兩者同時受同一個地區事件影響） | ① **免費額度**：Cloud Monitoring 的 uptime check 每個計費帳戶每月有 **100 萬次執行**的免費額度；現有 1 個 check × 4 地區 × 每 5 分鐘 ≈ 每月 3.5 萬次，加一個仍在額度內，**費用維持 US$0**。② **告警重複**：兩個 check 打同一個 `/health`，服務真掛掉時兩邊同時失敗，若日後加上告警政策會收到兩份通知；**T-0044 落地時以單一政策、兩條件 OR 合併吸收此代價**（見上方）。③ 多一個要在 README 教使用者建立、也要記得一起刪的資源 |
 | **B. 不新增，改為定期人工核對** | 在 Gate 2 後的維運清單加一條「每週確認 `gcloud monitoring uptime list-configs` 至少有一個 ENABLED 的 check」 | 零成本，但**依賴人不忘記**——這正是沉默失效最容易吃掉的東西 |
 | **C. 維持現狀（接受單點）** | 什麼都不做，於本節明載「NFR-003 量測為單點，已知並接受」 | 零成本。對 staging、對本 Epic 的剩餘時程而言風險可接受；但若 E-001 之後要延用這套監測到任何更正式的環境，這筆債會被繼承 |
 
-**plan-sd 的傾向（不是決定）**：選 A。理由是它是三者中唯一「一次性成本、之後不需要人記得」的做法，且實測費用為零；B 與 C 的真實差別只在有沒有寫下來。**但這是維運資源與注意力的配置問題，屬 Leader 職權，本卡依任務卡 acceptance 明文「不自行決定」。**
+**plan-sd 的傾向（T-0040 提列，非決定）**：選 A。理由是它是三者中唯一「一次性成本、之後不需要人記得」的做法，且實測費用為零；B 與 C 的真實差別只在有沒有寫下來。Leader 依此傾向於 2026-09-20T19:37:36+08:00 裁決採 A。
 
-**不引入 Cloud Monitoring 告警政策**：它要多建通知管道、多一組 IAM，而本案的告警需求只有「服務連續掛掉要有人知道」。**注意（T-0040）**：原文寫「`monitor-health.yml` 的 `::error::` ＋ GitHub 寄信已經滿足」——這個前提**在 cron 降級後已不成立**（一天 8 次的取樣不構成告警）。目前的實況是：**本案沒有自動告警**，服務掛掉要靠人主動查 uptime check 或打 `/health`。此缺口與本節上半的備援缺口是同一件事的兩面，一併交 Leader 於選項 A／B／C 裁決時考量。Cloud Run 內建指標**只作為判讀依據**，不設自動告警。
+**告警政策現況（T-0044 已落地，取代下方 T-0040 時的「不引入」決定）**：見上方「裁決與落地」段落。此段原文（T-0040 時）為「不引入 Cloud Monitoring 告警政策」，**已由 T-0044 取代**，保留一句供回顧：T-0040 當時的理由是「要多建通知管道、多一組 IAM，而本案的告警需求只有『服務連續掛掉要有人知道』」；Leader 裁決時認為此代價可接受（告警政策本身不綁通知管道即可建立）。**IAM 備註**：本次建立以本機已登入之專案擁有者帳號（`excalibur.star@gmail.com`）執行，未新增或變更任何 IAM 角色綁定；若日後要交由 CI 自動管理告警政策，需另外評估授權範圍，本卡未涉及。
 
 ### 6.2 採樣期（Leader 裁決 O-009）
 
@@ -356,8 +364,9 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 ### 6.3 告警與已知誤報
 
-- 告警方式：`monitor-health.yml` 在**連續 3 次取樣全部失敗**時以 `::error::` 標記工作流，GitHub 自動寄信給倉庫關注者。**不引入第三方告警服務、不設 Cloud Monitoring 告警政策**（避免額外帳號與憑證，符合 Epic 限制）。
-  - **⚠️ T-0040 更正：此告警機制實質已失效。** cron 一天只觸發約 8 次（§3.3），「連續 3 次取樣全失敗」這個條件平均要等數小時才有一次被求值的機會。**現況等同沒有自動告警**，缺口與處置選項見 §6.1.1，待 Leader 裁決。本條保留原文不刪，是為了讓「當初以為有告警」這件事留在紀錄裡。
+- **告警方式現況（T-0044，2026-09-20 起生效）**：Cloud Monitoring 告警政策 `todo-app uptime check failure`（`projects/pj002-509106/alertPolicies/8479925612924794663`）——兩個 uptime check（`todo-app-health`、`todo-app-health-backup`）任一於 10 分鐘對齊窗內出現失敗檢查地區即觸發（`combiner: OR`，兩條件各自 `REDUCE_COUNT_FALSE > 0`），對兩個 check 皆生效。**政策建立時未綁定通知管道**：觸發後會在 Cloud Monitoring 產生 incident，但不會主動寄信或推播，直到使用者依 README「告警通知管道（使用者一次性設定）」建立 email 通知管道並綁定為止。實際建立指令與 `describe` 輸出見 `infra/uptime-check.sh`（`create-alert-policy`／`describe-alert-policy`）與 06 §6.1.1。
+  - `monitor-health.yml` 的 `::error::`＋GitHub 寄信機制**維持原樣、不再視為告警來源**（見下方 T-0040 歷史記錄），僅供保溫與人工抽查交叉比對（§3.3）。
+  - **T-0040 歷史記錄（裁決前現況，供回顧）**：原文告警方式為「`monitor-health.yml` 在連續 3 次取樣全部失敗時以 `::error::` 標記工作流，GitHub 自動寄信給倉庫關注者。不引入第三方告警服務、不設 Cloud Monitoring 告警政策」；T-0040 更正指出此機制因 cron 一天只觸發約 8 次而實質失效（「連續 3 次取樣全失敗」平均要等數小時才有一次被求值機會），**現況等同沒有自動告警**，此缺口與 §6.1.1 的備援缺口為同一件事的兩面，交 Leader 裁決；Leader 裁決結果即上方「已採選項 A」，本條保留原文脈絡，不刪。
 - **已知誤報來源 —— Cloud Run 的冷啟**（ADR-0005 明確承擔的代價）：
   - `min-instances = 0` 時，閒置一段時間後容器會被回收；下一次請求需冷啟 **1–3 秒**，該次取樣的 `time_total` 會明顯偏高。
   - **與 Render 時代的差異**：冷啟從 30–50 秒降為 1–3 秒，**已不足以讓 `curl` 逾時**，因此冷啟**基本上不再造成取樣失敗**，只會造成回應時間的離群值。這也是 SD-04 的風險等級下降的原因。
@@ -696,6 +705,8 @@ resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.locatio
 **教訓（給下一次寫離線驗證的人）：本機 gcloud 身分 ≠ CI 的 WIF 服務帳號身分，本機能列版本不代表 CI 能列。** r1 的本機實測（上一節「實測」段落）之所以顯示成功，是因為本機已登入的 `gcloud` 帳號是專案擁有者 `excalibur.star@gmail.com`，該帳號在專案層級預設具備近乎全權限；而真實 run 用的是 Workload Identity Federation 換來的短期憑證，身分是 `github-deployer@` 服務帳號，兩者的權限集合完全不同。**日後任何「需要新的雲端 API 呼叫」的 workflow 步驟，離線驗證只能證明語法與邏輯正確，不能替代「用實際會執行的服務帳號身分（或至少列出其角色與該角色的 includedPermissions，比對呼叫需要的權限）驗證」這一步**；本機指令成功的證據不得作為「CI 會成功」的結論依據。
 
 **r2 修法**（本次落地，`.github/workflows/deploy-staging.yml` 與 `scripts/deploy-staging.sh` 的 `resolve_version()` 同步修正，維持三處一致）：不再讓 `gcloud secrets versions list` 的非 0 結束碼直接被 `set -e` 吞掉、只留下無意義的 `exit code 1`；改為顯式捕捉 stdout+stderr、失敗時輸出含 gcloud 原始訊息與修復指引（workflow 版：需 `roles/secretmanager.viewer`，或改填 `SECRET_VERSION_*` repository variable 略過查詢）的訊息（workflow 為 `::error::` annotation，本機腳本為一般 stderr）。IAM 授權本身（補上 `roles/secretmanager.viewer`）屬使用者的雲端專案安全設定，dev-ops 依安全鐵則不代為執行，已寫入 README「部署與 secrets」一節的步驟與備援路徑，待使用者執行後 `deploy-staging` 才會恢復綠燈。
+
+**追記（T-0044，2026-09-20，dev-tl 於 T-0039 r2 複驗）——IAM 授權後真實 run 全綠**：使用者完成 `roles/secretmanager.viewer` 授權後，dev-tl 以空 commit `854c843` 推送 main 觸發 CI，`deploy-staging` run `35509795862`（run_number 21）**13 步全部 `success`，無任何 failure annotation**，r1／r2 皆卡住的第 8 步 `resolve secret versions（釘具體版本，不用 :latest）` 這次 `success`。新 revision **`todo-app-00017-qg4`** 產生，其三個 `secretKeyRef.key` 皆為具體數字版本——`database-url:1`、`basic-auth-user:3`、`basic-auth-pass:1`，**無 `latest`**，與授權前 run `35509297796`（#20，同一份程式碼，第 8 步 `failure`，`PERMISSION_DENIED: secretmanager.versions.list`，第 9～13 步全 `skipped`）形成唯一變數為 IAM 的對照組。staging 實測 `GET /health` 200、`GET /`（未帶憑證）401、`GET /api/v1/todos`（未帶憑證）401，行為正常。詳細指令與輸出見 `worklog/handoff/20260920-2006-T0039-r2-dev-tl.md` B 段第 3～5 組；任務卡 `tasks/T-0039-secret-pin-verify-retry.md` 已判 `status: done`。**至此 §2.1 五個角色缺一不可的論點（r1 紅燈事件）與 T-0039 兩項建議（釘版本、verify 自動重試）皆已在真實 CI 環境驗證通過**，本節與 §7 參數同步表所述現況為 main 目前的真實狀態，非僅離線驗證。
 
 ---
 

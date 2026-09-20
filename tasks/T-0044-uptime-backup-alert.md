@@ -6,7 +6,7 @@ team: dev
 role: dev-ops
 model: sonnet
 phase: ops
-status: todo
+status: review
 round: 1
 depends_on: [T-0039, T-0040]
 inputs:
@@ -29,7 +29,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0044-uptime-backup-alert
 created: 2026-09-20T20:25:00+08:00
-updated: 2026-09-20T20:25:00+08:00
+updated: 2026-09-20T20:29:07+08:00
 blocked_reason: null
 ---
 

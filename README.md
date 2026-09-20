@@ -369,6 +369,58 @@ Secrets 分頁新增：
 2. **verify（帶憑證）失敗自動重試一次**：`deploy-staging.yml` 的 `gcloud run deploy ＋ verify（含一次自動重試）` 步驟，若帶憑證呼叫 `/api/v1/todos` 第一次驗證失敗，會自動以相同參數（含同一組已釘定的 secret 版本）重新 `gcloud run deploy` 一次、等新 revision 就緒並輪詢 `/health` 通過後再驗證一次；仍失敗才判定整個工作流失敗並輸出 `::error::` 訊息。重試上限 1 次（不會無限重試掩蓋真正的設定錯誤）。是否發生過重試，會在 `GITHUB_STEP_SUMMARY` 的「已重試」段落註明（含最終是否通過）。
    - `scripts/deploy-staging.sh`（本機手動執行）**不內建自動重試**：本機操作本身已是人工介入，失敗時使用者可自行判斷重跑整支腳本，效果等同一次人工重試。
 
+### 告警通知管道（使用者一次性設定；T-0044，06 §6.1.1／§6.3）
+
+**背景**：T-0044 已建立第二個 uptime check `todo-app-health-backup`（與既有 `todo-app-health` 組成真備援；地區組合刻意不同）與一個 Cloud Monitoring 告警政策 `todo-app uptime check failure`（`projects/pj002-509106/alertPolicies/8479925612924794663`）——任一 check 於 10 分鐘窗內出現失敗檢查地區即觸發，兩個 check 皆生效。**政策目前未綁定任何通知管道**：服務掛掉會在 Cloud Monitoring 主控台看到 incident，但**不會主動寄信或推播**，直到你完成下列一次性設定為止。**通知管道涉及個人 email，agent 不建立、不代填，需你自行執行。**
+
+1. **建立 email 通知管道**（把 `"<YOUR_EMAIL>"` 換成你要接收告警的信箱，整串含引號一起替換，勿保留角括號）：
+
+   Git Bash：
+   ```bash
+   GCLOUD="C:/Users/excal/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd"
+   "$GCLOUD" alpha monitoring channels create \
+     --display-name="todo-app 告警通知" \
+     --type=email \
+     --channel-labels=email_address="<YOUR_EMAIL>" \
+     --project="<PROJECT_ID>"
+   ```
+   PowerShell：
+   ```powershell
+   gcloud.cmd alpha monitoring channels create `
+     --display-name="todo-app 告警通知" `
+     --type=email `
+     --channel-labels=email_address="<YOUR_EMAIL>" `
+     --project="<PROJECT_ID>"
+   ```
+   輸出會含新管道的 `name`（格式 `projects/<PROJECT_ID>/notificationChannels/<CHANNEL_ID>`），下一步要用到。
+
+2. **把管道綁到既有告警政策**（`<CHANNEL_NAME>` 換成上一步輸出的完整 `name`）：
+
+   Git Bash：
+   ```bash
+   GCLOUD="C:/Users/excal/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd"
+   "$GCLOUD" alpha monitoring policies update "projects/<PROJECT_ID>/alertPolicies/8479925612924794663" \
+     --add-notification-channels="<CHANNEL_NAME>"
+   ```
+   PowerShell：
+   ```powershell
+   gcloud.cmd alpha monitoring policies update "projects/<PROJECT_ID>/alertPolicies/8479925612924794663" `
+     --add-notification-channels="<CHANNEL_NAME>"
+   ```
+
+3. **驗證已綁定**（不含 email 值本身，只看管道數量與政策狀態）：
+   ```bash
+   GCLOUD="C:/Users/excal/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd"
+   "$GCLOUD" alpha monitoring policies describe "projects/<PROJECT_ID>/alertPolicies/8479925612924794663" \
+     --format="value(notificationChannels)"
+   ```
+   有輸出（非空）即代表綁定成功。
+
+**注意事項**：
+- `alpha` 元件若尚未安裝，`gcloud` 會提示安裝；非互動環境（例如腳本內）需先執行 `CLOUDSDK_PYTHON=$(gcloud.cmd components copy-bundled-python 2>&1 | tail -1)` 再 `CLOUDSDK_PYTHON="$CLOUDSDK_PYTHON" gcloud.cmd components install alpha --quiet`（T-0044 實際踩過，見 `infra/uptime-check.sh` 開頭註解）。
+- 兩個 check 共用同一個政策、同一個 `combiner: OR`，服務真的掛掉時只會產生**一個** incident（不會因為兩個 check 同時失敗而收到兩封重複信）。
+- 若要之後解除通知，用 `--remove-notification-channels="<CHANNEL_NAME>"` 或直接在 Cloud Monitoring 主控台移除。
+
 ### 首次部署後（`.github/workflows/deploy-staging.yml` 自動觸發於 `main` 綠燈）
 
 1. 從該次執行的 `GITHUB_STEP_SUMMARY` 或 `gcloud run services describe todo-app --region asia-east1 --format="value(status.url)"` 取得網址。
