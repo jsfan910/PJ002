@@ -6,7 +6,7 @@ team: dev
 role: dev-ops
 model: sonnet
 phase: ops
-status: rework
+status: review
 round: 2
 depends_on: []
 inputs:
@@ -31,7 +31,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0039-secret-pin-verify-retry
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T19:05:00+08:00
+updated: 2026-09-20T19:11:00+08:00
 blocked_reason: null
 ---
 

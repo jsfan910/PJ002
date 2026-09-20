@@ -87,28 +87,41 @@ jobs:
         run: |
           set -euo pipefail
 
+          # T-0039 r2：resolve_version() 內的 `gcloud secrets versions list`
+          # 若非 0 結束，絕不能讓外層 `set -e` 直接把整個 job 中止在
+          # 「Process completed with exit code 1.」且不留下任何可讀訊息
+          # （r1 真實 run 35506278351 的根因：命令替代賦值 V_DB="$(resolve_version …)"
+          # 被 set -e 觸發，程式碼還沒走到下面的空值檢查就已經結束，
+          # 使用者只看得到 exit code、看不到「為什麼」）。改為在函式內部
+          # 先把 stdout+stderr 一起收進變數再判斷，失敗時當場輸出
+          # ::error:: annotation（含 gcloud 原始錯誤訊息與修復指引）再
+          # return 1；呼叫端用 `|| exit 1` 承接，避免同一個問題重演。
           resolve_version() {
             local secret_name="$1"
             local override="$2"
             if [ -n "${override}" ]; then
               echo "${override}"
-              return
+              return 0
             fi
-            gcloud secrets versions list "${secret_name}" \
+            local out
+            if ! out="$(gcloud secrets versions list "${secret_name}" \
               --filter="state=ENABLED" \
               --sort-by="~createTime" \
               --limit=1 \
-              --format="value(name)"
+              --format="value(name)" 2>&1)"; then
+              echo "::error::無法列出 secret ${secret_name} 的版本（gcloud 原始訊息：${out}）。最常見原因：部署服務帳號缺少 secretmanager.versions.list 權限（需 roles/secretmanager.viewer，見 README「部署與 secrets」一節；既有專案要補跑一次 IAM 授權才會生效）；也可能是 secret 尚未建立。若暫時無法調整 IAM，可改用對應的 repository variable SECRET_VERSION_DATABASE_URL／SECRET_VERSION_BASIC_AUTH_USER／SECRET_VERSION_BASIC_AUTH_PASS 直接指定版本號略過此查詢" >&2
+              return 1
+            fi
+            if [ -z "${out}" ]; then
+              echo "::error::secret ${secret_name} 沒有任何 state=ENABLED 的版本，請先在 Secret Manager 建立至少一個版本" >&2
+              return 1
+            fi
+            echo "${out}"
           }
 
-          V_DB="$(resolve_version database-url "${OVERRIDE_DATABASE_URL:-}")"
-          V_USER="$(resolve_version basic-auth-user "${OVERRIDE_BASIC_AUTH_USER:-}")"
-          V_PASS="$(resolve_version basic-auth-pass "${OVERRIDE_BASIC_AUTH_PASS:-}")"
-
-          if [ -z "${V_DB}" ] || [ -z "${V_USER}" ] || [ -z "${V_PASS}" ]; then
-            echo "::error::無法解析 secret 版本（database-url=${V_DB:-空} basic-auth-user=${V_USER:-空} basic-auth-pass=${V_PASS:-空}），請確認 Secret Manager 已建立三個 secret 且至少一個 ENABLED 版本" >&2
-            exit 1
-          fi
+          V_DB="$(resolve_version database-url "${OVERRIDE_DATABASE_URL:-}")" || exit 1
+          V_USER="$(resolve_version basic-auth-user "${OVERRIDE_BASIC_AUTH_USER:-}")" || exit 1
+          V_PASS="$(resolve_version basic-auth-pass "${OVERRIDE_BASIC_AUTH_PASS:-}")" || exit 1
 
           echo "database_url_version=${V_DB}" >> "$GITHUB_OUTPUT"
           echo "basic_auth_user_version=${V_USER}" >> "$GITHUB_OUTPUT"

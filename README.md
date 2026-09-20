@@ -276,8 +276,17 @@ rm check.txt
      --project="<PROJECT_ID>" --role="roles/iam.workloadIdentityUser" \
      --member="principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/attribute.repository/<owner>/<repo>"
 
-   # ⑤ 授服務帳號三個角色（＋ Secret Manager 存取，見下）
-   for role in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser roles/secretmanager.secretAccessor; do
+   # ⑤ 授服務帳號五個角色（＋ Secret Manager 存取／列版本，見下）
+   #    secretmanager.viewer 為 T-0039 新增：resolve secret versions 步驟
+   #    要跑 `gcloud secrets versions list` 需要 secretmanager.versions.list
+   #    權限，該權限只在 roles/secretmanager.viewer，不在
+   #    roles/secretmanager.secretAccessor（後者只含
+   #    secretmanager.versions.access，只能「讀值」不能「列版本」）。
+   #    **若這五個角色是在 T-0039 之前建立的舊專案，必須補跑一次本段
+   #    （或至少補 secretmanager.viewer 這一個角色）才會生效**，否則
+   #    deploy-staging 的 resolve secret versions 步驟會以
+   #    PERMISSION_DENIED 失敗（真實案例：2026-09-20 run 35506278351）。
+   for role in roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser roles/secretmanager.secretAccessor roles/secretmanager.viewer; do
      gcloud projects add-iam-policy-binding "<PROJECT_ID>" \
        --member="serviceAccount:github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" --role="$role"
    done
@@ -288,11 +297,11 @@ rm check.txt
      --format="value(name)"
    ```
 
-   PowerShell 語法相同（`gcloud` 是同一份執行檔），僅需把上面的 Git Bash `for` 迴圈改成：
+   PowerShell 語法相同（`gcloud` 是同一份執行檔；PowerShell 中呼叫請用 `gcloud.cmd`），僅需把上面的 Git Bash `for` 迴圈改成：
 
    ```powershell
-   foreach ($role in "roles/run.admin","roles/artifactregistry.writer","roles/iam.serviceAccountUser","roles/secretmanager.secretAccessor") {
-     gcloud projects add-iam-policy-binding "<PROJECT_ID>" `
+   foreach ($role in "roles/run.admin","roles/artifactregistry.writer","roles/iam.serviceAccountUser","roles/secretmanager.secretAccessor","roles/secretmanager.viewer") {
+     gcloud.cmd projects add-iam-policy-binding "<PROJECT_ID>" `
        --member="serviceAccount:github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" --role=$role
    }
    ```
@@ -346,6 +355,13 @@ Secrets 分頁新增：
 **背景**：T-0027 部署事件顯示，`--set-secrets` 用 `:latest` 時「哪個 revision 讀到哪個 secret 版本」不透明，難以事後回溯比對；且部署後 verify 有可能一次性失敗、重新部署一次就恢復正常。本卡落實 06 §6.7 的兩項建議：
 
 1. **釘具體版本，不用 `:latest`**：`.github/workflows/deploy-staging.yml`、`scripts/deploy-staging.sh`、`infra/cloudrun-service.yaml` 三處的 secret 參照皆改用 `NAME=secret:N`（`N` 為版本號）。
+   - **前置權限（必讀）**：這一步要跑 `gcloud secrets versions list`，需要 `secretmanager.versions.list` 權限——這個權限**只在 `roles/secretmanager.viewer`**，不在部署服務帳號原本就有的 `roles/secretmanager.secretAccessor`（後者的權限集合只有 `secretmanager.versions.access`，只能讀「值」不能列「版本清單」）。上方「Workload Identity Federation」第 ⑤ 步的角色清單已包含 `roles/secretmanager.viewer`；**若你的服務帳號角色是在 T-0039 之前建立的舊專案，必須另外補跑一次**：
+     ```bash
+     gcloud projects add-iam-policy-binding "<PROJECT_ID>" \
+       --member="serviceAccount:github-deployer@<PROJECT_ID>.iam.gserviceaccount.com" \
+       --role="roles/secretmanager.viewer"
+     ```
+     沒有這個角色時，`resolve secret versions` 步驟會以 `PERMISSION_DENIED` 失敗，且該次 run 後續所有步驟（build/push/deploy/verify）都會被跳過（真實案例：2026-09-20 `deploy-staging` run `35506278351`，見 `docs/specs/06_部署架構與CICD.md` §6.9）。**IAM 授權屬於使用者的雲端專案安全設定，需由使用者自行執行**，不由 CI 或 agent 代為執行。
    - **預設**：自動取該 secret 目前狀態為 `ENABLED` 的最新版本（`gcloud secrets versions list <secret> --filter="state=ENABLED" --sort-by="~createTime" --limit=1`）。
    - **可覆寫**：GitHub repository variables `SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`（見上方 Variables 表；本機腳本對應同名環境變數）——只在需要強制釘住某個舊版本時才填，平時留空即可，**只填版本號，不填 secret 值**。
    - 每次部署實際使用的三個版本號會寫入該次 run 的 `GITHUB_STEP_SUMMARY`，供事後稽核與回滾比對。

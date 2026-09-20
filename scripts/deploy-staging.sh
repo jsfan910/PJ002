@@ -45,31 +45,40 @@ fi
 IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPOSITORY}/todo-app"
 SHA="$(git rev-parse HEAD)"
 
+# T-0039 r2：與 deploy-staging.yml 同步修正——不讓 `gcloud secrets versions
+# list` 的非 0 結束碼被 set -e 直接吞掉、只留「exit code 1」看不出原因。
+# 顯式捕捉 stdout+stderr 再判斷，失敗時輸出可讀訊息（含 gcloud 原始錯誤
+# 與修復指引）再 return 1；呼叫端用 `|| exit 1` 承接。
 resolve_version() {
   local secret_name="$1"
   local override="$2"
   if [ -n "${override}" ]; then
     echo "${override}"
-    return
+    return 0
   fi
-  gcloud secrets versions list "${secret_name}" \
+  local out
+  if ! out="$(gcloud secrets versions list "${secret_name}" \
     --filter="state=ENABLED" \
     --sort-by="~createTime" \
     --limit=1 \
-    --format="value(name)"
+    --format="value(name)" 2>&1)"; then
+    echo "無法列出 secret ${secret_name} 的版本（gcloud 原始訊息：${out}）。請確認已 gcloud auth login 且該帳號有 secretmanager.viewer（或等效）權限；也可能是 secret 尚未建立。若暫時無法調整權限，可改用對應的 SECRET_VERSION_DATABASE_URL／SECRET_VERSION_BASIC_AUTH_USER／SECRET_VERSION_BASIC_AUTH_PASS 環境變數直接指定版本號略過此查詢" >&2
+    return 1
+  fi
+  if [ -z "${out}" ]; then
+    echo "secret ${secret_name} 沒有任何 state=ENABLED 的版本，請先在 Secret Manager 建立至少一個版本" >&2
+    return 1
+  fi
+  echo "${out}"
 }
 
 echo "== auth =="
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
 echo "== resolve secret versions（釘具體版本，不用 :latest） =="
-DB_VERSION="$(resolve_version database-url "${SECRET_VERSION_DATABASE_URL:-}")"
-USER_VERSION="$(resolve_version basic-auth-user "${SECRET_VERSION_BASIC_AUTH_USER:-}")"
-PASS_VERSION="$(resolve_version basic-auth-pass "${SECRET_VERSION_BASIC_AUTH_PASS:-}")"
-if [ -z "${DB_VERSION}" ] || [ -z "${USER_VERSION}" ] || [ -z "${PASS_VERSION}" ]; then
-  echo "無法解析 secret 版本（database-url=${DB_VERSION:-空} basic-auth-user=${USER_VERSION:-空} basic-auth-pass=${PASS_VERSION:-空}），請確認 Secret Manager 已建立三個 secret 且至少一個 ENABLED 版本" >&2
-  exit 1
-fi
+DB_VERSION="$(resolve_version database-url "${SECRET_VERSION_DATABASE_URL:-}")" || exit 1
+USER_VERSION="$(resolve_version basic-auth-user "${SECRET_VERSION_BASIC_AUTH_USER:-}")" || exit 1
+PASS_VERSION="$(resolve_version basic-auth-pass "${SECRET_VERSION_BASIC_AUTH_PASS:-}")" || exit 1
 echo "database-url:${DB_VERSION} basic-auth-user:${USER_VERSION} basic-auth-pass:${PASS_VERSION}"
 
 echo "== migrate =="
