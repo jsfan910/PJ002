@@ -321,3 +321,10 @@ updated: 2026-09-19T14:06:43+08:00
 - qa-lead 裁決事項處置：A（第 1 項判準矛盾）→ 交使用者，Gate 2 報告 r2 §3 ①，建議有條件通過；選項 3（修 07 §4 判準）列 E-002 框架 v1.2 待辦。B（TC-080 定案）→ 交使用者，§3 ②，建議由使用者以憑證補做 15 分鐘直接比對，否則追認間接證據。C（cron 備援名不副實）→ Leader 採選項 1：Gate 2 後開規格變更小卡修 06 §6.1，已列看板「待辦（Gate 2 後）」。
 - Leader 自承疏失：09-19 裁決 C 的追認未落到文件，造成 TC-080 有 101/102 兩個版本；本輪以文件為準（101）。
 - Gate 2 報告 r2：docs/reports/20260920-1822-Gate2-E001-r2.md。等待使用者裁決 ①Gate 判定 ②TC-080 定案 ③Gate 2 後下一步。
+
+### 2026-09-20T18:35:00+08:00 — 使用者裁決 Gate 2 r2：① A 有條件通過 ② B 追認 TC-080 ③ A 先清待辦再開 P1
+
+- ① **Gate 2（P0）有條件通過**。條件：TC-080 定案（見 ②）、發布前輪換 staging Basic Auth 帳密（使用者於 Secret Manager 加新版本）、Gate 2 後待辦以任務卡追蹤。
+- ② **TC-080 追認通過**：以三項互相獨立的間接證據（部署期間 /health 零中斷、Neon 與 Cloud Run 運算分離、回滾只切 revision）及本機 TC-093 判通過；直接比對留 P1 staging 測試輪。已落到 docs/specs/traceability.md（US-010 列：通過 8、部分通過 0）與 docs/specs/20_測試案例.md（TC-080 列附註）。退出準則第 1 項據此為 102/105 ＝ 97.14%。
+- ③ **先清 Gate 2 後待辦再開 P1**。建卡：T-0038（dev-fe，D-017 修正）、T-0039（dev-ops，secret 釘版本＋verify 自動重試）、T-0040（plan-sd，規格變更請求：06 cron 定位、secret 版本文字、D-016；依賴 T-0039）、T-0041（qa-at，Firefox 兩組補跑，本機）、T-0042（dev-tl，unit TC-ID 標註＋Release Notes v0.1.0 定版＋CHANGELOG；依賴前三卡）。T-0038／T-0039／T-0041 立即派工。
+- 帳密輪換由使用者執行；T-0039 合併後下一次部署會自動釘到最新啟用版本。Epic status 維持 gate2 直到 P1 開卡。
