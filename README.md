@@ -376,8 +376,13 @@ Secrets 分頁新增：
 
 ### 本機等效指令（不需 GitHub Actions，直接重現部署／回滾）
 
-- `scripts/deploy-staging.sh`：與 `deploy-staging.yml` 相同的 migrate → build & push → deploy → verify 順序，需先 `export` 好 `GCP_PROJECT_ID`／`GCP_REGION`／`GCP_AR_REPOSITORY`／`GCP_RUN_SERVICE`／`NEON_DATABASE_URL`／`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD`，並已 `gcloud auth login`。
-- `scripts/rollback-staging.sh`：回滾程序（06 §5.1）的本機等效，不帶參數列出 revision 清單，帶一個 revision 名稱參數即執行 `update-traffic` 切流量並驗證。
+- `scripts/deploy-staging.sh`：與 `deploy-staging.yml` 相同的 migrate → build & push → deploy → verify 順序，需先 `export` 好 `GCP_PROJECT_ID`／`GCP_REGION`／`GCP_AR_REPOSITORY`／`GCP_RUN_SERVICE`／`NEON_DATABASE_URL`／`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD`，並已 `gcloud auth login`。**T-0045 起**：verify 之後會額外檢查新 revision 是否真的接到流量（`status.latestReadyRevisionName` 是否等於本次剛部署的 revision），沒接到會自動執行一次 `update-traffic --to-latest` 再重新驗證，仍未接到才判定失敗（見下方回滾／還原一節的事故背景）。
+- `scripts/rollback-staging.sh`：回滾程序（06 §5.1）的本機等效。
+  - 不帶參數：列出目前 revision 清單與流量分佈，供人判讀選哪一版回滾。
+  - 帶一個 revision 名稱參數：把 100% 流量**明確釘死**在該 revision 並驗證（`update-traffic --to-revisions <rev>=100`）。
+  - 帶 `--to-latest`：把流量還原為「一律跟隨最新 revision」（解除釘死）。
+
+  **⚠️ 回滾／演練後必做（T-0045 事故教訓，2026-09-20）**：以 revision 名稱參數回滾後，Cloud Run 的流量設定會從「一律跟隨最新 revision」變成「明確釘死在該 revision」，**之後的 `gcloud run deploy` 不會自動把流量切回新 revision**——新 revision 仍會成功建立並通過健康檢查，但沒有人會用到它，而 verify 只打同一個 service 網址，所以部署仍會顯示「全綠」。09-19 的回滾演練就是這樣被忘記還原，導致之後 15 次部署（含真正的功能修正）從未真正上線，直到 09-20 才被發現（事故紀錄見 `docs/specs/06_部署架構與CICD.md` §6.10、`docs/reports/20260920-2042-流量釘死事故-E001.md`）。**演練結束或問題排除後，一律執行 `bash scripts/rollback-staging.sh --to-latest` 還原**，不要以為「反正 deploy 還是綠燈」就代表流量正常。`deploy-staging.yml`／`scripts/deploy-staging.sh` 自 T-0045 起雖已會自動偵測並補救這個狀況，但那是最後一道防線，不是取代這一步的理由。
 
 ### 監測
 

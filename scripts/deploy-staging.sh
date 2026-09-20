@@ -115,9 +115,38 @@ echo "== verify =="
 BASE_URL="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.url)")"
 echo "服務網址：${BASE_URL}"
 POLL_INTERVAL_SECONDS=10 POLL_TIMEOUT_SECONDS=300 BASE_URL="${BASE_URL}" npm run verify:health
+
+# ---- T-0045 事故修法：驗證新 revision 是否真的接到流量 ----
+# 事故根因：09-19 回滾演練以 `update-traffic --to-revisions <rev>=100` 把
+# spec.traffic 從「一律跟隨最新 revision」改成「明確釘死在某個具名 revision」，
+# 演練後未還原；之後每次 `gcloud run deploy` 都成功建立新 revision，但流量
+# 從未切過去，而 verify 只打 service URL（同一網址），因此一直「全綠」。
+# 判準：`status.latestReadyRevisionName` 會跟隨目前實際接流量的 revision，
+# 與 `status.latestCreatedRevisionName`（本次剛部署的 revision）不相等即代表
+# 流量沒有指過來（已於本次事故復原時以 services describe 實測確認）。
+NEW_REVISION="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.latestCreatedRevisionName)")"
+LATEST_READY="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.latestReadyRevisionName)")"
+echo "新 revision：${NEW_REVISION}；latestReadyRevisionName：${LATEST_READY}"
+if [ "${LATEST_READY}" != "${NEW_REVISION}" ]; then
+  echo "新 revision（${NEW_REVISION}）未拿到流量，目前流量分佈：" >&2
+  gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="table[no-heading](status.traffic.revisionName,status.traffic.percent)" >&2
+  echo "依 T-0045 事故修法自動執行 update-traffic --to-latest 並重新驗證"
+  gcloud run services update-traffic "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --to-latest
+  BASE_URL="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.url)")"
+  POLL_INTERVAL_SECONDS=10 POLL_TIMEOUT_SECONDS=300 BASE_URL="${BASE_URL}" npm run verify:health
+  LATEST_READY="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.latestReadyRevisionName)")"
+  if [ "${LATEST_READY}" != "${NEW_REVISION}" ]; then
+    echo "update-traffic --to-latest 後新 revision（${NEW_REVISION}）仍未拿到 100% 流量，判定部署失敗，需人工介入（06 §5.1／§6.10）" >&2
+    exit 1
+  fi
+  echo "update-traffic --to-latest 已生效，流量已在新 revision（${NEW_REVISION}）"
+else
+  echo "流量已在新 revision（${NEW_REVISION}），無需修正"
+fi
+
 CODE="$(curl -fsS -o /dev/null -w "%{http_code}" -u "${STAGING_BASIC_AUTH_USER}:${STAGING_BASIC_AUTH_PASSWORD}" "${BASE_URL}/api/v1/todos")"
 echo "GET /api/v1/todos -> ${CODE}"
 test "${CODE}" = "200"
 
-echo "部署完成：${BASE_URL}"
+echo "部署完成：${BASE_URL}（revision ${NEW_REVISION}，流量 100%）"
 echo "首次部署後請回填 STAGING_BASE_URL（GitHub variable）、06 §1、04_API規格.yaml servers。"
