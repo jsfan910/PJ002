@@ -328,3 +328,11 @@ updated: 2026-09-19T14:06:43+08:00
 - ② **TC-080 追認通過**：以三項互相獨立的間接證據（部署期間 /health 零中斷、Neon 與 Cloud Run 運算分離、回滾只切 revision）及本機 TC-093 判通過；直接比對留 P1 staging 測試輪。已落到 docs/specs/traceability.md（US-010 列：通過 8、部分通過 0）與 docs/specs/20_測試案例.md（TC-080 列附註）。退出準則第 1 項據此為 102/105 ＝ 97.14%。
 - ③ **先清 Gate 2 後待辦再開 P1**。建卡：T-0038（dev-fe，D-017 修正）、T-0039（dev-ops，secret 釘版本＋verify 自動重試）、T-0040（plan-sd，規格變更請求：06 cron 定位、secret 版本文字、D-016；依賴 T-0039）、T-0041（qa-at，Firefox 兩組補跑，本機）、T-0042（dev-tl，unit TC-ID 標註＋Release Notes v0.1.0 定版＋CHANGELOG；依賴前三卡）。T-0038／T-0039／T-0041 立即派工。
 - 帳密輪換由使用者執行；T-0039 合併後下一次部署會自動釘到最新啟用版本。Epic status 維持 gate2 直到 P1 開卡。
+
+### 2026-09-20T19:08:00+08:00 — T-0039 r1 rework；Leader 裁決不 revert；IAM 授權交使用者
+
+- 事實：T-0039 r1 已合併 main（05c9a1e）並推送，deploy-staging run 35506278351 於 `resolve secret versions` 步驟失敗：CI 服務帳號 github-deployer 只有 secretAccessor（僅 versions.access），缺 `secretmanager.versions.list`（在 roles/secretmanager.viewer）。staging 執行期不受影響（現行 revision 照常服務），只有下一次部署會紅。
+- 裁決 A：**不 revert 合併**。理由：執行期未壞；revert 後同分支再合併不會帶回內容；修法是補權限或填版本變數，不是回退程式。代價：在使用者授權前 main 的部署工作流維持紅燈，T-0038 合併延後。
+- 裁決 B：T-0039 r2 重派 dev-ops（維持 sonnet；失敗原因是「未以 CI 身分驗證」的流程疏漏，不是工具操作），修：workflow 捕捉 gcloud stderr 輸出可讀 ::error::、README 授權步驟補 roles/secretmanager.viewer、06 §6.9 補記本次失敗、交接檔以 CI 服務帳號實際權限為證據。
+- 裁決 C：T-0038 派 dev-tl 審核（Docker 已就緒可補跑 e2e），通過也先不合併，等 T-0039 r2 與使用者授權讓 deploy 恢復綠。
+- 交使用者：① 授權方式（gcloud add-iam-policy-binding roles/secretmanager.viewer，或填 SECRET_VERSION_DATABASE_URL／BASIC_AUTH_USER／BASIC_AUTH_PASS 三個 repository variables）；② QA Tests run #17 integration-qa 紅燈 job log 需 admin 權限。

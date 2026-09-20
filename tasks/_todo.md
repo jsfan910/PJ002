@@ -8,14 +8,14 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0041 | NFR-004 Firefox 兩組補跑 | qa-at／sonnet | 1 | 2026-09-20 18:36 | 本機 compose 埠 8082／5434；無法啟動則 blocked 並給使用者指令 |
+| T-0041 | NFR-004 Firefox 兩組補跑 | qa-at／sonnet | 1 | 2026-09-20 18:36 | Docker Desktop 已由 qa-at 啟動；compose 埠 8082／5434 已起，跑 Firefox e2e 中 |
+| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-ops／sonnet | 2 | 2026-09-20 19:08 | r1 已合併 main（05c9a1e）但 deploy run 35506278351 紅：CI 服務帳號缺 secretmanager.versions.list。r2 修錯誤訊息／README IAM／06 §6.9；**綠燈需使用者授權或填版本變數** |
 
 ## 審核中
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
-| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-tl | review 於 18:5x；合併推送會觸發部署，需確認 run 全綠與版本號 |
-| T-0038 | D-017 修正：前端錯誤訊息時序競態 | dev-tl | review 於 18:5x；Docker 不可用故 e2e 5 次連跑未跑（離線等效驗證）；排 T-0039 合併後審，Docker 就緒則補跑 e2e |
+| T-0038 | D-017 修正：前端錯誤訊息時序競態 | dev-tl | 19:08 派審（Docker 已就緒，補跑 e2e 5 次；埠 8081／5433）；**審核通過先不合併**，等 T-0039 r2 讓 deploy 恢復綠再合併 |
 
 ## 阻塞
 
@@ -29,7 +29,9 @@
 |---|---|---|---|---|
 | T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | T-0039 | T-0039 done 後派 |
 | T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | T-0038、T-0039、T-0041 | 三卡 done 後派 |
-| — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 合併後下一次部署自動釘到最新版 |
+| — | **CI 服務帳號授權 `roles/secretmanager.viewer`**（或填 3 個 repository variables `SECRET_VERSION_*`） | **使用者** | — | T-0039 deploy 綠燈前置；agent 不修改 IAM。指令見 T-0039 審核紀錄 r1／README |
+| — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |
+| — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
 
 ## 待辦（Gate 2 後）
 
