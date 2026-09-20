@@ -1,0 +1,334 @@
+<title>待辦事項應用網路架構</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --gcp: #e9eff7;
+    --gcp-line: #9fb3c8;
+    --fg: #1b2430;
+    --muted: #5c6b7a;
+    --line: #c3cdd8;
+    --accent: #0b6e99;
+    --accent-soft: #d6e9f3;
+    --warn: #9a5b00;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151c;
+      --surface: #172029;
+      --gcp: #1a2634;
+      --gcp-line: #3f5670;
+      --fg: #e6ecf2;
+      --muted: #9aa8b6;
+      --line: #35434f;
+      --accent: #63b6e2;
+      --accent-soft: #1e3a4c;
+      --warn: #e0a24a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f151c;
+    --surface: #172029;
+    --gcp: #1a2634;
+    --gcp-line: #3f5670;
+    --fg: #e6ecf2;
+    --muted: #9aa8b6;
+    --line: #35434f;
+    --accent: #63b6e2;
+    --accent-soft: #1e3a4c;
+    --warn: #e0a24a;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    padding-block: 32px 48px;
+    padding-inline: 16px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; }
+  header h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: 0.01em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 500; margin: 0 0 8px; }
+  figure { margin: 0; }
+  .scroller { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+  svg { display: block; min-width: 1100px; max-width: 100%; height: auto; color: var(--fg); font-family: "Noto Sans TC", "PingFang TC", system-ui, sans-serif; font-size: 12px; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 10px; max-width: 90ch; }
+  svg text { fill: currentColor; }
+  svg .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 10.5px; }
+  svg .small { font-size: 11px; }
+  svg .muted { fill: var(--muted); }
+  svg .title { font-weight: 700; font-size: 13px; }
+  svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+  svg .chip { fill: var(--accent-soft); stroke: none; }
+  svg .zone { fill: var(--gcp); stroke: var(--gcp-line); stroke-width: 1.4; stroke-dasharray: 6 4; }
+  svg .zone-dev { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 6 4; }
+  svg .flow { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  svg .deliver { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  svg .accent { fill: var(--accent); font-weight: 500; }
+  svg .warn { fill: var(--warn); }
+  svg .dot { fill: currentColor; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--surface); }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0.04em; }
+  td code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+  h2 { font-size: 18px; margin: 0 0 10px; }
+  .sources { color: var(--muted); font-size: 13px; }
+  .sources code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
+  @media (max-width: 640px) { body { font-size: 14px; } header h1 { font-size: 22px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">E-001 · staging 現況 · 2026-09-20</p>
+    <h1>待辦事項應用網路架構</h1>
+    <p>依凍結規格與實際部署狀態繪製：上半部是 GCP Cloud Run 上的 staging 執行路徑與 GitHub Actions 交付路徑，下半部是本機 docker compose 的 dev 環境。prod 環境本 Epic 不建立。</p>
+  </header>
+
+  <figure>
+    <div class="scroller">
+      <svg viewBox="0 0 1240 920" role="img" aria-label="使用者、監測與 GitHub Actions 經由 Google Front End 進入 Cloud Run 的 todo-app 服務，服務連到外部 Neon Postgres；GitHub Actions 以 WIF 取得短期憑證後推映像到 Artifact Registry 並部署新 revision；本機 dev 以 docker compose 跑 app 與 postgres">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+          </marker>
+          <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <!-- ===== GCP 區 ===== -->
+        <rect class="zone" x="320" y="30" width="600" height="630" rx="8"></rect>
+        <text x="335" y="50" class="title">GCP 專案 pj002-509106 · 區域 asia-east1</text>
+
+        <!-- GFE -->
+        <rect class="box" x="350" y="62" width="550" height="50" rx="4"></rect>
+        <text x="365" y="81" class="title">Google Front End（平台 TLS，*.run.app 憑證自動配發）</text>
+        <text x="365" y="100" class="mono muted">https://todo-app-dpevsdhdva-de.a.run.app · 443 · HTTP→HTTPS 301</text>
+
+        <!-- GFE -> Cloud Run -->
+        <line class="flow" x1="515" y1="112" x2="515" y2="140" marker-end="url(#arrow)"></line>
+        <text x="523" y="130" class="small muted">路由至現行 revision（容器埠 8080）</text>
+
+        <!-- Cloud Run service -->
+        <rect class="box" x="350" y="140" width="330" height="270" rx="4"></rect>
+        <text x="365" y="160" class="title">Cloud Run service todo-app</text>
+        <text x="365" y="178" class="small muted">ingress all · allow-unauthenticated · min 0／max 2</text>
+        <text x="365" y="194" class="small muted">並行 80 · 逾時 60s · 512Mi／1 vCPU · 冷啟 1–3 秒</text>
+
+        <rect class="box" x="365" y="205" width="300" height="190" rx="4"></rect>
+        <text x="378" y="223" class="title">revision todo-app-00003-lt2（100% 流量）</text>
+        <text x="378" y="241" class="small muted">node:22-alpine · 非 root · 監聽 $PORT=8080</text>
+        <text x="378" y="261" class="small">Fastify 請求管線（順序固定）：</text>
+
+        <rect class="chip" x="378" y="270" width="86" height="22" rx="3"></rect>
+        <text x="421" y="285" class="small" text-anchor="middle">1 error-handler</text>
+        <line class="flow" x1="464" y1="281" x2="474" y2="281" marker-end="url(#arrow)"></line>
+        <rect class="chip" x="475" y="270" width="80" height="22" rx="3"></rect>
+        <text x="515" y="285" class="small" text-anchor="middle">2 basic-auth</text>
+        <line class="flow" x1="555" y1="281" x2="565" y2="281" marker-end="url(#arrow)"></line>
+        <rect class="chip" x="566" y="270" width="86" height="22" rx="3"></rect>
+        <text x="609" y="285" class="small" text-anchor="middle">3 GET /health</text>
+
+        <rect class="chip" x="378" y="300" width="110" height="22" rx="3"></rect>
+        <text x="433" y="315" class="small" text-anchor="middle">4 static public/</text>
+        <line class="flow" x1="488" y1="311" x2="498" y2="311" marker-end="url(#arrow)"></line>
+        <rect class="chip" x="499" y="300" width="120" height="22" rx="3"></rect>
+        <text x="559" y="315" class="small" text-anchor="middle">5 /api/v1/todos</text>
+
+        <text x="378" y="345" class="small">basic-auth：全站 401，/health 為唯一豁免路徑</text>
+        <text x="378" y="363" class="small">pg Pool max 5 → DATABASE_URL（來自 Secret Manager）</text>
+        <text x="378" y="381" class="small muted">CORS 不啟用（同源）· 日誌 redact authorization</text>
+
+        <!-- Secret Manager -->
+        <rect class="box" x="760" y="140" width="140" height="120" rx="4"></rect>
+        <text x="772" y="160" class="title">Secret Manager</text>
+        <text x="772" y="182" class="mono">database-url</text>
+        <text x="772" y="200" class="mono">basic-auth-user</text>
+        <text x="772" y="218" class="mono">basic-auth-pass</text>
+        <text x="772" y="240" class="small muted">版本：latest</text>
+        <line class="flow" x1="760" y1="200" x2="680" y2="200" marker-end="url(#arrow)"></line>
+        <text x="720" y="192" class="small" text-anchor="middle">啟動時注入 env</text>
+
+        <!-- Cloud Run -> Neon -->
+        <line class="flow" x1="680" y1="330" x2="980" y2="330" marker-end="url(#arrow)"></line>
+        <text x="830" y="322" class="small" text-anchor="middle">SQL over TLS · 5432 · pg Pool（max 5）</text>
+        <text x="830" y="346" class="small muted" text-anchor="middle">出 GCP 邊界，走公網</text>
+
+        <!-- WIF -->
+        <rect class="box" x="350" y="460" width="230" height="170" rx="4"></rect>
+        <text x="362" y="480" class="title">IAM：Workload Identity Federation</text>
+        <text x="362" y="498" class="small">pool ＋ OIDC provider</text>
+        <text x="362" y="515" class="mono muted">token.actions.githubusercontent.com</text>
+        <text x="362" y="533" class="small">attribute condition 限定本倉庫</text>
+        <text x="362" y="555" class="small">SA github-deployer 角色：</text>
+        <text x="362" y="572" class="mono muted">run.admin</text>
+        <text x="362" y="589" class="mono muted">artifactregistry.writer</text>
+        <text x="362" y="606" class="mono muted">iam.serviceAccountUser</text>
+        <text x="362" y="623" class="small muted">倉庫中零長期金鑰</text>
+
+        <!-- Artifact Registry -->
+        <rect class="box" x="630" y="460" width="270" height="170" rx="4"></rect>
+        <text x="642" y="480" class="title">Artifact Registry（DOCKER）</text>
+        <text x="642" y="500" class="mono muted">asia-east1-docker.pkg.dev/</text>
+        <text x="642" y="516" class="mono muted">pj002-509106/todo-app/todo-app</text>
+        <text x="642" y="540" class="small">標籤：commit SHA（部署用）＋ latest（除錯用）</text>
+        <text x="642" y="558" class="small">保留最近 5 版，供 update-traffic 回滾</text>
+        <text x="642" y="580" class="small muted">與 Cloud Run 同區，無跨區流量費</text>
+
+        <!-- WIF -> AR -->
+        <line class="deliver" x1="580" y1="545" x2="630" y2="545" marker-end="url(#arrow-accent)"></line>
+        <text x="605" y="537" class="small accent" text-anchor="middle">③ push</text>
+
+        <!-- WIF -> Cloud Run -->
+        <line class="deliver" x1="470" y1="460" x2="470" y2="410" marker-end="url(#arrow-accent)"></line>
+        <text x="478" y="430" class="small accent">④ gcloud run deploy</text>
+        <text x="478" y="446" class="small muted">新 revision，probe /health 過才切流量</text>
+
+        <!-- AR -> Cloud Run -->
+        <line class="flow" x1="672" y1="460" x2="672" y2="410" marker-end="url(#arrow)"></line>
+        <text x="682" y="438" class="small">拉取映像 :sha</text>
+
+        <!-- ===== Neon ===== -->
+        <rect class="box" x="980" y="270" width="230" height="120" rx="4"></rect>
+        <text x="992" y="290" class="title">Neon Serverless Postgres</text>
+        <text x="992" y="308" class="small">Free · PostgreSQL 16 · 0.5 GB</text>
+        <text x="992" y="326" class="small muted">閒置自動暫停 · 外部 SaaS（非 GCP）</text>
+        <text x="992" y="348" class="small">表：todos、schema_migrations</text>
+        <text x="992" y="368" class="small muted">與運算分離：重部署／回滾不動資料</text>
+
+        <!-- ===== 左欄：呼叫方 ===== -->
+        <rect class="box" x="20" y="57" width="250" height="60" rx="4"></rect>
+        <text x="32" y="77" class="title">使用者瀏覽器（UAT／驗收者）</text>
+        <text x="32" y="97" class="small muted">HTTPS 443 · Basic Auth 全站（/health 除外）</text>
+
+        <rect class="box" x="20" y="150" width="250" height="88" rx="4"></rect>
+        <text x="32" y="170" class="title">Cloud Monitoring uptime check</text>
+        <text x="32" y="188" class="small">GET /health 每 5 分鐘 · 逾時 10s · 不帶憑證</text>
+        <text x="32" y="206" class="small muted">探測點：asia-pacific／usa-oregon／</text>
+        <text x="32" y="224" class="small muted">usa-iowa／europe（NFR-003 主要來源）</text>
+
+        <rect class="box" x="20" y="270" width="250" height="395" rx="4"></rect>
+        <text x="32" y="292" class="title">GitHub Actions（ubuntu-latest runner）</text>
+
+        <rect class="box" x="35" y="305" width="220" height="66" rx="3"></rect>
+        <text x="45" y="322" class="small title">ci.yml · PR／push main</text>
+        <text x="45" y="339" class="small">lint／unit／build／integration</text>
+        <text x="45" y="356" class="small muted">自帶 postgres service container</text>
+
+        <rect class="box" x="35" y="380" width="220" height="66" rx="3"></rect>
+        <text x="45" y="397" class="small title">qa-tests.yml · push main</text>
+        <text x="45" y="414" class="small">integration-qa／e2e／perf</text>
+        <text x="45" y="431" class="small muted">自帶 service container，不碰 staging</text>
+
+        <rect class="box" x="35" y="455" width="220" height="56" rx="3"></rect>
+        <text x="45" y="472" class="small title">monitor-health.yml · cron */5</text>
+        <text x="45" y="489" class="small">GET /health ×3，不帶憑證</text>
+        <text x="45" y="504" class="small warn">備援：排程曾長時間零觸發</text>
+
+        <rect class="box" x="35" y="520" width="220" height="130" rx="3"></rect>
+        <text x="45" y="537" class="small title">deploy-staging.yml</text>
+        <text x="45" y="553" class="small muted">workflow_run：ci 於 main 全綠後</text>
+        <text x="45" y="571" class="small accent">① auth（WIF 換短期憑證）</text>
+        <text x="45" y="587" class="small accent">② migrate（直連 Neon）</text>
+        <text x="45" y="603" class="small accent">③ build ＆ push　④ deploy</text>
+        <text x="45" y="619" class="small accent">⑤ verify：/health 輪詢＋</text>
+        <text x="45" y="635" class="small accent">　/api/v1/todos 帶憑證 200</text>
+
+        <!-- 呼叫方匯流排 -> GFE -->
+        <line class="flow" x1="270" y1="87" x2="350" y2="87" marker-end="url(#arrow)"></line>
+        <line class="flow" x1="300" y1="87" x2="300" y2="560"></line>
+        <line class="flow" x1="270" y1="194" x2="300" y2="194"></line>
+        <line class="flow" x1="270" y1="483" x2="300" y2="483"></line>
+        <line class="deliver" x1="270" y1="560" x2="300" y2="560"></line>
+        <circle class="dot" cx="300" cy="87" r="3"></circle>
+        <circle class="dot" cx="300" cy="194" r="3"></circle>
+        <circle class="dot" cx="300" cy="483" r="3"></circle>
+        <circle class="dot" cx="300" cy="560" r="3"></circle>
+        <text x="285" y="552" class="small accent" text-anchor="middle">⑤</text>
+
+        <!-- deploy -> WIF -->
+        <line class="deliver" x1="270" y1="595" x2="350" y2="595" marker-end="url(#arrow-accent)"></line>
+        <text x="310" y="588" class="small accent" text-anchor="middle">① OIDC</text>
+
+        <!-- deploy -> Neon（migrate） -->
+        <polyline class="deliver" points="270,635 285,635 285,700 1090,700 1090,390" marker-end="url(#arrow-accent)"></polyline>
+        <text x="690" y="692" class="small accent" text-anchor="middle">② npm run migrate（NEON_DATABASE_URL · forward-only · 先於 build／deploy）</text>
+
+        <!-- ===== dev 本機 ===== -->
+        <rect class="zone-dev" x="20" y="740" width="620" height="160" rx="8"></rect>
+        <text x="35" y="760" class="title">dev 本機環境：docker compose（同一份 Dockerfile）</text>
+
+        <rect class="box" x="35" y="778" width="170" height="60" rx="4"></rect>
+        <text x="45" y="798" class="small title">瀏覽器／curl</text>
+        <text x="45" y="816" class="mono muted">http://localhost:8080</text>
+
+        <line class="flow" x1="205" y1="808" x2="245" y2="808" marker-end="url(#arrow)"></line>
+
+        <rect class="box" x="245" y="778" width="170" height="60" rx="4"></rect>
+        <text x="255" y="798" class="small title">app 容器</text>
+        <text x="255" y="816" class="mono muted">host ${PORT} → 容器 $PORT</text>
+        <text x="255" y="831" class="small muted">預設 8080</text>
+
+        <line class="flow" x1="415" y1="808" x2="455" y2="808" marker-end="url(#arrow)"></line>
+        <text x="435" y="800" class="small" text-anchor="middle">@db:5432</text>
+
+        <rect class="box" x="455" y="778" width="170" height="60" rx="4"></rect>
+        <text x="465" y="798" class="small title">db postgres:16-alpine</text>
+        <text x="465" y="816" class="mono muted">host ${POSTGRES_HOST_PORT:-5432}</text>
+        <text x="465" y="831" class="small muted">volume todo-db-data</text>
+
+        <text x="35" y="866" class="small muted">compose 內網：DATABASE_URL 指向 db:5432；改用 npm start 時改指 localhost:${POSTGRES_HOST_PORT:-5432}</text>
+        <text x="35" y="884" class="small muted">CI 的 ci.yml／qa-tests.yml 用相同拓樸（postgres service container），不接 staging</text>
+
+        <!-- ===== 圖例 ===== -->
+        <rect class="zone-dev" x="660" y="740" width="550" height="160" rx="8"></rect>
+        <text x="675" y="760" class="title">圖例與註記</text>
+        <line class="flow" x1="675" y1="782" x2="715" y2="782" marker-end="url(#arrow)"></line>
+        <text x="725" y="786" class="small">實線：執行期流量（HTTPS、SQL、映像拉取、secret 注入）</text>
+        <line class="deliver" x1="675" y1="804" x2="715" y2="804" marker-end="url(#arrow-accent)"></line>
+        <text x="725" y="808" class="small">虛線：交付流程 deploy-staging.yml，①→⑤ 順序固定</text>
+        <text x="675" y="832" class="small muted">平台層不擋（allow-unauthenticated），全站保護在應用層 basic-auth（ADR-0004）</text>
+        <text x="675" y="850" class="small muted">憑證只存在 GitHub secrets 與 Secret Manager；倉庫零金鑰（WIF，ADR-0005）</text>
+        <text x="675" y="868" class="small muted">min-instances = 0 是免費額度的前提；prod 環境本 Epic 不建立</text>
+        <text x="675" y="886" class="small muted">NFR-003 採樣：uptime check 為主（起算 2026-09-19 17:55:07），GitHub cron 為備援</text>
+      </svg>
+    </div>
+    <figcaption>所有對外請求都經 Google Front End 進入單一 Cloud Run 服務，再由 Fastify 管線決定放行或 401；資料庫在 GCP 之外的 Neon。交付路徑不經前端：GitHub Actions 以 OIDC 換短期憑證，先對 Neon 跑 migration，再推映像、建新 revision，最後從公網打 /health 與 /api/v1/todos 驗證。</figcaption>
+  </figure>
+
+  <section>
+    <h2>連線清單</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>來源</th><th>目的</th><th>協定／埠</th><th>認證</th><th>頻率或觸發</th></tr></thead>
+        <tbody>
+          <tr><td>使用者瀏覽器</td><td>GFE → Cloud Run <code>todo-app</code></td><td>HTTPS 443（容器 8080）</td><td>Basic Auth（單一共享帳密）</td><td>UAT 手動操作</td></tr>
+          <tr><td>Cloud Monitoring uptime check</td><td><code>/health</code></td><td>HTTPS 443</td><td>無（唯一豁免路徑）</td><td>每 5 分鐘 × 4 區域</td></tr>
+          <tr><td>monitor-health.yml</td><td><code>/health</code></td><td>HTTPS 443</td><td>無</td><td>cron */5，每次 3 筆；備援</td></tr>
+          <tr><td>deploy-staging.yml ①</td><td>GCP STS／WIF</td><td>HTTPS（OIDC token）</td><td>GitHub OIDC，限定本倉庫</td><td>ci 於 main 全綠後</td></tr>
+          <tr><td>deploy-staging.yml ②</td><td>Neon</td><td>Postgres over TLS 5432</td><td><code>NEON_DATABASE_URL</code>（GitHub secret）</td><td>同上，forward-only migration</td></tr>
+          <tr><td>deploy-staging.yml ③</td><td>Artifact Registry</td><td>HTTPS（docker push）</td><td>SA 短期憑證</td><td>同上，標籤 sha ＋ latest</td></tr>
+          <tr><td>deploy-staging.yml ④</td><td>Cloud Run Admin API</td><td>HTTPS（gcloud run deploy）</td><td>SA 短期憑證</td><td>同上，probe 通過才切流量</td></tr>
+          <tr><td>deploy-staging.yml ⑤</td><td><code>/health</code>、<code>/api/v1/todos</code></td><td>HTTPS 443</td><td>後者帶 Basic Auth</td><td>同上，輪詢上限 5 分鐘</td></tr>
+          <tr><td>Cloud Run revision</td><td>Neon</td><td>Postgres over TLS 5432</td><td><code>DATABASE_URL</code>（Secret Manager）</td><td>常駐連線池 max 5</td></tr>
+          <tr><td>Cloud Run</td><td>Artifact Registry</td><td>內部拉取映像</td><td>平台身分</td><td>建立 revision 時</td></tr>
+          <tr><td>Cloud Run</td><td>Secret Manager</td><td>內部</td><td>SA <code>secretmanager.secretAccessor</code></td><td>revision 啟動時注入三個 env</td></tr>
+          <tr><td>dev：瀏覽器／curl</td><td>app 容器</td><td>HTTP localhost 8080</td><td>Basic Auth（.env 佔位值）</td><td>本機</td></tr>
+          <tr><td>dev：app 容器</td><td>db 容器</td><td>Postgres 5432（compose 內網）</td><td>.env 佔位值</td><td>本機</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sources">
+    <h2>事實來源</h2>
+    <p><code>docs/specs/06_部署架構與CICD.md</code>（§1 環境、§2 資源、§3 pipeline）、<code>docs/specs/adr/ADR-0004</code>、<code>ADR-0005</code>、<code>infra/cloudrun-service.yaml</code>、<code>infra/uptime-check.sh</code>、<code>.github/workflows/{ci,deploy-staging,monitor-health,qa-tests}.yml</code>、<code>docker-compose.yml</code>、<code>Dockerfile</code>、<code>src/app.ts</code>、<code>src/db/pool.ts</code>。本頁是給人閱讀的檢視，不是事實來源。</p>
+  </section>
+</div>
