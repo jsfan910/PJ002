@@ -329,7 +329,7 @@ updated: 2026-09-19T14:06:43+08:00
 - ③ **先清 Gate 2 後待辦再開 P1**。建卡：T-0038（dev-fe，D-017 修正）、T-0039（dev-ops，secret 釘版本＋verify 自動重試）、T-0040（plan-sd，規格變更請求：06 cron 定位、secret 版本文字、D-016；依賴 T-0039）、T-0041（qa-at，Firefox 兩組補跑，本機）、T-0042（dev-tl，unit TC-ID 標註＋Release Notes v0.1.0 定版＋CHANGELOG；依賴前三卡）。T-0038／T-0039／T-0041 立即派工。
 - 帳密輪換由使用者執行；T-0039 合併後下一次部署會自動釘到最新啟用版本。Epic status 維持 gate2 直到 P1 開卡。
 
-### 2026-09-20T19:08:00+08:00 — T-0039 r1 rework；Leader 裁決不 revert；IAM 授權交使用者
+### 2026-09-20T19:01:59+08:00 — T-0039 r1 rework；Leader 裁決不 revert；IAM 授權交使用者
 
 - 事實：T-0039 r1 已合併 main（05c9a1e）並推送，deploy-staging run 35506278351 於 `resolve secret versions` 步驟失敗：CI 服務帳號 github-deployer 只有 secretAccessor（僅 versions.access），缺 `secretmanager.versions.list`（在 roles/secretmanager.viewer）。staging 執行期不受影響（現行 revision 照常服務），只有下一次部署會紅。
 - 裁決 A：**不 revert 合併**。理由：執行期未壞；revert 後同分支再合併不會帶回內容；修法是補權限或填版本變數，不是回退程式。代價：在使用者授權前 main 的部署工作流維持紅燈，T-0038 合併延後。
@@ -337,25 +337,30 @@ updated: 2026-09-19T14:06:43+08:00
 - 裁決 C：T-0038 派 dev-tl 審核（Docker 已就緒可補跑 e2e），通過也先不合併，等 T-0039 r2 與使用者授權讓 deploy 恢復綠。
 - 交使用者：① 授權方式（gcloud add-iam-policy-binding roles/secretmanager.viewer，或填 SECRET_VERSION_DATABASE_URL／BASIC_AUTH_USER／BASIC_AUTH_PASS 三個 repository variables）；② QA Tests run #17 integration-qa 紅燈 job log 需 admin 權限。
 
-### 2026-09-20T19:25:00+08:00 — T-0041 blocked（環境限制）；Leader 裁決
+### 2026-09-20T19:06:36+08:00 — T-0041 blocked（環境限制）；Leader 裁決
 
 - 事實：Firefox 兩組於 agent 執行環境 68/68 在 browser.launch 階段失敗（`spawn UNKNOWN`，Windows CreateProcess 層級）；Chromium 對照 4/4 正常、二進位檔已 --force 重下、非 Docker 問題。判工具限制，非產品缺陷。報告 docs/reports/20260920-1901-AT-E001-r4-firefox.md。
 - 裁決：T-0041 維持 blocked，交使用者在自己的終端執行報告內單一指令，結果貼回後 qa-lead 更新 TC-091；NFR-004 第 10 項維持 4/6，非擋關。T-0042 解除對 T-0041 的依賴，Release Notes 以「已知限制」記載 Firefox 未驗。
 
-### 2026-09-20T19:30:00+08:00 — T-0038 初審通過待合併；favicon 404 另立 T-0043
+### 2026-09-20T19:14:14+08:00 — T-0038 初審通過待合併；favicon 404 另立 T-0043
 
 - dev-tl 審核 T-0038：D-017 三條斷言本機 5 次全過；acceptance 第 4 條（e2e 全過）條件通過，因 msedge 兩尺寸 TC-009 固定失敗於「console 無 error」，21 筆 404 全為 /favicon.ico，且 main（不含 T-0038）同樣重現 → 與本卡無因果。
 - 裁決：採 dev-tl 建議①，建 T-0043（dev-fe）補 public/favicon.ico，不新增路由、仍受 Basic Auth 保護；不放寬 TC-009 斷言。T-0038 維持初審通過，等 deploy 綠後與 T-0043 一併由 dev-tl 合併。D-017 正式關閉仍須 qa-lead 於 staging 重跑 TC-067／TC-009 5 次全過（本機從未重現）。
 
-### 2026-09-20T19:50:00+08:00 — T-0039 r2 blocked（等使用者 IAM）；解除 T-0040 依賴；T-0038／T-0043 合併
+### 2026-09-20T19:26:09+08:00 — T-0039 r2 blocked（等使用者 IAM）；解除 T-0040 依賴；T-0038／T-0043 合併
 
 - T-0039 r2：離線 5 條 acceptance 通過，程式已合併 main（3345022）；真實 run 35507519302 於 resolve secret versions 以可讀 PERMISSION_DENIED 停住 → 卡 blocked，blocked_reason 等使用者授 roles/secretmanager.viewer 或填 SECRET_VERSION_*。staging 既有 revision 正常服務。
 - 裁決：T-0040 解除對 T-0039 done 的依賴，改以 main 現況為準立即派 plan-sd；加兩項：06 §2 部署服務帳號角色清單補 roles/secretmanager.viewer、§7 三處參數同步表由 :latest 改版本釘定敘述。
 - 裁決：T-0043 派 dev-tl 審核，通過即與 T-0038 一併合併推送；接受在 IAM 授權前部署 run 於同一步驟停住，授權後重跑一次即部署全部。
 
-### 2026-09-20T19:58:00+08:00 — T-0040 r1 審核：rework r2（範圍擴充）；備援缺口採 A
+### 2026-09-20T19:37:36+08:00 — T-0040 r1 審核：rework r2（範圍擴充）；備援缺口採 A
 
 - T-0040 r1：acceptance 五條全過（06 v0.3：cron 改保溫定位、secret 釘版本、3xx、§2.1 五角色清單、§7 同步表；ADR-0005 第 6、7 點附註）。
 - 裁決 ①：NFR-003 量測來源單點 → 採 06 §6.1.1 選項 A，新增第二個 uptime check，並一併建 uptime 告警政策＋email 通知管道（免費額度）；列 Gate 2 後維運卡（dev-ops）。
 - 裁決 ②：SD §7 NFR-002① 仍寫 301 → T-0040 r2 補改（outputs 加 SD 一列），不另開卡；此為範圍擴充非失敗，不升級模型。
 - 裁決 ③：ADR-0005 第 6 點附註接受（不改決定，只更正前提）。
+
+### 2026-09-20T19:43:18+08:00 — T-0040 r2 done；Leader 更正 19:0x～19:4x 之間超前的時間戳
+
+- T-0040 r2 done：SD §7 NFR-002① 同步 3xx；06 v0.3、ADR-0005 附註、SD 三處一致。裁決：SD version 維持 0.3；SD 變更紀錄錯置列列 P1 規格同步卡。
+- 更正：Leader 於 19:0x～19:4x 寫入 Epic／看板／交接檔／T-0043 卡的時間戳（19:08、19:25、19:30、19:33、19:50、19:58、20:05）為估算超前，已依對應 commit 真實時間（19:01:59、19:06:36、19:14:14、19:14:54、19:26:09、19:37:36、19:39:42）更正；各角色交接檔 A／B 段時間未受影響。教訓：每次寫時間戳先 date，不憑印象。

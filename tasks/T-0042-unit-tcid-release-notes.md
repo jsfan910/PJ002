@@ -8,7 +8,7 @@ model: opus
 phase: dev
 status: todo
 round: 1
-depends_on: [T-0038, T-0043]   # T-0039 程式已合併 main（3345022），僅部署綠燈待使用者 IAM，Leader 2026-09-20 20:05 裁決以合併為準；T-0041 因環境限制 blocked（Leader 2026-09-20 19:2x 裁決解除依賴）；Firefox 結果以「已知限制」寫入 Release Notes
+depends_on: [T-0038, T-0043]   # T-0039 程式已合併 main（3345022），僅部署綠燈待使用者 IAM，Leader 2026-09-20 19:39 裁決以合併為準；T-0041 因環境限制 blocked（Leader 2026-09-20 19:07 裁決解除依賴）；Firefox 結果以「已知限制」寫入 Release Notes
 inputs:
   - docs/reports/20260920-1806-測試總結-E001-r3.md#4（R-6：unit 層 11 條 TC 無法逐條追溯）與 #1（退出準則最終數字）
   - docs/reports/20260920-1822-Gate2-E001-r2.md（有條件通過與使用者三項裁決）

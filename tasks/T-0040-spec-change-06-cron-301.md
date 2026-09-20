@@ -8,7 +8,7 @@ model: opus
 phase: plan
 status: review
 round: 2
-depends_on: []   # 原依賴 T-0039 done；T-0039 程式已合併 main（3345022）但因使用者 IAM 授權待辦而 blocked，Leader 2026-09-20 19:5x 裁決解除依賴，以 main 現況為準
+depends_on: []   # 原依賴 T-0039 done；T-0039 程式已合併 main（3345022）但因使用者 IAM 授權待辦而 blocked，Leader 2026-09-20 19:26 裁決解除依賴，以 main 現況為準
 inputs:
   - docs/reports/20260920-1806-測試總結-E001-r3.md#6（裁決事項 C：cron 24 小時內僅 8 次，備援名不副實）
   - tasks/E-001-todo-app.md（2026-09-20T18:18:13 裁決：C 採選項 1；使用者 Gate 2 r2 裁決）
@@ -32,7 +32,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T19:39:03+08:00
+updated: 2026-09-20T19:43:18+08:00
 blocked_reason: null
 ---
 
@@ -61,4 +61,5 @@ sed -n 1,10p docs/specs/06_部署架構與CICD.md                               
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| r1 | leader | rework（範圍擴充，非失敗） | 四條驗收指令實跑，acceptance 1～5 全過，Leader 追加兩項到位；假設 7 條全接受（含 ADR 第 6 點附註）。裁決：①備援缺口採 A（第二個 uptime check）＋告警政策，列 Gate 2 後維運卡；②SD:308 仍寫 301 → r2 補改（outputs 已加 SD §7 一列）；③接受。 | worklog/handoff/20260920-1955-T0040-r1-leader.md |
+| r2 | leader | done | 實跑：SD 只剩 §7 NFR-002①「3xx（實測 302）」與變更紀錄列兩處含 301 字面（皆為引用脈絡）；`git show -U0 3ee55e7` 只動 SD 四個 hunk（frontmatter 兩行、第 308 列、變更紀錄一列）；與 06 §2、ADR-0005 第 7 點逐字一致。裁決：①SD version 維持 0.3 接受；②驗證指令改為可執行的 curl 接受；③SD 變更紀錄錯置的 SD-05 列不在本卡，列 P1 規格同步卡。 | worklog/handoff/20260920-1936-T0040-r1-leader.md（r2 段） |
+| r1 | leader | rework（範圍擴充，非失敗） | 四條驗收指令實跑，acceptance 1～5 全過，Leader 追加兩項到位；假設 7 條全接受（含 ADR 第 6 點附註）。裁決：①備援缺口採 A（第二個 uptime check）＋告警政策，列 Gate 2 後維運卡；②SD:308 仍寫 301 → r2 補改（outputs 已加 SD §7 一列）；③接受。 | worklog/handoff/20260920-1936-T0040-r1-leader.md |

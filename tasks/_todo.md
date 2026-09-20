@@ -8,8 +8,7 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | 1 | 2026-09-20 20:05 | worktree T-0042；T-0039 程式已合併，依賴以合併為準 |
-| T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | 2 | 2026-09-20 19:5x | r1 五條全過；r2 範圍擴充補 SD §7 NFR-002① 的 301→3xx |
+| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | 1 | 2026-09-20 19:40 | worktree T-0042；T-0039 程式已合併，依賴以合併為準 |
 
 ## 審核中
 
@@ -36,6 +35,6 @@
 | 項目 | 角色 | 備註 |
 |---|---|---|
 | P1：US-011～US-013 多使用者帳號 | 依 WBS §8 | 使用者裁決③ A：待辦五卡清完後開；第一張卡含 CR N-1 互斥鎖與 002 migration TRUNCATE（SD-02） |
-| 20_測試案例 TC-079 判準文字 301→3xx | qa-lead | 隨 P1 測試計畫同步卡處理（T-0040 只改 06／ADR／SRS） |
+| 20_測試案例 TC-079 判準文字 301→3xx；SD 變更紀錄表錯置的 SD-05 列 | qa-lead／plan-sd | 隨 P1 規格與測試計畫同步卡處理（T-0040 已改 06／ADR／SD §7） |
 | TC-080 直接比對、D-017 staging 重跑、Firefox staging 重跑 | qa-at（需憑證） | 留 P1 staging 測試輪 |
 | 07 §4 第 1 項判準改為「不通過 0 且未達通過者皆有裁決處置」 | E-002 框架 v1.2 | T-0037 裁決事項 A 選項 3；不在本 Epic 改 |

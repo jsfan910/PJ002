@@ -25,7 +25,7 @@ acceptance:
   - `npm run lint`、`npm run test:unit` 全綠；不動 outputs 以外的檔案；不改 tests/e2e
 reviewer: dev-tl
 branch: task/T-0043-favicon
-created: 2026-09-20T19:30:00+08:00
+created: 2026-09-20T19:14:00+08:00
 updated: 2026-09-20T19:33:36+08:00
 blocked_reason: null
 ---
@@ -36,7 +36,7 @@ blocked_reason: null
 
 ## 背景與限制
 
-- 上游：dev-tl 審核 T-0038 時發現（Leader 2026-09-20 19:30 裁決採 dev-tl 建議①）。
+- 上游：dev-tl 審核 T-0038 時發現（Leader 2026-09-20 19:14 裁決採 dev-tl 建議①）。
 - 下游：T-0038 與本卡合併後，qa-lead 於 staging 重跑 TC-009／TC-067 關閉 D-017。
 - 必須遵守：CLAUDE.md 協作協定與工作鐵則；角色檔 `.claude/agents/dev-fe.md`；**在 git worktree `<根目錄>-wt/T-0043` 內作業**；靜態檔由既有 @fastify/static 供應，**不新增路由**（SD 端點清單不變）。
 - 埠：8083／5435（8081／5433 為 T-0038 審核用、8082／5434 為 T-0041）。
