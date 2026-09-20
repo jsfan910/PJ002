@@ -119,13 +119,12 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--gate)}
 .now{position:absolute;top:0;bottom:0;border-left:2px solid var(--now);z-index:2}
 .axis .now span{position:absolute;top:-1px;left:4px;font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--now);font-weight:500;background:var(--paper);padding:0 3px}
-.milestones{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--gate);margin:8px 0 0;font-family:var(--font-mono)}
-.milestones span{display:inline-flex;align-items:center;gap:4px}
-.milestones b{font-size:20px;line-height:1;font-weight:400}
-table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
-.msaxis{height:56px}
-.msaxis .m{position:absolute;top:4px;transform:translateX(-50%);font-size:22px;line-height:1;color:var(--gate);background:var(--paper);padding:0 2px;z-index:3;font-family:var(--font-body)}
-.msaxis .m.alt{top:30px}
+/* 里程碑：每筆一列（tr.ms），時間軸上以菱形（.dia）標示時間位置，旁邊附時刻標籤（.dia-lbl） */
+.dia{position:absolute;top:8px;width:10px;height:10px;background:var(--gate);border:1px solid var(--paper);transform:translateX(-50%) rotate(45deg);z-index:3}
+.dia-lbl{position:absolute;top:6px;line-height:14px;font-family:var(--font-mono);font-size:10px;color:var(--gate);white-space:nowrap;background:var(--paper);padding:0 3px;z-index:3}
+table.gantt tr.ms td.name{color:var(--gate)}
+.st.ms{color:var(--gate)}
+.sw.dia-sw{width:10px;height:10px;background:var(--gate);transform:rotate(45deg);border-radius:1px;margin:0 6px}
 @page{size:A4 landscape;margin:10mm}
 @media print{
   :root{--paper:#fff;--plane:#f3f3f0;--ink:#000}
@@ -178,18 +177,16 @@ table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
       <span><i class="sw" style="background:var(--qa)"></i>測試團隊</span>
       <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
       <span><i class="sw rev"></i>審核回合</span>
-      <span><i class="sw" style="background:transparent;border-top:2px dashed var(--gate);height:0"></i>關卡／里程碑（編號見圖下）</span>
+      <span><i class="sw dia-sw"></i>里程碑（每筆一列，菱形＝時間位置；虛線為其貫穿全圖的對齊線）</span>
       <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻）</span>
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
       <thead>
         <tr><th>卡號</th><th>階段 ／ 任務</th><th class="mono">派工</th><th class="mono">完成</th><th>狀態</th><th style="padding:0"><div class="axis" id="axis"></div></th></tr>
-        <tr class="msrow"><th colspan="5" style="color:var(--gate)">里程碑（編號對照見圖下）</th><th style="padding:0"><div class="axis msaxis" id="msaxis"></div></th></tr>
       </thead>
       <tbody></tbody>
     </table></div>
-    <div class="milestones" id="ms"></div>
     <p class="note">長條範圍＝執行者實際工作時段（A 段開工 → B 段完工；進行中者到「現在」，即產表時刻）；填滿比例＝進度（完成 100%、審核中 90%、進行中 50%、待辦 0%）。斜線細條＝審核者的審核時段。${esc(cfg.notes || "")}</p>
   </div>
 
@@ -208,7 +205,6 @@ const teamName = { leader:"Leader", plan:"規劃", dev:"開發", qa:"測試" };
 const stName = { done:"done", in_progress:"進行中", review:"審核中", todo:"待辦", blocked:"阻塞", cancelled:"取消" };
 const startOf = (c) => { const w = c.segs.find(s => !s.review); return w ? w.start : c.created; };
 const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;");
-const circled = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫"];
 
 const root = document.documentElement, tbtn = document.getElementById("theme");
 const applyTheme = (t) => { if (t === "dark") root.setAttribute("data-theme","dark"); else root.removeAttribute("data-theme"); tbtn.textContent = t === "dark" ? "淺色模式" : "深色模式"; tbtn.setAttribute("aria-pressed", t === "dark"); };
@@ -269,15 +265,6 @@ for (const g of DATA.gates) axis += '<div class="mark" style="left:'+pct(g.t)+'%
 if (showNow) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span></div>';
 document.getElementById("axis").innerHTML = axis;
 
-let ms = "", prevP = -100, prevAlt = false;
-DATA.gates.forEach((g, i) => {
-  const p = pct(g.t); const alt = (p - prevP) < 3 ? !prevAlt : false;
-  ms += '<div class="mark" style="left:'+p+'%"></div><span class="m'+(alt?' alt':'')+'" style="left:'+p+'%" title="'+esc(g.label)+' '+fmtT(g.t)+'">'+circled[i]+'</span>';
-  prevP = p; prevAlt = alt;
-});
-if (showNow) ms += '<div class="now" style="left:'+pct(nowIso)+'%"></div>';
-document.getElementById("msaxis").innerHTML = ms;
-
 const gridCells = () => {
   let g = "";
   for (const tk of ticks) { g += '<div class="grid" style="left:'+pct(tk.t)+'%"></div>'; if (tk.half) g += '<div class="grid half" style="left:'+pct(tk.half)+'%"></div>'; }
@@ -287,6 +274,17 @@ const gridCells = () => {
 };
 
 let grows = "";
+// 里程碑群組：每筆一列，卡號欄以 M-01… 編號；派工欄留「—」、完成欄填時刻；時間軸以菱形標示，
+// 標籤靠右放，靠近右緣（>82%）時改放左側以免溢出。
+if (DATA.gates.length) {
+  grows += '<tr class="phase"><td></td><td colspan="4">里程碑（關卡／事件）</td><td class="tl">'+gridCells()+'</td></tr>';
+  DATA.gates.forEach((g, i) => {
+    const p = pct(g.t);
+    const lbl = (hourStep === 1 ? "" : fmtD(g.t)+" ") + fmtT(g.t);
+    const lblPos = p > 82 ? 'right:calc('+(100-p)+'% + 9px)' : 'left:calc('+p+'% + 9px)';
+    grows += '<tr class="ms"><td class="mono">M-'+String(i+1).padStart(2,"0")+'</td><td class="name" title="'+esc(g.label)+'">'+esc(g.label)+'</td><td class="mono">—</td><td class="mono">'+fmtT(g.t)+'</td><td><span class="st ms">里程碑</span></td><td class="tl">'+gridCells()+'<div class="dia" style="left:'+p+'%" title="'+esc(g.label)+' '+fmtD(g.t)+' '+fmtT(g.t)+'"></div><span class="dia-lbl" style="'+lblPos+'">'+lbl+'</span></td></tr>';
+  });
+}
 for (const p of phases) {
   grows += '<tr class="phase"><td></td><td colspan="4">'+esc(DATA.phaseLabel[p])+'</td><td class="tl">'+gridCells()+'</td></tr>';
   for (const c of sorted(byPhase[p])) {
@@ -312,7 +310,6 @@ for (const p of phases) {
   }
 }
 document.querySelector("#gantt tbody").innerHTML = grows || '<tr><td colspan="5" style="color:var(--muted)">尚無任務卡</td><td class="tl">' + gridCells() + '</td></tr>';
-document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span><b>'+circled[i]+'</b> '+(dayMode ? fmtD(g.t)+" " : "")+fmtT(g.t)+' '+esc(g.label)+'</span>').join("");
 document.getElementById("gen").textContent = "產表時刻 " + DATA.generatedAtLocal.replace("T"," ").slice(0,16) + "（" + DATA.tz + "）· 「現在」線＝產表時刻，非開啟頁面的時間 · 資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC";
 </script>
 `;
