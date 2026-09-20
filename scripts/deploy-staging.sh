@@ -1,16 +1,28 @@
 #!/usr/bin/env bash
-# scripts/deploy-staging.sh（T-0018，OPS-03）
+# scripts/deploy-staging.sh（T-0018，OPS-03；secret 釘版本為 T-0039，06 §6.7 建議一）
 #
 # .github/workflows/deploy-staging.yml 的本機等效（Git Bash 可執行）。
 # 供使用者在取得 GCP 專案與 gcloud 登入後，於本機手動重現一次部署
 # （NFR-008「未參與者 15 分鐘內...可重現一次 staging 部署」）。
 # 階段順序與 workflow 完全一致：auth 前置 → migrate → build & push → deploy → verify。
 #
+# T-0039：--set-secrets 改用具體版本號（不再用 :latest），版本號預設取
+# 「該 secret 目前狀態為 ENABLED 的最新版本」，可用下列環境變數覆寫釘定
+# 版本（與 workflow 的 repository variables 同名概念，值不進版控）：
+#   SECRET_VERSION_DATABASE_URL SECRET_VERSION_BASIC_AUTH_USER
+#   SECRET_VERSION_BASIC_AUTH_PASS
+# 本檔為人工手動執行的本機腳本，失敗時由使用者自行判斷是否重跑；
+# 06 §6.7 建議二的自動重試僅在 CI workflow 內實作（重跑本檔本身即等同
+# 人工重試，不再另外內建自動重試迴圈）。
+#
 # 前置需求（使用者自行完成，agent 不索取、不代填）：
 #   - 已執行 `gcloud auth login` 或已有 Application Default Credentials
 #   - 已 export 下列環境變數（值不寫入本檔、不進版控）：
 #       GCP_PROJECT_ID GCP_REGION GCP_AR_REPOSITORY GCP_RUN_SERVICE
 #       NEON_DATABASE_URL STAGING_BASIC_AUTH_USER STAGING_BASIC_AUTH_PASSWORD
+#   - 選填（覆寫釘定版本，不填則自動取最新 ENABLED 版本）：
+#       SECRET_VERSION_DATABASE_URL SECRET_VERSION_BASIC_AUTH_USER
+#       SECRET_VERSION_BASIC_AUTH_PASS
 #
 # 用法：
 #   Git Bash:   bash scripts/deploy-staging.sh
@@ -33,8 +45,32 @@ fi
 IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_AR_REPOSITORY}/todo-app"
 SHA="$(git rev-parse HEAD)"
 
+resolve_version() {
+  local secret_name="$1"
+  local override="$2"
+  if [ -n "${override}" ]; then
+    echo "${override}"
+    return
+  fi
+  gcloud secrets versions list "${secret_name}" \
+    --filter="state=ENABLED" \
+    --sort-by="~createTime" \
+    --limit=1 \
+    --format="value(name)"
+}
+
 echo "== auth =="
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+echo "== resolve secret versions（釘具體版本，不用 :latest） =="
+DB_VERSION="$(resolve_version database-url "${SECRET_VERSION_DATABASE_URL:-}")"
+USER_VERSION="$(resolve_version basic-auth-user "${SECRET_VERSION_BASIC_AUTH_USER:-}")"
+PASS_VERSION="$(resolve_version basic-auth-pass "${SECRET_VERSION_BASIC_AUTH_PASS:-}")"
+if [ -z "${DB_VERSION}" ] || [ -z "${USER_VERSION}" ] || [ -z "${PASS_VERSION}" ]; then
+  echo "無法解析 secret 版本（database-url=${DB_VERSION:-空} basic-auth-user=${USER_VERSION:-空} basic-auth-pass=${PASS_VERSION:-空}），請確認 Secret Manager 已建立三個 secret 且至少一個 ENABLED 版本" >&2
+  exit 1
+fi
+echo "database-url:${DB_VERSION} basic-auth-user:${USER_VERSION} basic-auth-pass:${PASS_VERSION}"
 
 echo "== migrate =="
 npm run build
@@ -64,7 +100,7 @@ gcloud run deploy "${GCP_RUN_SERVICE}" \
   --concurrency 80 \
   --timeout 60s \
   --set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS=" \
-  --set-secrets "DATABASE_URL=database-url:latest,BASIC_AUTH_USER=basic-auth-user:latest,BASIC_AUTH_PASSWORD=basic-auth-pass:latest"
+  --set-secrets "DATABASE_URL=database-url:${DB_VERSION},BASIC_AUTH_USER=basic-auth-user:${USER_VERSION},BASIC_AUTH_PASSWORD=basic-auth-pass:${PASS_VERSION}"
 
 echo "== verify =="
 BASE_URL="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.url)")"

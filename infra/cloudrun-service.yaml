@@ -1,9 +1,11 @@
-# infra/cloudrun-service.yaml（T-0018，OPS-03）
+# infra/cloudrun-service.yaml（T-0018，OPS-03；secret 釘版本為 T-0039，06 §6.7 建議一）
 #
 # Cloud Run 服務宣告（Knative Service 格式），可用
 #   gcloud run services replace infra/cloudrun-service.yaml --region asia-east1
-# 手動套用一次（需先把下方 <GCP_PROJECT_ID>、<IMAGE_TAG> 兩個佔位符換成
-# 實際值）。**日常自動部署以 .github/workflows/deploy-staging.yml 的
+# 手動套用一次（需先把下方 <GCP_PROJECT_ID>、<IMAGE_TAG>、<SECRET_VERSION>
+# 三個佔位符換成實際值；<SECRET_VERSION> 為每個機密項各自的 Secret
+# Manager 版本號，取法見下方 env 區塊註解）。**日常自動部署以
+# .github/workflows/deploy-staging.yml 的
 # `gcloud run deploy` 參數為事實來源**（image 標籤由工作流自動代入
 # `${{ github.sha }}`，本檔的佔位符無法自動代入）；本檔的角色是「資源規格
 # 文件化 IaC」，供人閱讀與偶爾手動套用，兩者參數必須保持一致
@@ -67,21 +69,28 @@ spec:
             # 使用者須先在 Secret Manager 建立下列同名 secret 並授部署
             # 服務帳號 roles/secretmanager.secretAccessor（README「部署與
             # secrets」章節有逐步指令）。
+            # key 一律填具體版本號，不用 "latest"（T-0039，06 §6.7 建議一，
+            # 與 deploy-staging.yml／deploy-staging.sh 的
+            # --set-secrets NAME=secret:N 保持一致，稽核軌跡明確、可回滾）。
+            # <SECRET_VERSION> 為佔位符，手動套用本檔前先以下列指令取得
+            # 各 secret 目前 ENABLED 的最新版本號並各自替換：
+            #   gcloud secrets versions list <secret-name> \
+            #     --filter="state=ENABLED" --sort-by="~createTime" --limit=1
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: database-url
-                  key: latest
+                  key: "<SECRET_VERSION>"
             - name: BASIC_AUTH_USER
               valueFrom:
                 secretKeyRef:
                   name: basic-auth-user
-                  key: latest
+                  key: "<SECRET_VERSION>"
             - name: BASIC_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: basic-auth-pass
-                  key: latest
+                  key: "<SECRET_VERSION>"
           # startup probe：新 revision 必須通過才切流量，未通過則舊
           # revision 繼續服務 100%（零停機，06 §3.2 deploy 階段說明）。
           # 路徑一律用完全等於 "/health" 的字串（不可有點節段變體，
