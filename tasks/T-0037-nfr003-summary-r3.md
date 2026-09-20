@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: todo
+status: review
 round: 1
 depends_on: [T-0030, T-0031]
 inputs:
@@ -20,7 +20,7 @@ inputs:
   - tasks/E-001-todo-app.md（2026-09-19T18:11:54 與 18:18:59 兩段裁決：起算 17:55:07、TC-080 留補驗）
   - infra/uptime-check.sh（check id、gcloud 路徑、Git Bash 的 MSYS_NO_PATHCONV 注意事項）
 outputs:
-  - docs/reports/20260920-HHmm-測試總結-E001-r3.md（HHmm 取實際產出時間）
+  - docs/reports/20260920-1806-測試總結-E001-r3.md
   - docs/specs/24_缺陷清單.md（僅在有新增或關閉缺陷時）
   - docs/specs/traceability.md（僅主表 TC-089 的「狀態」欄）
 acceptance:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T18:03:00+08:00
-updated: 2026-09-20T18:03:00+08:00
+updated: 2026-09-20T18:11:52+08:00
 blocked_reason: null
 ---
 
