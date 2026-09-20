@@ -6,7 +6,7 @@ team: dev
 role: dev-tl
 model: opus
 phase: dev
-status: review
+status: done
 round: 1
 depends_on: [T-0038, T-0043]   # T-0039 程式已合併 main（3345022），僅部署綠燈待使用者 IAM，Leader 2026-09-20 19:39 裁決以合併為準；T-0041 因環境限制 blocked（Leader 2026-09-20 19:07 裁決解除依賴）；Firefox 結果以「已知限制」寫入 Release Notes
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: leader
 branch: task/T-0042-tcid-release-notes
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T19:58:40+08:00
+updated: 2026-09-20T19:57:11+08:00
 blocked_reason: null
 ---
 
@@ -60,4 +60,4 @@ sed -n 1,40p docs/specs/14_ReleaseNotes.md
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | done | 根目錄實跑：11 條 TC-ID 全命中、unit 78/78、lint 0、tag v0.1.0 指向 ddc66bb、Release Notes released、CHANGELOG 0.1.0。裁決：推送 main 與 tag；R-6 以「可逐條追溯」為關閉標準，補測與否交 qa-lead。 | worklog/handoff/20260920-1957-T0042-r1-leader.md |
