@@ -6,7 +6,7 @@ version: 0.3           # T-0040 規格變更（cron 定位、secret 版本釘定
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-20T20:26:13+08:00   # T-0044 實作紀錄補寫（§6.1.1／§6.3／§6.9.1），不涉及架構或流程決策變更，version 號不更動
+updated: 2026-09-20T21:12:07+08:00   # T-0044 實作紀錄補寫（§6.1.1／§6.3／§6.9.1）＋T-0045 事故紀錄（§6.10，含初審 r1 退回後的判準修正）；皆為實作紀錄，不涉及架構或流程決策變更，version 號不更動
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -710,6 +710,149 @@ resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.locatio
 
 ---
 
+### 6.10 事故紀錄：staging 流量自 09-19 回滾演練後釘死在 `todo-app-00003-lt2`（T-0045，2026-09-20）
+
+#### 6.10.1 事故時間軸
+
+| 時間（+08:00） | 事件 |
+|---|---|
+| 2026-09-19 16:33～16:34（T-0027 回滾演練，見 §5.4） | `scripts/rollback-staging.sh` 依 §5.1 執行「切到前一版 → 切回最新版」演練：`update-traffic --to-revisions todo-app-00002-sn7=100` → `update-traffic --to-revisions todo-app-00003-lt2=100`。**演練本身驗證通過**（兩次切流量皆 <11 秒、`/health` 皆 200），但**演練結束後未執行「還原為一律跟隨最新 revision」**。此時 `spec.traffic` 已從 `latestRevision: true` 變成明確釘定 `revisionName: todo-app-00003-lt2`，這是本次事故的根因起點，且完全發生在 T-0045 建卡之前——當時的回滾腳本（見本節 6.10.3）沒有「演練後歸位」的模式，也沒有任何提示 |
+| 2026-09-19 16:49～2026-09-20 18:50（revision `00004-7p5` ～ `00016-tsg`，共 13 個） | 陸續由 T-0031（NFR-003 補強量測，含當時誤判為「0 秒不可用」的 `00008-kcs`，見下方影響範圍）、其餘維運與功能提交觸發部署，每個 revision 皆成功建立並通過 `/health` startup probe，`gcloud run deploy` 皆回報「deployed and is serving 100 percent of traffic」等表面成功訊息，**但 `spec.traffic` 仍明確釘定在 `todo-app-00003-lt2`，流量從未真正切過去** |
+| 2026-09-20 20:10:31（`todo-app-00017-qg4`）、20:19:16（`todo-app-00018-xq4`） | T-0038（D-017 前端錯誤訊息時序競態修正）、T-0043（favicon 404 修正）合併 main 後觸發的部署（merge commit `d8a7427`／`1107bbd`，19:31 前後），以及其後 T-0039 IAM 授權複驗的空 commit（`854c843`，20:08:04）—— 同樣建立成功但未接流量。**revision `00004`～`00018` 共 15 個，涵蓋 T-0031、T-0039、T-0038、T-0043、v0.1.0 定版**，全數未曾服務過使用者 |
+| 2026-09-20 20:41:17（Leader 發現，見 `tasks/E-001-todo-app.md`） | 使用者於 staging 重跑 D-017 驗證時，瀏覽器仍看到修正前的行為（`/favicon.ico` 404、時序競態訊息未消失）。Leader 實查 `gcloud run services describe` 確認 `spec.traffic: [{percent: 100, revisionName: todo-app-00003-lt2}]`、`status.latestCreatedRevisionName: todo-app-00018-xq4`，判定流量釘死；建 T-0045 並派工 dev-ops 立即處理 |
+| 2026-09-20 20:44:51～20:48:10（T-0045 復原，本節 6.10.2） | dev-ops 背景量測 200 秒（每 1 秒一次）後執行 `update-traffic --to-latest`，152/152 樣本皆 200，最長連續非 200 秒數 = 0；復原後 `spec.traffic` 回到 `latestRevision: true`、100% 流量在 `todo-app-00018-xq4`（即 `status.latestCreatedRevisionName`） |
+
+#### 6.10.2 影響範圍
+
+- **staging 自 2026-09-19 16:33 起至 2026-09-20 20:44 復原為止（約 28 小時 11 分）持續服務 `todo-app-00003-lt2` 這一個舊映像**，其後合併的所有變更（T-0031 的量測探針環境變數、T-0039 secret 版本釘定與 verify 自動重試、T-0038 的 D-017 修正、T-0043 的 favicon 修正、v0.1.0 定版）**皆未曾真正上線**，即使對應的 `deploy-staging` run 全數顯示綠燈。
+- **T-0031 §6.8.4「`00008-kcs` 部署期間 0 秒不可用」量測結果需重新解讀**：該次量測是對「已釘死流量」狀態下的一次新增部署做的 `/health` 輪詢，因為流量本來就沒有切向 `00008-kcs`，量測到的「0 秒不可用」只證明了「舊版本 `00003-lt2` 全程持續服務」，**不能作為「部署切流量不可用時間 < 60 秒」（TC-090／NFR-003）的有效證據**——它量到的其實是「沒有切流量」而非「切流量很快」。TC-090 需以本次事故復原後的真實部署重新量測（見 6.10.3 待補）。
+- **T-0038（D-017 修正）、T-0043（favicon 修正）未上線**：qa-lead／使用者在 staging 觀察到的 D-017 間歇性錯誤訊息與 Edge `/favicon.ico` 404，在兩張卡「合併」之後仍會重現，因為使用者實際存取的是 `00003-lt2`（09-19 08:33 之前建置的映像），不含這兩張卡的程式碼變更。
+- **不受影響的部分**：資料庫（Neon）與運算實例分離，回滾／釘死流量皆不觸碰資料，NFR-006 不受影響；`00003-lt2` 本身是 09-19 T-0027 驗證通過的「乾淨」版本（Basic Auth、`/health`、`/api/v1/todos` 皆正常），故服務本身在這 28 小時內**沒有對外呈現故障**，只是「一直是舊版本」，這也是本事故直到使用者實際重跑 D-017 驗證才被發現的原因——所有自動化 verify 只驗「服務有沒有回應」，不驗「回應的是不是本次部署的版本」。
+
+#### 6.10.3 復原（實際指令與輸出）
+
+先背景啟動量測（`scripts/measure-deploy-downtime.sh`，200 秒、1 秒一次），5 秒後執行復原指令：
+
+```bash
+GCLOUD="C:/Users/excal/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud.cmd"
+MSYS_NO_PATHCONV=1 "$GCLOUD" run services describe todo-app --region asia-east1 --project pj002-509106 \
+  --format="yaml(spec.traffic,status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)"
+```
+
+**復原前**：
+
+```yaml
+spec:
+  traffic:
+  - percent: 100
+    revisionName: todo-app-00003-lt2
+status:
+  latestCreatedRevisionName: todo-app-00018-xq4
+  latestReadyRevisionName: todo-app-00003-lt2
+  traffic:
+  - percent: 100
+    revisionName: todo-app-00003-lt2
+```
+
+**關鍵發現（供 pipeline 修法判準用，dev-tl 初審 r1 核實並更正措辭）**：`status.latestReadyRevisionName` 在 Cloud Run 的實際行為中會跟隨「目前實際接流量的 revision」，而非單純「最近一次通過 Ready 條件的 revision」——`todo-app-00018-xq4` 的 `Ready` 條件實際在 `2026-09-20T12:19:16Z` 已為 `True`（以 `gcloud run revisions list` 逐一核對過所有 18 個 revision 皆 `Ready/True`），但流量釘死期間 `status.latestReadyRevisionName` 仍停在 `todo-app-00003-lt2`。**這個觀察屬實，但只能作為輔助佐證，不能單獨作為判準**：它是 Cloud Run 目前實作的未文件化行為（與 Knative 對該欄位的公開語義不同），且即使它等於新 revision，也無法排除「分流／canary」情境（例如流量 50/50）——這種情況下 `latestReadyRevisionName` 可能已等於新 revision，但新 revision 並未拿到 acceptance 要求的 100% 流量。**pipeline 修法的主判準改為直接讀 `status.traffic`，加總新 revision 拿到的百分比並要求等於 100**，`latestReadyRevisionName` 相等只作為併行的輔助條件（第 3.2 節、本卡新增即依此實作，見 6.10.4）。
+
+```bash
+MSYS_NO_PATHCONV=1 "$GCLOUD" run services update-traffic todo-app --region asia-east1 --project pj002-509106 --to-latest
+```
+
+```text
+Updating traffic...
+Routing traffic...........................................................................................done
+Done.
+URL: https://todo-app-dpevsdhdva-de.a.run.app
+Traffic:
+  100% LATEST (currently todo-app-00018-xq4)
+```
+
+**復原後**（立即重跑同一條 describe 指令）：
+
+```yaml
+spec:
+  traffic:
+  - latestRevision: true
+    percent: 100
+status:
+  latestCreatedRevisionName: todo-app-00018-xq4
+  latestReadyRevisionName: todo-app-00018-xq4
+  traffic:
+  - latestRevision: true
+    percent: 100
+    revisionName: todo-app-00018-xq4
+```
+
+`spec.traffic` 已回到 `latestRevision: true`（一律跟隨最新 revision），100% 流量在 `todo-app-00018-xq4`（即 `status.latestCreatedRevisionName`），`latestReadyRevisionName` 與 `latestCreatedRevisionName` 相等，確認流量已真正切過去。`curl -sS -o /dev/null -w "HTTP %{http_code}\n" https://todo-app-dpevsdhdva-de.a.run.app/health` → `HTTP 200`。
+
+**量測結果（`update-traffic --to-latest` 切流量期間，152 個樣本，每 ~1.3 秒一次，2026-09-20T12:44:51Z～12:48:10Z UTC）**：
+
+```text
+最長連續失敗次數（約秒數，取樣間隔 ~1s）：0
+全程無非 200 回應。
+```
+
+```text
+awk -F, 'NR>1{print $2}' <輸出檔> | sort | uniq -c
+    152 200
+```
+
+**結論**：`update-traffic --to-latest` 本身是純服務層的流量切換操作（不重建、不重啟容器），復原過程對使用者完全無感，與 §5.1「數秒內生效、無需重新建置」的原理一致。此結果**不能取代** TC-090 對「一次完整 CI/CD 部署（含建置新映像、`gcloud run deploy` 建新 revision）」的不可用時間量測——兩者測的是不同操作；TC-090 重測留待下方「待補：真實部署重測」段落。
+
+**待補：真實部署重測（TC-090）**——本節先以本次流量復原的量測結果佐證「切流量本身不影響可用性」，真實一次完整部署（新映像建置＋`gcloud run deploy`＋pipeline 新增的流量驗證）的 TC-090 重測，將由 Leader 協調根目錄合併排程後另行觸發並補上本段：
+
+> （佔位：待 main 推送觸發 `deploy-staging` 真實 run 後，補上 run 連結／結論、`GITHUB_STEP_SUMMARY` 的「部署流量檢查」與 secret 版本表格、`scripts/measure-deploy-downtime.sh`（≥300 秒）量測的最長連續非 200 秒數）
+
+#### 6.10.4 Pipeline 修法（本卡落地，落實 D-018）
+
+**根因**：`gcloud run deploy` 在 `spec.traffic` 已被 `update-traffic --to-revisions <rev>=100` 明確釘定為某具名 revision 後，**不會自動把流量切到新部署的 revision**——這與「新 revision 通過 startup probe 才切流量」（§3.2、§5.1 的既有原理）是两回事：後者是「切不切」的問題（新 revision 健康與否），前者是「切去哪」的問題（`spec.traffic` 有沒有在追蹤 latest）。deploy-staging 的 `verify_health`／`verify_auth` 只呼叫 `status.url`（同一個網址不論流量指到哪個 revision 都會回應同一個結果），因此這個問題對現有 pipeline **完全不可見**，才會出現「15 次全綠但一次都沒真的上線」的狀況（qa-lead r4 立 D-018，S2 等級：驗證失效）。
+
+**修法（`.github/workflows/deploy-staging.yml`、`scripts/deploy-staging.sh` 同步；dev-tl 初審 r1 退回後修正判準）**：`gcloud run deploy` 之後，新增流量驗證：主判準為直接讀 `status.traffic`（`csv[no-heading]` 格式解析為 `revision,percent`），加總本次剛部署的 revision 拿到的百分比，要求等於 **100**；`status.latestReadyRevisionName` 是否等於該 revision 併作輔助佐證條件（見 6.10.3「關鍵發現」，此欄位在 Cloud Run 實際跟隨接流量的 revision，但屬平台未文件化行為，不單獨作為判準——只看它會漏判分流／canary 情境）。兩個條件皆成立才視為通過，寫入 `$GITHUB_STEP_SUMMARY`（本機腳本印到 stdout）「新 revision 名稱、`status.traffic` 實際讀到的流量百分比」；未通過則自動執行一次 `gcloud run services update-traffic <service> --region <region> --to-latest`（等同本次的復原動作）並重新輪詢 `/health`、重新驗證，仍未通過才印 `::error::` 判紅（本機腳本則以非 0 結束並輸出目前流量分佈供人工判讀）。此檢查置於既有的 `verify_health` 之後、`verify_auth`（帶憑證，含既有的 T-0039 自動重試一次邏輯）之前，兩次部署嘗試（第 1 次與 verify_auth 失敗後的自動重試）皆各自跑一次流量驗證，避免只補到一半。
+
+**`scripts/rollback-staging.sh` 新增 `--to-latest` 模式**：`bash scripts/rollback-staging.sh --to-latest` 把流量還原為「一律跟隨最新 revision」，等同本次事故復原的動作；不帶參數列出清單，帶 revision 名稱參數執行既有的 `--to-revisions` 釘定回滾（保留原行為，但檔頭新增警語「回滾後之後的 deploy 不會自動切流量，演練結束或修好後必須 `--to-latest` 還原」，執行後的輸出也會即時印出同樣的提醒）。README「部署與 secrets」章節同步這段警語與三種用法。
+
+**離線驗證**（`bash -n`、`actionlint`、YAML lint；`gcloud` 相關的線上驗證已於本節 6.10.3 以本機已登入之 owner 帳號 `excalibur.star@gmail.com` 對三個檔案的邏輯逐條實測，但依 §6.9.1 的教訓，**CI 用的是 WIF 服務帳號 `github-deployer@`，兩者權限不同，離線驗證不能證明 CI 一定會通過**，仍待 6.10.3「待補」段落的真實部署補證）：
+
+```bash
+actionlint.exe -color .github/workflows/deploy-staging.yml .github/workflows/ci.yml .github/workflows/monitor-health.yml
+```
+```text
+（無輸出，EXIT=0，零 finding）
+```
+
+```bash
+npx --yes yaml-lint .github/workflows/deploy-staging.yml .github/workflows/ci.yml .github/workflows/monitor-health.yml infra/cloudrun-service.yaml
+```
+```text
+√ YAML Lint successful.
+```
+
+```bash
+bash -n scripts/deploy-staging.sh scripts/rollback-staging.sh
+```
+```text
+（無輸出，EXIT=0，語法正確）
+```
+
+**已離線重跑 `scripts/rollback-staging.sh --to-latest`（真實 gcloud、非 dry-run，本機已登入帳號）驗證新增模式可用**：輸出見 6.10.3 用法一致的 `services describe` 結果（`spec.traffic latestRevision: true, percent: 100`、`/health` 200），因流量本來就已在 `todo-app-00018-xq4`，此次執行為冪等重跑，未產生新的流量變化，僅用以證明 `--to-latest` 模式本身可正確執行；`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD` 未匯出，故驗證 2/3（帶憑證）如預期被跳過，符合「不讀取、不輸出 secret 值」的環境限制。
+
+**給 qa-lead 的重驗清單（哪些 staging 結論仍有效／哪些需重驗）**：
+
+| 項目 | 狀態 | 說明 |
+|---|---|---|
+| TC-090（部署不可用時間 < 60 秒） | **需重驗** | 舊結果（T-0031 §6.8.4「0 秒」）量測的是流量已釘死狀態下的部署，未測到真正切流量；本次流量復原量測（152/152、0 秒）只驗證了切流量操作本身，非完整部署流程。需待 6.10.3「待補」段落的真實部署重測 |
+| TC-080（`/api/v1/todos` 資料筆數直接比對） | **需重驗** | 因流量長期指向 `00003-lt2`，先前任何在此期間對 staging 做的資料筆數比對，比對到的都是同一個舊版本的資料層行為，與新版程式碼（T-0038／T-0043 等）無關；需在流量已確認指向最新 revision 後重新執行 TC-080 原始步驟 |
+| D-017（前端錯誤訊息時序競態，T-0038 修正） | **需重驗** | 使用者於 09-20 20:41 重跑時看到的正是修正前行為，因為當時仍服務 `00003-lt2`；流量已於 20:44 復原到 `00018-xq4`（已含 T-0038 修正），請於流量復原後的網址重新驗證 |
+| TC-009 favicon（T-0043 修正） | **需重驗** | 同上，`00003-lt2` 不含 `public/favicon.ico`；流量復原後應可在 Edge／Chromium 重新確認 404 已消失 |
+| P0 功能與 NFR-003（在 `00003-lt2` 上跑的既有測試，例如 T-0027 首次部署驗證、Cloud Monitoring uptime check 24 小時採樣） | **仍然有效** | `00003-lt2` 本身是 09-19 T-0027 驗證通過的乾淨版本（Basic Auth、`/health`、`/api/v1/todos` 皆正常），這段期間 uptime check 量到的「服務存活」是真實的（服務確實一直在回應，只是版本沒更新），不受本次事故影響；NFR-003 的 24 小時採樣起算與判讀邏輯不需重跑 |
+| 回滾程序本身（06 §5.1／§5.4 演練紀錄） | **仍然有效，但需認知演練有後遺症** | 演練當下的切流量與驗證步驟本身完全正確（10 秒內完成、`/health` 皆 200），問題出在「演練後未還原」這個操作習慣，不是回滾機制本身有缺陷。README／腳本已補上警語與 `--to-latest` 模式，往後演練需依新流程收尾 |
+
+事故報告全文另見 `docs/reports/20260920-2042-流量釘死事故-E001.md`。
+
+---
+
 ## 7. 三處必須同步的參數表（T-0025，CR S-9，實作紀錄）
 
 Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（文件化 IaC，第 2 章已註明事實來源為工作流參數）、`.github/workflows/deploy-staging.yml` 的 `gcloud run deploy` 步驟、`scripts/deploy-staging.sh` 的同一段 `gcloud run deploy`。三者本應完全一致；下表逐項對照本卡驗收時的現況，供之後任何一處變更時比對，避免無聲飄移。
@@ -741,4 +884,5 @@ Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（�
 | 2026-09-19 | 0.1 | T-0004 | 初版。平台為 Render Web Service（Free）＋ Neon Free，Gate 1 通過後凍結 |
 | 2026-09-19 | **0.2** | **T-0010**（規格變更請求，使用者裁決、Leader 核准） | **雲端平台改為 GCP Cloud Run（`min-instances = 0`）＋ Artifact Registry**，資料庫維持 Neon Free。改動範圍：第 1 章 staging 網址改為 `*.run.app`（由 dev-ops 部署後填入）；第 2 章資源清單全面改寫（Cloud Run／Artifact Registry／WIF／明確否決 Cloud Scheduler）；第 3 章 pipeline 改為 build → push Artifact Registry → `gcloud run deploy`，新增 3.2.1 WIF 認證與 3.2.2 服務帳號金鑰備選；第 4 章環境變數移除 Render 專屬項、新增 GCP 專屬項；第 5.1 節回滾首選改為 `gcloud run services update-traffic` 切 revision；第 6 章監控加入 Cloud Run 內建指標、冷啟說明由 30–50 秒改為 1–3 秒。決策紀錄見 `adr/ADR-0005-雲端平台-CloudRun.md`（`ADR-0003` 已標 superseded）。**status 維持 `frozen`**，後續變更仍須走規格變更請求任務卡 |
 | 2026-09-19 | 0.2（實作紀錄，未變更版本號） | **T-0031**（維運補強，Leader 裁決 B／C 核准，非規格變更） | 第 6 章新增 6.8 節：GitHub cron 排程長期零自動觸發之診斷（結論：無可修設定缺陷，判斷為 GitHub 排程延遲）；新增 Cloud Monitoring uptime check（`todo-app-health`，check id `todo-app-health-aMAlP5dfKv0`）作為 NFR-003 **主要**來源，`monitor-health.yml` 降為**備援**；6.1 表格與 6.2 採樣起算時間同步更新（改以 uptime check 建立時間 2026-09-19T17:55:07+08:00 為準）；補充判讀指令（`timeSeries.list`）首次實跑輸出；補做 TC-080／TC-090 的 `/health` 直接量測（0 秒不可用）。僅屬 dev-ops 實作紀錄補寫，不涉及架構或流程決策變更，version 號不更動 |
+| 2026-09-20 | 0.3（實作紀錄與事故補救，未變更版本號） | **T-0045**（維運事故，Leader 2026-09-20T20:41:17 裁決；dev-tl 初審 r1 退回 R-1／R-2 後修正） | 第 6 章新增 6.10 節：staging 流量自 09-19 回滾演練後釘死在 `todo-app-00003-lt2`（15 個新 revision 從未接流量）之事故時間軸、影響範圍、復原（`update-traffic --to-latest`，152/152 樣本 0 秒不可用）、pipeline 修法（deploy 後主判準改讀 `status.traffic` 加總新 revision 拿到的百分比並要求等於 100，`latestReadyRevisionName` 相等併作輔助佐證，未達 100% 自動 `update-traffic --to-latest` 並重驗，仍未達才判紅）、給 qa-lead 的重驗清單。同步修改 `.github/workflows/deploy-staging.yml`、`scripts/deploy-staging.sh`、`scripts/rollback-staging.sh`（新增 `--to-latest` 還原模式與警語）、`README.md`。**僅屬 dev-ops 事故紀錄與 pipeline 補強，不涉及架構決策變更，version 號不更動；§5.1 規格文字本身的修正（例如補述「演練後須還原」的正式流程文字）留待 P1 規格同步卡由 plan-sd 處理** |
 | 2026-09-20 | **0.3** | **T-0040**（規格變更請求，Leader 2026-09-20T18:18:13 裁決 C 選項 1 ＋ D-016 ＋ T-0039 實作同步，另含 Leader 派工時追加兩項） | **三項主變更＋兩項追加**：①**`monitor-health.yml` 定位**由「NFR-003 的備援來源」改為「**保溫與人工抽查用，不具備援能力**」（§3.3 標題與全節、§6.1 前言與表格第 2 列、§6.3 告警條補「此告警機制實質已失效」更正）。依據：T-0037 24 小時窗實測 `event=schedule` **8 次／理論約 258 次（約 3%）**，8 次皆 success，成因為 GitHub 平台排程延遲、無可修設定缺陷（§6.8.1）。NFR-003 主要且唯一量測來源明寫 Cloud Monitoring uptime check `todo-app-health`。**另於 §6.1 新增「備援缺口」小節**，列出「新增第二個 uptime check／定期人工核對／接受單點」三選項與各自代價（免費額度、告警重複），**交 Leader 裁決，本卡不自行決定**。②**secret 參照由 `:latest` 改為版本釘定**（§3.2 新增 `resolve secret versions` 階段列、deploy 與 verify 合併為單一步驟並含一次自動重試、新增「為什麼 secret 參照要釘具體版本」、§4.1 註改寫、§4.2 補三個 `SECRET_VERSION_*` repository variables、**§7 參數表「機密（Secret Manager 參照）」列改寫**），與 T-0039 的 main 現況一致。③**HTTPS 導向判準**：§2 資源表「Google 前端 301 導向 HTTPS」改為「**3xx（實測 302 Found）**，判準為『回 3xx 且 `Location` 為對應的 `https://` 網址』」（D-016、Leader 2026-09-19T17:30:10 裁決①）。④**（Leader 追加）§2 新增 2.1 節「部署服務帳號角色清單」**：由三個角色補列為**五個**，逐項寫明用途與「少了會怎樣」，新增的 `roles/secretmanager.viewer` 對應 `secretmanager.versions.list`（§6.9.1 真實紅燈 run `35506278351` 的根因），並附授權與核對指令、「既有專案要補跑一次」說明；§3.2.1 六步設定與 §4.1 註同步指向 §2.1。⑤**（Leader 追加）§7 三處參數同步表**同④之②。**未改動**：`01_需求規格書_SRS.md`（實查無「301」字面，原文即寫「觀察 3xx 導向」）、`20_測試案例.md` TC-079 判準（依任務卡由 qa-lead 於下一輪測試計畫同步卡處理）、`03_系統設計書_SD.md` §7 NFR-002①（非本卡 outputs，已列交接檔下一步建議）。**status 維持 `frozen`** |
