@@ -8,7 +8,6 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0041 | NFR-004 Firefox 兩組補跑 | qa-at／sonnet | 1 | 2026-09-20 18:36 | Docker Desktop 已由 qa-at 啟動；compose 埠 8082／5434 已起，跑 Firefox e2e 中 |
 | T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-ops／sonnet | 2 | 2026-09-20 19:08 | r1 已合併 main（05c9a1e）但 deploy run 35506278351 紅：CI 服務帳號缺 secretmanager.versions.list。r2 修錯誤訊息／README IAM／06 §6.9；**綠燈需使用者授權或填版本變數** |
 
 ## 審核中
@@ -21,14 +20,14 @@
 
 | 卡號／項目 | 阻塞原因 | 解除條件 |
 |---|---|---|
-| （無） | | |
+| T-0041 Firefox 兩組補跑 | agent 執行環境無法啟動 firefox.exe（Windows CreateProcess `spawn UNKNOWN`；Chromium 對照正常、二進位檔已重下、非 Docker 問題），判工具限制非產品缺陷 | 使用者在自己的終端執行報告 §「單一指令」；結果貼回後由 qa-lead 更新 TC-091。非擋關；T-0042 已解除對本卡的依賴 |
 
 ## 待辦
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
 | T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | T-0039 | T-0039 done 後派 |
-| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | T-0038、T-0039、T-0041 | 三卡 done 後派 |
+| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | T-0038、T-0039 | 兩卡 done 後派；Firefox 以已知限制寫入 |
 | — | **CI 服務帳號授權 `roles/secretmanager.viewer`**（或填 3 個 repository variables `SECRET_VERSION_*`） | **使用者** | — | T-0039 deploy 綠燈前置；agent 不修改 IAM。指令見 T-0039 審核紀錄 r1／README |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |
 | — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |

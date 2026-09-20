@@ -336,3 +336,8 @@ updated: 2026-09-19T14:06:43+08:00
 - 裁決 B：T-0039 r2 重派 dev-ops（維持 sonnet；失敗原因是「未以 CI 身分驗證」的流程疏漏，不是工具操作），修：workflow 捕捉 gcloud stderr 輸出可讀 ::error::、README 授權步驟補 roles/secretmanager.viewer、06 §6.9 補記本次失敗、交接檔以 CI 服務帳號實際權限為證據。
 - 裁決 C：T-0038 派 dev-tl 審核（Docker 已就緒可補跑 e2e），通過也先不合併，等 T-0039 r2 與使用者授權讓 deploy 恢復綠。
 - 交使用者：① 授權方式（gcloud add-iam-policy-binding roles/secretmanager.viewer，或填 SECRET_VERSION_DATABASE_URL／BASIC_AUTH_USER／BASIC_AUTH_PASS 三個 repository variables）；② QA Tests run #17 integration-qa 紅燈 job log 需 admin 權限。
+
+### 2026-09-20T19:25:00+08:00 — T-0041 blocked（環境限制）；Leader 裁決
+
+- 事實：Firefox 兩組於 agent 執行環境 68/68 在 browser.launch 階段失敗（`spawn UNKNOWN`，Windows CreateProcess 層級）；Chromium 對照 4/4 正常、二進位檔已 --force 重下、非 Docker 問題。判工具限制，非產品缺陷。報告 docs/reports/20260920-1901-AT-E001-r4-firefox.md。
+- 裁決：T-0041 維持 blocked，交使用者在自己的終端執行報告內單一指令，結果貼回後 qa-lead 更新 TC-091；NFR-004 第 10 項維持 4/6，非擋關。T-0042 解除對 T-0041 的依賴，Release Notes 以「已知限制」記載 Firefox 未驗。
