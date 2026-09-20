@@ -6,7 +6,7 @@ team: dev
 role: dev-fe
 model: sonnet
 phase: dev-fix
-status: review
+status: done
 round: 1
 depends_on: []
 inputs:
@@ -26,7 +26,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0043-favicon
 created: 2026-09-20T19:30:00+08:00
-updated: 2026-09-20T19:19:40+08:00
+updated: 2026-09-20T19:33:36+08:00
 blocked_reason: null
 ---
 
@@ -58,4 +58,4 @@ for i in 1 2 3 4 5; do BASE_URL=http://localhost:8083 npm run test:e2e -- -g "TC
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | dev-tl | **done（已合併 main，merge commit `1107bbd`）** | acceptance 四條全通過，證據全為本人重跑。①ICO：`file` 判 `MS Windows icon resource - 1 icon, 32x32, 32 bits/pixel`，4286 bytes ≤ 5 KB，檔頭 `0 0 1 0`；另以結構算式獨立佐證非第三方下載檔——`22+40+32*32*4+32*32/8 = 4286` 與實際長度逐位元組吻合，無壓縮區塊或殘留中繼資料。帶 `dev:dev` 取 `/favicon.ico` → **200 `image/vnd.microsoft.icon`**，`cmp` 下載檔與 repo 檔 → IDENTICAL。條文字面寫 `image/x-icon` 但已括號允許 `image/vnd.microsoft.icon`（`mime-db` 對 `.ico` 的官方登錄值），判通過，不另開卡改伺服器 MIME 設定。②無憑證 `/favicon.ico` → **401**。依 SD 第 6 章判準另行實打：豁免路徑 10 條（`/health` 200；`/./health`、`/%2e/health`、`/%2E/health`、`//health`、`/health/`、`/HEALTH`、`/api/v1/todos`、`/index.html`、`/styles.css` 全 401）、favicon 自身 7 條變體（`/favicon.ico`、`/./favicon.ico`、`/%2e/favicon.ico`、`//favicon.ico`、`/FAVICON.ICO`、`/health/../favicon.ico`、`/%2e%2e/favicon.ico`）**全 401**，零繞過，`/health` 仍是唯一豁免。③compose `-p t43rev`（PORT=8083／POSTGRES_HOST_PORT=5435），4 project（chromium／msedge × 1280x800／390x844）`-g "TC-009"` 連續 5 次 **20/20 全過**（RUN_1~5_EXIT 皆 0）；應用日誌全程 **0 筆 `Route not found`**、14 筆 `/favicon.ico` 皆 200 或 401，對照 T-0038 初審同條件下 msedge 5 次固定全敗、21 筆 404 全對應 `/favicon.ico`，根因確已消除。④`npm run build`／`lint` EXIT=0、`test:unit` 76/76；`git diff --name-only main...` 僅 4 檔，`src/`、`tests/` 零改動。對 dev-fe 三則「假設與決策」逐條表態：MIME 別名—**接受**（條文已允許）；純程式產生圖示—**接受**（以長度算式獨立佐證）；只加一行 `<link rel="icon">`—**接受**（最小變更，且瀏覽器本就會自動請求 `/favicon.ico`，加不加都會發生）。合併後於 main 獨立副本複驗 `-g "TC-067\|TC-009"` 連續 5 次 40/40 全過，`/health` 豁免與 401 保護維持不變。部署：本次推送觸發的 deploy-staging run 預期仍在 `resolve secret versions` 停住（T-0039 的 IAM 阻塞，Leader 2026-09-20 已裁決不計為本卡失敗），**待使用者補授 `roles/secretmanager.viewer` 後重跑部署即上 staging**。 | worklog/handoff/20260920-1926-T0043-r1-dev-tl.md |

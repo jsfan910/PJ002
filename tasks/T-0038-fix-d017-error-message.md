@@ -6,7 +6,7 @@ team: dev
 role: dev-fe
 model: sonnet
 phase: dev-fix
-status: review
+status: done
 round: 1
 depends_on: []
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0038-fix-d017
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T19:10:27+08:00
+updated: 2026-09-20T19:33:36+08:00
 blocked_reason: null
 ---
 
@@ -64,3 +64,4 @@ git diff --stat main...task/T-0038-fix-d017   # 只含 outputs 三檔
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
 | r1 | dev-tl | **初審通過，待合併**（依 Leader 本輪裁決不合併、不推送，卡維持 `status: review`） | acceptance 1／2／3／5 通過：根因引用行號屬實（`requestSeq` 只覆蓋 `load()`、142 行無條件 `error: null`、171／192 行同步驗證失敗不佔號），修正改為共用 `opSeq`／`beginOp()`／`isStale()`；我以隔離副本獨立複驗新測試「修正前紅、修正後綠」（非空測試）；lint EXIT=0、unit 78/78；diff 僅 outputs 2 檔＋任務卡＋交接檔，無硬編碼密鑰、未用 staging 憑證。**acceptance 4 判「條件通過」**：Docker daemon 本輪就緒，已於 8081／5433 起 compose 連跑 5 次（chromium／msedge × 1280x800／390x844，`-g "TC-067\|TC-009"`），5 次結果一致「6 過 2 敗」；2 敗固定為 msedge 兩尺寸的 **TC-009**，且失敗點是該 TC 最後一行「console 應無 error」被 `/favicon.ico` 404 觸發（21 筆 404 的 reqId 全對應 `/favicon.ico`），**D-017 的三條斷言（error-message 可見／非空／todo-item=0）5 次全過**；再以 `git worktree add --detach main` 獨立建置 main（修正前）跑同一測試 → **完全相同的 favicon 404 失敗**，證明與本卡無因果關係，故不退回。安全：`/health` 200，`/./health`／`/%2e/health`／`//health`／`/health/`／`/HEALTH`／`/api/v1/todos` 全 401，無豁免路徑繞過。合併風險：CI（`qa-tests.yml:126`）只跑 chromium，合併不會因 favicon 轉紅。**待辦**：①合併＋CHANGELOG＋worktree 清理（等 deploy-staging 綠燈）；②`/favicon.ico` 404 請 qa-lead 另立缺陷；③D-017 正式關閉仍須 staging 重跑 5 次（本機從未重現該缺陷） | worklog/handoff/20260920-1902-T0038-r1-dev-tl.md |
+| r1（合併） | dev-tl | **done（已合併 main，merge commit `d8a7427`）** | r1 初審判「通過待合併」，acceptance 第 4 條當時為「條件通過」——唯一未過項是 msedge 兩尺寸 TC-009 敗於 `/favicon.ico` 404 觸發 console error，已由 T-0043 解除。本次刻意**先合併 T-0043（`1107bbd`）、再合併本卡（`d8a7427`）**，並在合併後的 main 上以 `git worktree add --detach` 拉獨立副本重建驗證，把 r1 的「條件」實際打掉：`npm ci`／`build`／`lint` EXIT=0、`test:unit` **78/78**（76 + 本卡新增 2 條）；compose `-p mchk`（PORT=8083／POSTGRES_HOST_PORT=5435），4 project（chromium／msedge × 1280x800／390x844）`-g "TC-067\|TC-009"` 連續 5 次 **8 passed × 5 = 40/40 全過**（r1 時同條件為每次 6 過 2 敗、5 次一致）；應用日誌 323×200／20×201／19×204／114×401，**零筆 404、零筆 5xx**。安全（SD 第 6 章）在合併狀態複驗：`/health` 200，`/./health`／`/%2e/health`／`/%2E/health`／`//health`／`/health/`／`/HEALTH`／`/api/v1/todos`／`/index.html`／`/styles.css` 全 401，`/favicon.ico` 無憑證 401、帶憑證 200，7 條 favicon 路徑變體全 401，零繞過。合併衝突僅任務卡 frontmatter `updated` 一欄，取 main 版 19:10:27。CHANGELOG 已補本卡與 T-0043 兩列。**D-017 仍未關閉**：該缺陷僅在 staging 重現（缺陷清單第 50 列），須待 staging 部署成功後由 qa-lead 於 staging 重跑 TC-067／TC-009 至少 5 次連續全過才判關閉；staging 部署目前卡在 T-0039 的 `roles/secretmanager.viewer` IAM 授權，**本次推送觸發的 deploy-staging run 預期仍在 `resolve secret versions` 停住，Leader 2026-09-20 已裁決此不計為本卡與 T-0043 的失敗，待 IAM 授權後重跑部署即上 staging**。worktree `<根>-wt/T-0038` 與分支 `task/T-0038-fix-d017` 已清理。 | worklog/handoff/20260920-1926-T0043-r1-dev-tl.md |
