@@ -274,7 +274,7 @@ const axisEl = document.getElementById("axis");
 if (!dayMode) axisEl.classList.add("two");
 for (const dy of days) axis += '<div class="day" style="left:'+pct(dy.t)+'%;width:'+(pct(dy.end)-pct(dy.t))+'%"><span>'+dy.label+'</span></div>';
 for (const tk of ticks) axis += '<div class="tick'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
-for (const g of DATA.gates) axis += '<div class="mark" style="left:'+pct(g.t)+'%"></div>';
+// 里程碑虛線只畫在資料列（gridCells），不延伸進時間軸刻度列。
 if (showNow) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span></div>';
 document.getElementById("axis").innerHTML = axis;
 
