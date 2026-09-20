@@ -352,3 +352,10 @@ updated: 2026-09-19T14:06:43+08:00
 - T-0039 r2：離線 5 條 acceptance 通過，程式已合併 main（3345022）；真實 run 35507519302 於 resolve secret versions 以可讀 PERMISSION_DENIED 停住 → 卡 blocked，blocked_reason 等使用者授 roles/secretmanager.viewer 或填 SECRET_VERSION_*。staging 既有 revision 正常服務。
 - 裁決：T-0040 解除對 T-0039 done 的依賴，改以 main 現況為準立即派 plan-sd；加兩項：06 §2 部署服務帳號角色清單補 roles/secretmanager.viewer、§7 三處參數同步表由 :latest 改版本釘定敘述。
 - 裁決：T-0043 派 dev-tl 審核，通過即與 T-0038 一併合併推送；接受在 IAM 授權前部署 run 於同一步驟停住，授權後重跑一次即部署全部。
+
+### 2026-09-20T19:58:00+08:00 — T-0040 r1 審核：rework r2（範圍擴充）；備援缺口採 A
+
+- T-0040 r1：acceptance 五條全過（06 v0.3：cron 改保溫定位、secret 釘版本、3xx、§2.1 五角色清單、§7 同步表；ADR-0005 第 6、7 點附註）。
+- 裁決 ①：NFR-003 量測來源單點 → 採 06 §6.1.1 選項 A，新增第二個 uptime check，並一併建 uptime 告警政策＋email 通知管道（免費額度）；列 Gate 2 後維運卡（dev-ops）。
+- 裁決 ②：SD §7 NFR-002① 仍寫 301 → T-0040 r2 補改（outputs 加 SD 一列），不另開卡；此為範圍擴充非失敗，不升級模型。
+- 裁決 ③：ADR-0005 第 6 點附註接受（不改決定，只更正前提）。

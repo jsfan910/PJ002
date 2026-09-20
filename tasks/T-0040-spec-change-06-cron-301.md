@@ -6,8 +6,8 @@ team: plan
 role: plan-sd
 model: opus
 phase: plan
-status: review
-round: 1
+status: rework
+round: 2
 depends_on: []   # 原依賴 T-0039 done；T-0039 程式已合併 main（3345022）但因使用者 IAM 授權待辦而 blocked，Leader 2026-09-20 19:5x 裁決解除依賴，以 main 現況為準
 inputs:
   - docs/reports/20260920-1806-測試總結-E001-r3.md#6（裁決事項 C：cron 24 小時內僅 8 次，備援名不副實）
@@ -20,8 +20,10 @@ inputs:
 outputs:
   - docs/specs/06_部署架構與CICD.md（§2 資源表、§3.2 deploy／verify 敘述、§3.3、§4、§6.1；版本 0.2 → 0.3，文末變更紀錄）
   - docs/specs/adr/ADR-0005-雲端平台-CloudRun.md（決定第 7 點附註）
-  - docs/specs/01_需求規格書_SRS.md（僅在含「301」字面時修正）
+  - docs/specs/01_需求規格書_SRS.md（僅在含「301」字面時修正；r1 實查無，未改）
+  - docs/specs/03_系統設計書_SD.md（r2 追加：僅 §7 NFR-002① 一列，「HTTP 301 導向 HTTPS」與驗證方式改為 3xx＋Location 為 https）
 acceptance:
+  - （r2）SD §7 NFR-002① 的狀態碼字面與驗證方式改為「3xx 且 Location 為對應 https 網址」，並與 06 §2、ADR-0005 第 7 點附註一致；`grep -n "301" docs/specs/03_系統設計書_SD.md` 只剩歷史或引用脈絡（或無）
   - 06 §6.1／§3.3：NFR-003 主要來源明寫 Cloud Monitoring uptime check；`monitor-health.yml` cron 定位改為「保溫與人工抽查用，不具備援能力」，並寫明理由（實測 24 小時 8 次／理論 258 次）；提出「第二個 uptime check 作為真備援」的建議與代價（免費額度、告警重複）供 Leader 裁決，不自行決定
   - 06 §3.2／§4：`--set-secrets` 改為具體版本號的敘述與 T-0039 實作一致（版本號來源、STEP_SUMMARY 記錄、覆寫變數名稱）；§2 表「HTTP 請求由 Google 前端 301 導向 HTTPS」改為「3xx（實測 302）」
   - ADR-0005 第 7 點加附註：實測 302，判準改「3xx 且 Location 為 https」，引用 D-016 與 Leader 2026-09-19T17:30:10 裁決
@@ -59,4 +61,4 @@ sed -n 1,10p docs/specs/06_部署架構與CICD.md                               
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | rework（範圍擴充，非失敗） | 四條驗收指令實跑，acceptance 1～5 全過，Leader 追加兩項到位；假設 7 條全接受（含 ADR 第 6 點附註）。裁決：①備援缺口採 A（第二個 uptime check）＋告警政策，列 Gate 2 後維運卡；②SD:308 仍寫 301 → r2 補改（outputs 已加 SD §7 一列）；③接受。 | worklog/handoff/20260920-1955-T0040-r1-leader.md |
