@@ -6,7 +6,7 @@ team: dev
 role: dev-ops
 model: sonnet
 phase: ops
-status: in_progress
+status: done
 round: 1
 depends_on: []
 inputs:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0045-traffic-pinned-fix
 created: 2026-09-20T20:41:00+08:00
-updated: 2026-09-20T20:42:05+08:00
+updated: 2026-09-20T21:31:49+08:00
 blocked_reason: null
 ---
 
@@ -66,4 +66,5 @@ git diff --stat main...task/T-0045-traffic-pinned-fix   # 只含 outputs
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1（第一階段・離線） | dev-tl | 退回後修正 | **阻擋級 2 項**。**R-1 流量判準用錯欄位**：判定式為 `latestReadyRevisionName == latestCreatedRevisionName`，`status.traffic` 不參與判定、「100%」從未被檢查；審核者實查 `run revisions list` 得 `00004`～`00018` 全部 `Ready=True`，與 dev-ops 貼出的「釘死期該欄位停在 `00003-lt2`」並存，證實此欄位行為與 Knative 公開語義不同，屬平台未文件化行為，不得作為規格級判準，且分流／canary（50/50）情境會漏判。要求改為主判準讀 `status.traffic`（`csv[no-heading]`，`table` 格式帶方括號無法解析）加總目標 revision 百分比要求 =100，`latestReadyRevisionName` 降為併行輔助條件，STEP_SUMMARY 改填實際值，06／README 六處措辭同步。**R-2 文件結構破壞**：插入 §6.10 時刪除了 `## 7. 三處必須同步的參數表（T-0025，CR S-9）` 整章標題與分隔線，參數表被併吞進 §6.10。dev-ops 於 `78dca59` 兩項皆修正；複審以 awk 三情境實測（正常 100→放行、事故重演 0→擋、分流 50/50→50→**擋**，最後一項正是原判準會誤放行者）與真實服務端對端實跑 PASS 佐證有效，合併為 `5b28b13` | `worklog/handoff/20260920-2059-T0045-r1-dev-tl.md`（A／B／B2 段） |
+| r1（第二階段・真實部署） | dev-tl | **done** | acceptance 六條全數達成。獨立唯讀複驗：GitHub API 匿名讀 run `35513187463` 得 `conclusion=success`、`head_sha=95bc4ca`，13 個步驟全 success；核對 `95bc4ca` 上的 `deploy-staging.yml` 判定式確為 `[ "${pct}" = "100" ] && ...`，**證實此次 CI 跑的是 R-1 修正後的判準，且 WIF 服務帳號有權執行新增的 `describe --format=csv` 呼叫**（解除 r1 所列「修正後邏輯未經 CI 實測」之風險）；`services describe` 得 100% 流量在 `todo-app-00019-k5q`、`latestReady == latestCreated`，csv 判準複跑得 `todo-app-00019-k5q,100`，`/health` 實打 `HTTP 200`；revision `00019-k5q` 建立於 `13:21:55Z` 落在 deploy 步驟 `13:21:50Z～13:22:19Z` 時窗內；量測窗 `13:17:39Z～13:22:38Z` 涵蓋 run 全程 `13:20:01Z～13:22:23Z`，226/226 樣本皆 200、最長連續非 200 = 0 秒，遠低於 60 秒門檻。job log 因匿名 API 回 403 需登入，審核者依安全鐵則未索取憑證，改以上述證據鏈佐證。**非阻擋級殘留**：06 第 717／791／843 行三處交叉引用仍寫「待補」，指向已補完的 §6.10.3；兩份給 qa-lead 的正式重驗清單（06 §6.10.4、事故報告）皆已正確標為「已重驗，通過」，下游不受誤導，列入 plan-sd P1 規格同步卡順修。合併為 `4a4f1a5`（見 CHANGELOG） | `worklog/handoff/20260920-2059-T0045-r1-dev-tl.md`（B3 段） |
