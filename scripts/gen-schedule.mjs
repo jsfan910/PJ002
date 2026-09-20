@@ -106,6 +106,13 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .axis{position:relative;height:26px}
 .axis .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
 .axis .tick span{position:absolute;top:4px;left:3px;font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+/* 刻度含小時時，時間軸分上下兩列：上列日期（.day，每個日界一格）、下列時間（.tick）；日界線加深 */
+.axis.two{height:42px}
+.axis.two .day{position:absolute;top:0;height:20px;border-left:1px solid var(--axis);border-bottom:1px solid var(--grid);overflow:hidden}
+.axis.two .day span{position:absolute;top:3px;left:4px;font-family:var(--font-mono);font-size:10px;color:var(--ink2);font-weight:500;white-space:nowrap}
+.axis.two .tick{top:20px}
+.axis.two .tick span{top:5px}
+.axis .tick.d0,.tl .grid.d0{border-left-color:var(--axis)}
 .tl .grid{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
 .tl .grid.half{border-left-style:dotted}
 .bar{position:absolute;top:6px;height:14px;border-radius:3px;overflow:hidden;background:var(--plane);border:1px solid var(--ring)}
@@ -257,17 +264,23 @@ const showNow = nowIso >= localIso(T0) && nowIso <= localIso(T1);
 
 const ticks = [];
 if (dayMode) { const d = new Date(T0); d.setHours(0,0,0,0); for (; d <= T1; d.setDate(d.getDate()+1)) ticks.push({ t: localIso(d), label: localIso(d).slice(5,10), half: null }); }
-else { const d = new Date(T0); d.setHours(Math.floor(d.getHours()/hourStep)*hourStep, 0, 0, 0); for (; d <= T1; d.setHours(d.getHours()+hourStep)) { const h = new Date(d); const iso = localIso(h); const label = (hourStep > 1 && h.getHours() === 0) ? iso.slice(5,10) : iso.slice(11,16); ticks.push({ t: iso, label, half: hourStep === 1 ? localIso(new Date(h.getTime()+1800000)) : null }); } }
+else { const d = new Date(T0); d.setHours(Math.floor(d.getHours()/hourStep)*hourStep, 0, 0, 0); for (; d <= T1; d.setHours(d.getHours()+hourStep)) { const h = new Date(d); const iso = localIso(h); ticks.push({ t: iso, label: iso.slice(11,16), d0: h.getHours() === 0, half: hourStep === 1 ? localIso(new Date(h.getTime()+1800000)) : null }); } }
+// 上列日期格：每個涵蓋到的日曆日一格，從該日 00:00（早於 T0 者貼齊左緣）延伸到下一個日界。
+const days = [];
+if (!dayMode) { const d = new Date(T0); d.setHours(0,0,0,0); for (; d <= T1; d.setDate(d.getDate()+1)) { const iso = localIso(d); const next = new Date(d); next.setDate(next.getDate()+1); days.push({ t: iso, label: iso.slice(0,10), end: localIso(next) }); } }
 
 let axis = "";
-for (const tk of ticks) axis += '<div class="tick" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
+const axisEl = document.getElementById("axis");
+if (!dayMode) axisEl.classList.add("two");
+for (const dy of days) axis += '<div class="day" style="left:'+pct(dy.t)+'%;width:'+(pct(dy.end)-pct(dy.t))+'%"><span>'+dy.label+'</span></div>';
+for (const tk of ticks) axis += '<div class="tick'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
 for (const g of DATA.gates) axis += '<div class="mark" style="left:'+pct(g.t)+'%"></div>';
 if (showNow) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span></div>';
 document.getElementById("axis").innerHTML = axis;
 
 const gridCells = () => {
   let g = "";
-  for (const tk of ticks) { g += '<div class="grid" style="left:'+pct(tk.t)+'%"></div>'; if (tk.half) g += '<div class="grid half" style="left:'+pct(tk.half)+'%"></div>'; }
+  for (const tk of ticks) { g += '<div class="grid'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"></div>'; if (tk.half) g += '<div class="grid half" style="left:'+pct(tk.half)+'%"></div>'; }
   for (const gt of DATA.gates) g += '<div class="mark" style="left:'+pct(gt.t)+'%"></div>';
   if (showNow) g += '<div class="now" style="left:'+pct(nowIso)+'%"></div>';
   return g;
