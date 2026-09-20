@@ -341,3 +341,8 @@ updated: 2026-09-19T14:06:43+08:00
 
 - 事實：Firefox 兩組於 agent 執行環境 68/68 在 browser.launch 階段失敗（`spawn UNKNOWN`，Windows CreateProcess 層級）；Chromium 對照 4/4 正常、二進位檔已 --force 重下、非 Docker 問題。判工具限制，非產品缺陷。報告 docs/reports/20260920-1901-AT-E001-r4-firefox.md。
 - 裁決：T-0041 維持 blocked，交使用者在自己的終端執行報告內單一指令，結果貼回後 qa-lead 更新 TC-091；NFR-004 第 10 項維持 4/6，非擋關。T-0042 解除對 T-0041 的依賴，Release Notes 以「已知限制」記載 Firefox 未驗。
+
+### 2026-09-20T19:30:00+08:00 — T-0038 初審通過待合併；favicon 404 另立 T-0043
+
+- dev-tl 審核 T-0038：D-017 三條斷言本機 5 次全過；acceptance 第 4 條（e2e 全過）條件通過，因 msedge 兩尺寸 TC-009 固定失敗於「console 無 error」，21 筆 404 全為 /favicon.ico，且 main（不含 T-0038）同樣重現 → 與本卡無因果。
+- 裁決：採 dev-tl 建議①，建 T-0043（dev-fe）補 public/favicon.ico，不新增路由、仍受 Basic Auth 保護；不放寬 TC-009 斷言。T-0038 維持初審通過，等 deploy 綠後與 T-0043 一併由 dev-tl 合併。D-017 正式關閉仍須 qa-lead 於 staging 重跑 TC-067／TC-009 5 次全過（本機從未重現）。
