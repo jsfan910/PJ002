@@ -14,7 +14,6 @@
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
-| T-0044 | 第二個 uptime check＋告警政策；06 回填（r2） | dev-tl | 20:49 派複審；通過合併但暫不推送（T-0045 量測中） |
 
 ## 阻塞
 
@@ -26,6 +25,7 @@
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
+| — | 告警通知管道：建立 email 通知管道並綁定政策 8479925612924794663 | **使用者** | — | 步驟見 README「告警通知管道」小節；未綁定前告警只進 incident 不會主動通知 |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 對 basic-auth-user／basic-auth-pass 各加新版本後，重跑一次 deploy-staging 即自動釘到最新版（T-0039 已生效） |
 | — | D-017 關閉：staging 重跑 TC-067／TC-009 5 次 | **使用者跑指令**＋qa-lead 判定 | **T-0045 復原流量後**（目前 staging 仍是 00003-lt2）；使用者機器先裝 Playwright chromium | 指令見 Leader 回覆；摘要貼回後 qa-lead 出測試總結 r4 關閉 D-017、認定 R-6、更新第 10 項 |
 | — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
