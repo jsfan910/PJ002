@@ -6,7 +6,7 @@ team: dev
 role: dev-tl
 model: opus
 phase: dev
-status: todo
+status: review
 round: 1
 depends_on: [T-0045, T-0046]
 inputs:
@@ -26,7 +26,7 @@ acceptance:
 reviewer: leader
 branch: task/T-0047-release-notes-addendum
 created: 2026-09-20T21:55:00+08:00
-updated: 2026-09-20T21:55:00+08:00
+updated: 2026-09-20T22:00:30+08:00
 blocked_reason: null
 ---
 
