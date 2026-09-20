@@ -178,7 +178,7 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 - **不帶憑證是刻意的**：若監測帶 Basic Auth 憑證，就等於沒有驗證 BR-017 的豁免是否真的生效。**不帶憑證仍得 200，才證明豁免正確**。此設計保留。
 - **NFR-003 的正式量測來源是 Cloud Monitoring uptime check `todo-app-health`**（§6.1、§6.8.2、§6.8.3）。
 
-> **待 Leader 裁決：要不要建第二個 uptime check 作為真備援？**（本卡不自行決定，見 §6.1.1）
+> **已採選項 A（T-0044），見 §6.1.1**
 
 ---
 
@@ -335,7 +335,7 @@ GitHub Actions 以 OIDC token 向 GCP 換取**短期**憑證，**倉庫中不存
 
 > **裁決與落地**：Leader 於 2026-09-20T19:37:36+08:00（`tasks/E-001-todo-app.md`）就下方三選項裁決採 **A，並加告警政策**（不綁通知管道，email 由使用者一次性自行建立與綁定）。T-0044（dev-ops）已實際建立：
 > - **第二個 uptime check** `todo-app-health-backup`：`projects/pj002-509106/uptimeCheckConfigs/todo-app-health-backup-yvjsI-2xna0`。設定與主 check 相同（https、443、path `/health`、期望 `200`、period 5 分鐘、timeout 10 秒），**檢查地區組合刻意不同**：`ASIA_PACIFIC`／`SOUTH_AMERICA`／`USA_VIRGINIA`（主 check 為 `ASIA_PACIFIC`／`USA_OREGON`／`USA_IOWA`／`EUROPE`），避免兩者同時受同一組地區的網路事件影響。建立時間 2026-09-20T12:19Z（UTC）＝ 2026-09-20T20:19+08:00。指令與完整 `describe` 輸出見 `infra/uptime-check.sh`（`create-backup`／`describe-backup`）。
-> - **告警政策** `todo-app uptime check failure`：`projects/pj002-509106/alertPolicies/8479925612924794663`。`combiner: OR`，兩條 `conditionThreshold`（各對應一個 check 的 `check_id`），皆為「10 分鐘對齊窗（`alignmentPeriod: 600s`）內，`crossSeriesReducer: REDUCE_COUNT_FALSE` 統計到的失敗檢查地區數 > 0」即觸發（`comparison: COMPARISON_GT`、`thresholdValue: 0`、`trigger.count: 1`）——即任一 check 只要有 1 個檢查地區在該 10 分鐘窗內回報失敗就觸發，對兩個 check 皆生效。**未綁定任何通知管道**（`gcloud alpha monitoring policies describe` 的 `notificationChannels` 欄位為空）；使用者一次性建立 email 通知管道並綁定的指令見 README「告警通知管道（使用者一次性設定）」。政策 JSON 的 `documentation.content` 刻意只用英文／ASCII——本機 Windows `gcloud` 在未設 `PYTHONUTF8=1 PYTHONIOENCODING=utf-8` 時，會把 `--policy-from-file` 內的中文字元在讀檔／印出階段換成字面 `?`（非終端機顯示問題，經 `describe` 重新讀回逐位元組核對證實；設定該兩個環境變數後讀回內容正確）。
+> - **告警政策** `todo-app uptime check failure`：`projects/pj002-509106/alertPolicies/8479925612924794663`。`combiner: OR`，兩條 `conditionThreshold`（各對應一個 check 的 `check_id`），皆為「10 分鐘對齊窗（`alignmentPeriod: 600s`）內，`crossSeriesReducer: REDUCE_COUNT_FALSE` 統計到的失敗檢查地區數 > 0」即觸發（`comparison: COMPARISON_GT`、`thresholdValue: 0`、`trigger.count: 1`）——即任一 check 只要有 1 個檢查地區在該 10 分鐘窗內回報失敗就觸發，對兩個 check 皆生效。**未綁定任何通知管道**（`gcloud alpha monitoring policies describe` 的 `notificationChannels` 欄位為空）；使用者一次性建立 email 通知管道並綁定的指令見 README「告警通知管道（使用者一次性設定）」。政策 JSON 的 `documentation.content` **實際內容為中文**（「任一 todo-app uptime check（todo-app-health 或 todo-app-health-backup）在 10 分鐘窗內出現失敗取樣時觸發。判讀規則見 06 §6.3、§6.8.3。通知管道由使用者自行於 Cloud Monitoring 主控台建立並綁定（本政策建立時未綁定任何管道）。」），**GCP 端儲存為正確 UTF-8**——本機 Windows `gcloud` 在未設 `PYTHONUTF8=1 PYTHONIOENCODING=utf-8` 時，`describe` 讀回會把中文字元顯示成字面 `?`（位元組 `0x3f`），**這是本機讀出路徑的有損轉碼，不是雲端資料損壞，不要據此重建或刪除政策**；加上該兩個環境變數重新讀回即為完整中文（`infra/uptime-check.sh` 的 `describe-alert-policy` 分支已內建這兩個變數）。**核對政策建立後從未被更新**：`creationRecord.mutateTime` 與 `mutationRecord.mutateTime` 皆為 `2026-09-20T12:21:57.131375314Z`（完全相同），確認目前雲端上的政策內容自建立起未曾異動。
 > - **費用**：兩個 check 皆為每 5 分鐘、多地區輪詢，月執行次數仍在 Cloud Monitoring 每帳戶每月 100 萬次免費額度內（現況：4 地區＋3 地區、各每 5 分鐘 ≈ 每月合計 6 萬次量級）；告警政策本身免費（Cloud Monitoring 未對政策評估或 `notificationChannels` 為空的政策收費）。**費用估計維持 US$0**。
 > - **告警重複**（選項 A 原列代價②）：兩個 check 打同一個 `/health`，服務真掛掉時兩邊會各自觸發一次告警政策的求值，但因兩個 condition 以 `OR` 合併在**同一個**政策內，GCP 只會開一個 incident（不會產生兩份重複通知）；此代價已透過「單一政策、兩條件 OR」的設計吸收，不需要使用者額外處理。
 >

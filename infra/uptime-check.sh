@@ -25,13 +25,17 @@
 # **解法：在呼叫 gcloud 前加 `MSYS_NO_PATHCONV=1`**（僅影響本次呼叫，不改全域環境）。
 # PowerShell 沒有這個問題，不需要這個變數。
 #
-# **T-0044 新增的編碼注意事項**：`--policy-from-file` 的 JSON 若含中文（例如
-# documentation.content），本機 Windows 版 gcloud 在未設定 UTF-8 環境變數時，
-# 讀檔與印出結果都可能把中文字元換成字面 `?`（非終端機顯示問題，是實際輸出
-# 內容被有損轉碼）。**解法：呼叫前加 `PYTHONUTF8=1 PYTHONIOENCODING=utf-8`**。
-# 本檔的告警政策 JSON 一律只用英文／ASCII，避免此問題（見下方 alert policy
-# JSON 內嵌內容）；若之後要改中文說明，記得連同這兩個環境變數一起設定，並用
-# `describe` 重新讀回確認位元組正確（不要只看終端機顯示）。
+# **T-0044 新增的編碼注意事項**：既有告警政策（下方 ALERT_POLICY_ID）的
+# `documentation.content` **實際內容是中文**，GCP 端儲存為正確 UTF-8（已用
+# `creationRecord.mutateTime` 與 `mutationRecord.mutateTime` 相同這件事確認
+# 建立後從未被更新過）。本機 Windows 版 gcloud 在**讀回**（`describe`／印出）
+# 時，若未設定 UTF-8 環境變數，會把中文字元顯示成字面 `?`（位元組 `0x3f`，
+# 這是本機讀出路徑的有損轉碼，不是雲端資料損壞，不要據此重建或刪除政策）。
+# **解法：呼叫 `describe` 前加 `PYTHONUTF8=1 PYTHONIOENCODING=utf-8`**（下方
+# `describe-alert-policy` 分支已內建這兩個變數）。
+# 若之後要**新建**其他政策，建議 `--policy-from-file` 的 JSON 內容改用英文／
+# ASCII，可完全迴避此讀回陷阱；但這只是「日後新建」的建議，**不代表既有這個
+# 政策的內容是英文**——上面已說明它是中文且雲端資料正確。
 #
 # 用法：
 #   bash infra/uptime-check.sh create               # 主 check 一次性建立（已執行過，勿重複執行）
@@ -121,18 +125,20 @@ EOF
     "$GCLOUD" monitoring uptime describe "${BACKUP_CHECK_ID}" --format=json
     ;;
   create-alert-policy)
-    echo "[警告] 告警政策已建立過（$ALERT_POLICY_NAME）。重複執行會建立第二個政策。"
-    echo "如確定要建立新的一份，需先安裝 alpha 元件（非互動模式需先設 CLOUDSDK_PYTHON，"
-    echo "見下方指令），再以 --policy-from-file 指向一份政策 JSON（內容只用英文／ASCII，"
-    echo "理由見本檔開頭「編碼注意事項」）。範例："
+    echo "[警告] 告警政策已建立過（$ALERT_POLICY_NAME，displayName todo-app uptime check failure，"
+    echo "documentation.content 現況為中文、GCP 端 UTF-8 正確，見本檔開頭「編碼注意事項」）。"
+    echo "重複執行會建立第二個政策。如確定要建立新的一份，需先安裝 alpha 元件（非互動模式"
+    echo "需先設 CLOUDSDK_PYTHON，見下方指令），再以 --policy-from-file 指向一份政策 JSON。"
+    echo "（建議：新建時內容改用英文／ASCII 可迴避讀回陷阱，但這只是日後新建的建議，"
+    echo "不代表上面這個既有政策是英文的）。範例："
     echo
     cat <<'EOF'
 # 一次性：非互動模式安裝 alpha 元件
 CLOUDSDK_PYTHON=$("$GCLOUD" components copy-bundled-python 2>&1 | tail -1)
 CLOUDSDK_PYTHON="$CLOUDSDK_PYTHON" "$GCLOUD" components install alpha --quiet
 
-# 建立政策（policy.json 內容範例見 06 §6.1.1；務必只用英文/ASCII，
-# 並在建立後以 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 重新 describe 確認）
+# 建立政策（policy.json 內容範例見 06 §6.1.1；建議新建時用英文/ASCII 迴避讀回陷阱，
+# 並在建立後以 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 重新 describe 確認內容正確）
 "$GCLOUD" alpha monitoring policies create --policy-from-file=policy.json --format=json
 EOF
     ;;
