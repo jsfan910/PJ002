@@ -8,14 +8,13 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
+| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | 1 | 2026-09-20 20:05 | worktree T-0042；T-0039 程式已合併，依賴以合併為準 |
 | T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | 2 | 2026-09-20 19:5x | r1 五條全過；r2 範圍擴充補 SD §7 NFR-002① 的 301→3xx |
 
 ## 審核中
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
-| T-0043 | 補 public/favicon.ico | dev-tl | 19:5x 派審；通過即與 T-0038 一併合併推送（部署在 IAM 授權前仍會於 resolve secret versions 停住） |
-| T-0038 | D-017 修正：前端錯誤訊息時序競態 | dev-tl | **初審通過，待合併**（19:2x；D-017 三條斷言 5 次全過）。等 deploy 恢復綠後 dev-tl 合併。TC-009 在 Edge 的失敗為 favicon 404，與本卡無關 → T-0043 |
 
 ## 阻塞
 
@@ -28,7 +27,6 @@
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
-| T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | T-0038、T-0039 | 兩卡 done 後派；Firefox 以已知限制寫入 |
 | — | **CI 服務帳號授權 `roles/secretmanager.viewer`**（或填 3 個 repository variables `SECRET_VERSION_*`） | **使用者** | — | T-0039 deploy 綠燈前置；agent 不修改 IAM。指令見 T-0039 審核紀錄 r1／README |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |
 | — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
