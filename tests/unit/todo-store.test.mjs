@@ -190,6 +190,88 @@ test("load()：先發後到時，只有最新一次的回應會寫入 state（S-
 });
 
 // ---------------------------------------------------------------------------
+// D-017：跨動作競態（初始 load() 因真實網路延遲仍在飛行中時，不得覆蓋稍後才
+// 設定的 error）。修正前，`add()/updateTitle()/setCompleted()/remove()`（含
+// `add()/updateTitle()` 的同步驗證失敗分支）完全不佔用 `load()` 的請求序號保護，
+// 因此一個較舊、仍在飛行中的 `load()`（例如頁面啟動時的初始載入）一旦稍後才
+// resolve，其成功分支會無條件把 `state.error` 蓋回 `null`，將使用者剛看到的
+// 錯誤訊息（`error-message`）又變回 hidden——這正是 TC-067／TC-009 在 staging
+// 真實網路延遲下間歇性失敗、但本機 docker compose（延遲趨近於零）幾乎不會踩到
+// 這個時間窗的根因。
+// ---------------------------------------------------------------------------
+
+test("D-017／TC-009：初始 load() 因延遲仍在飛行中時，同步驗證失敗的 error 不會被稍後才 resolve 的 load() 蓋回 null", async () => {
+  let resolveList;
+  const pendingList = new Promise((resolve) => {
+    resolveList = resolve;
+  });
+  const { api } = createMockApi({
+    // 模擬頁面啟動時初始 load() 對真實後端的 GET /api/v1/todos 有網路延遲，
+    // 尚未 resolve。
+    listTodos: async () => pendingList.then(() => [SAMPLE_TODO])
+  });
+  const store = createTodoStore(api);
+
+  const initialLoad = store.actions.load(); // 模擬 todo-view.js 啟動時呼叫的初始 load()
+
+  // 初始 load() 仍在飛行中時，使用者送出空白標題（TC-009 步驟 1~2）。
+  const addResult = await store.actions.add("   ");
+  assert.equal(addResult.ok, false);
+  assert.equal(store.getState().error.kind, "validation");
+
+  // 較舊的初始 load() 這時才姍姍來遲地 resolve（成功）。
+  resolveList();
+  const initialResult = await initialLoad;
+
+  assert.equal(initialResult.stale, true);
+  // 修正前：initialLoad 的成功分支會無條件 setState({ error: null })，
+  // 把剛顯示的驗證錯誤蓋掉，畫面上的 error-message 又會變回 hidden（D-017）。
+  assert.equal(
+    store.getState().error && store.getState().error.kind,
+    "validation",
+    "初始 load() 較晚 resolve 不得清掉稍後才設定的驗證錯誤（D-017）"
+  );
+});
+
+test("D-017／TC-067：初始 load() 因延遲仍在飛行中時，新增失敗（後端 500）的 error 不會被稍後才 resolve 的 load() 蓋回 null", async () => {
+  let resolveList;
+  const pendingList = new Promise((resolve) => {
+    resolveList = resolve;
+  });
+  const { api } = createMockApi({
+    // 模擬頁面啟動時初始 load() 對真實後端有網路延遲，尚未 resolve。
+    listTodos: async () => pendingList.then(() => [SAMPLE_TODO]),
+    // 模擬 TC-067 以路由攔截讓 POST /api/v1/todos 回 500，且此回應比初始
+    // load() 先抵達（攔截回應是立即的，初始 load() 打的是真實延遲的網路）。
+    createTodo: async () => {
+      throw new ApiError({ code: "E_INTERNAL", message: "Internal Server Error" }, 500);
+    }
+  });
+  const store = createTodoStore(api);
+
+  const initialLoad = store.actions.load(); // 模擬 todo-view.js 啟動時呼叫的初始 load()
+
+  // 初始 load() 仍在飛行中時，使用者嘗試新增一筆，後端回 500（TC-067 步驟 1~2）。
+  const addResult = await store.actions.add("買牛奶");
+  assert.equal(addResult.ok, false);
+  assert.equal(store.getState().error.code, "E_INTERNAL");
+
+  // 較舊的初始 load() 這時才 resolve（成功）。
+  resolveList();
+  const initialResult = await initialLoad;
+
+  assert.equal(initialResult.stale, true);
+  // 修正前：initialLoad 的成功分支會無條件 setState({ error: null })，
+  // 把剛顯示的「伺服器發生錯誤」訊息蓋掉，畫面上的 error-message 又會變回
+  // hidden，斷言逾時（D-017 於 staging 間歇性失敗的實際現象）。
+  assert.equal(
+    store.getState().error && store.getState().error.code,
+    "E_INTERNAL",
+    "初始 load() 較晚 resolve 不得清掉稍後才設定的新增失敗錯誤（D-017）"
+  );
+});
+
+// ---------------------------------------------------------------------------
 // setFilter()
 // ---------------------------------------------------------------------------
 

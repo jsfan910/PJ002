@@ -6,7 +6,7 @@ team: dev
 role: dev-fe
 model: sonnet
 phase: dev-fix
-status: todo
+status: review
 round: 1
 depends_on: []
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0038-fix-d017
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T18:35:00+08:00
+updated: 2026-09-20T18:45:08+08:00
 blocked_reason: null
 ---
 
