@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: todo
+status: review
 round: 1
 depends_on: [T-0046]
 inputs:
@@ -31,7 +31,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T22:12:00+08:00
-updated: 2026-09-20T22:12:00+08:00
+updated: 2026-09-20T22:28:54+08:00
 blocked_reason: null
 ---
 
