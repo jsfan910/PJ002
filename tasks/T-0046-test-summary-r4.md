@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: todo
+status: review
 round: 1
 depends_on: [T-0045]
 inputs:
@@ -19,7 +19,7 @@ inputs:
   - worklog/handoff/20260920-1940-T0042-r1-dev-tl.md（unit TC-ID 標註對應表，R-6 認定用）
   - docs/specs/24_缺陷清單.md、docs/specs/traceability.md、docs/specs/07_測試計畫.md#4、#5（嚴重度定義）
 outputs:
-  - docs/reports/20260920-HHmm-測試總結-E001-r4.md
+  - docs/reports/20260920-2145-測試總結-E001-r4.md
   - docs/specs/24_缺陷清單.md（D-017 closed；新增 D-018 pipeline 驗證失效；摘要表更新）
   - docs/specs/traceability.md（僅主表「狀態」欄：US-001／US-008 的 TC-009／TC-067；US-010 的 TC-090 重測引用）
 acceptance:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T21:33:00+08:00
-updated: 2026-09-20T21:33:00+08:00
+updated: 2026-09-20T21:50:03+08:00
 blocked_reason: null
 ---
 
