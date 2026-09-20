@@ -185,7 +185,7 @@ table.gantt tr.ms td.name{color:var(--gate)}
       <span><i class="sw" style="background:var(--qa)"></i>測試團隊</span>
       <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
       <span><i class="sw rev"></i>審核回合</span>
-      <span><i class="sw dia-sw"></i>里程碑（每筆一列，菱形＝時間位置；虛線為其貫穿全圖的對齊線）</span>
+      <span><i class="sw dia-sw"></i>里程碑</span>
       <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻）<b id="now-legend"></b></span>
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
