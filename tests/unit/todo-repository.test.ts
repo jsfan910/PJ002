@@ -19,6 +19,22 @@
  * 匯入其他 `src/*.ts` 兄弟檔正是因為它只被拿來 build 成 `dist/` 後執行，
  * 從未被直接以 `node src/app.ts` 跑過）。`todo-repository.ts` 本身沒有
  * 任何本地相對匯入，用 `.ts` 明確指到真實檔案不受此限制影響。
+ *
+ * ---------------------------------------------------------------------------
+ * TC-ID 對應表（T-0042 補標，關閉測試總結 r3 的殘留風險 R-6）
+ * ---------------------------------------------------------------------------
+ * 標註規則與「完全／部分覆蓋」的判準同 `tests/unit/todo-service.test.ts` 檔頭。
+ * **本次只加名稱前綴與註解，未改動任何 `assert`。**
+ *
+ * | TC | 對應測試 | 覆蓋程度 |
+ * |----|----------|----------|
+ * | TC-003 | `[TC-003] createTodo：RETURNING 有列時…` ／ `[TC-003] getTodoById：有列時…` | **部分**：`getTodoById` 那條用 `assert.deepEqual` 比對**完整物件**，因此同時釘住了「`isCompleted` 存在且為布林」與「**不存在 `completedAt` 欄位**」（多一個欄位就會失敗），這是 TC-003 末句 BR-007 的直接證據；`createTodo` 那條只斷言 `todo.id`。**`id` 為 UUID 格式、`createdAt` 為建立當下時間兩項未在 unit 層斷言**——兩者都由 DDL 的 `gen_random_uuid()`／`DEFAULT now()` 產生，unit 層的 mock 回什麼就是什麼，只有整合測試（真打 DB）能驗，見 `tests/integration/todo-repository.test.ts` |
+ * | TC-012 | `[TC-012][TC-048] buildListCommand：…` | **完全**：`assert.match(command.text, /ORDER BY created_at DESC, id DESC/)` 直接比對 SQL 的排序子句（新到舊，`id` 為 tie-break）；「service 未提供任何排序參數介面」由 `buildListCommand(status)`／`listTodos(db, status)` 的簽章即可核對，兩者都只收一個 `status` |
+ * | TC-020 | `[TC-020][TC-039] buildUpdateCommand：…` | **完全**：`{ title }` 單獨給值時 `values` 為 `["id-1", "new title", null]`，`null` 代表 `is_completed` 走 `COALESCE` 保留原值；SQL 的 SET 子句本來就不含 `created_at`／`id`／`owner_id` |
+ * | TC-030 | `[TC-030] buildDeleteCommand：…` | **完全**：`assert.equal(command.text, "DELETE FROM todos WHERE id = $1")` 為**字面完全相等**比對，任何 `UPDATE … SET is_deleted`／`deleted_at` 的軟刪除寫法都會讓它失敗 |
+ * | TC-039 | `[TC-039] setCompleted：…` ＋ `[TC-020][TC-039] buildUpdateCommand：…` | **完全**：只帶 `isCompleted` 時 `values` 為 `["id-1", null, true]`，即異動欄位只含 `is_completed`；「回傳物件無 `completedAt`」由 `[TC-003]`／`[TC-059]` 的 `deepEqual` 四欄位比對佐證 |
+ * | TC-048 | `[TC-012][TC-048] buildListCommand：…` | **部分**：TC-048 步驟 2（`all`／`active`／`completed` 三值皆被接受並轉為查詢條件）由迴圈完全覆蓋；步驟 1 的預設值與步驟 3 的非法值拒絕不在資料層，落點與整合層覆蓋見 `todo-service.test.ts` 檔頭同一列 |
+ * | TC-059 | `[TC-059] listTodos：把 rows 轉成 camelCase…` ＋ `[TC-003][TC-059] getTodoById：有列時…` | **部分**：TC-059 的重點「**非**本地化字串、**非** epoch 數字」已被釘住——轉換函式把 `created_at`（`timestamptz` → `pg` 驅動回的 JS `Date`）**原樣**搬到 `createdAt`，`deepEqual` 會讓任何 `toLocaleString()`／`getTime()` 的改寫立刻失敗。**「字串以 `Z` 結尾或 `+00:00`」這一句未在 unit 層斷言**：轉換函式回傳的是 `Date` 物件不是字串，ISO 8601／RFC 3339 的字串化發生在 Fastify 序列化階段（`src/schemas/todo-schema.ts` 的 `createdAt` 標 `format: "date-time"`），屬整合層 TC 的覆蓋範圍 |
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -92,7 +108,7 @@ test("阻擋級 CR 判準：repository 原始碼內不得出現樣板字串插�
 // 純 SQL 組裝（文字與參數），不碰任何 I/O
 // ---------------------------------------------------------------------------
 
-test("buildListCommand：$1 帶 status，無論哪個 status 都只有一個參數", () => {
+test("[TC-012][TC-048] buildListCommand：$1 帶 status，無論哪個 status 都只有一個參數", () => {
   for (const status of ["all", "active", "completed"] as const) {
     const command = buildListCommand(status);
     assert.deepEqual(command.values, [status]);
@@ -114,7 +130,7 @@ test("buildCreateCommand：$1 帶 title，SQL 對 title 做 btrim", () => {
   assert.match(command.text, /RETURNING id, title, is_completed, created_at/);
 });
 
-test("buildUpdateCommand：$1=id、$2=title、$3=isCompleted，缺的欄位為 null（COALESCE 保留原值）", () => {
+test("[TC-020][TC-039] buildUpdateCommand：$1=id、$2=title、$3=isCompleted，缺的欄位為 null（COALESCE 保留原值）", () => {
   const both = buildUpdateCommand("id-1", { title: "new title", isCompleted: true });
   assert.deepEqual(both.values, ["id-1", "new title", true]);
 
@@ -125,7 +141,7 @@ test("buildUpdateCommand：$1=id、$2=title、$3=isCompleted，缺的欄位為 n
   assert.deepEqual(empty.values, ["id-1", null, null]);
 });
 
-test("buildDeleteCommand：$1 帶 id", () => {
+test("[TC-030] buildDeleteCommand：$1 帶 id", () => {
   const command = buildDeleteCommand("id-1");
   assert.deepEqual(command.values, ["id-1"]);
   assert.equal(command.text, "DELETE FROM todos WHERE id = $1");
@@ -136,7 +152,7 @@ test("buildDeleteCommand：$1 帶 id", () => {
 // 0 列／不存在時的行為
 // ---------------------------------------------------------------------------
 
-test("listTodos：把 rows 轉成 camelCase，並把 status 原樣傳給 $1", async () => {
+test("[TC-059] listTodos：把 rows 轉成 camelCase，並把 status 原樣傳給 $1", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   const todos = await listTodos(db, "active");
@@ -161,7 +177,7 @@ test("getTodoById：0 列回傳 null（不存在）", async () => {
   assert.equal(todo, null);
 });
 
-test("getTodoById：有列時回傳 camelCase 物件", async () => {
+test("[TC-003][TC-059] getTodoById：有列時回傳 camelCase 物件", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   const todo = await getTodoById(db, SAMPLE_RAW_ROW.id);
@@ -174,7 +190,7 @@ test("getTodoById：有列時回傳 camelCase 物件", async () => {
   });
 });
 
-test("createTodo：RETURNING 有列時回傳 camelCase 物件", async () => {
+test("[TC-003] createTodo：RETURNING 有列時回傳 camelCase 物件", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   const todo = await createTodo(db, "buy milk");
@@ -197,7 +213,7 @@ test("updateTodo：查無此 id（0 列）回傳 null", async () => {
   assert.equal(todo, null);
 });
 
-test("setCompleted：委派給 updateTodo，只帶 isCompleted（title 為 null）", async () => {
+test("[TC-039] setCompleted：委派給 updateTodo，只帶 isCompleted（title 為 null）", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   await setCompleted(db, "id-1", true);

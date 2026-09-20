@@ -8,6 +8,20 @@
  *   - 標題驗證（trim 後長度 1~200）在呼叫 API 前先做，失敗時不送出任何請求。
  *   - 每個 action 的成功／失敗（ApiError／NetworkError）分支皆有覆蓋，且不觸碰真實網路
  *     （以假的 api-client 物件注入 `createTodoStore`）。
+ *
+ * ---------------------------------------------------------------------------
+ * TC-ID 對應表（T-0042 補標，關閉測試總結 r3 的殘留風險 R-6）
+ * ---------------------------------------------------------------------------
+ * 標註規則與「完全／部分覆蓋」的判準同 `tests/unit/todo-service.test.ts` 檔頭。
+ * **本次只加名稱前綴與註解，未改動任何 `assert`。**
+ *
+ * | TC | 對應測試 | 覆蓋程度 |
+ * |----|----------|----------|
+ * | TC-048 | `[TC-048] FILTERS 常數固定三值，預設為 all（BR-010）` ／ `[TC-048] setFilter()：非法值不呼叫 API…` | **前端等效覆蓋**。TC-048 的前置條件寫的是 `todo-service` ＋ 測試替身，而後端 `listTodos` 是純轉發、不驗 status（落點在 `src/schemas/todo-schema.ts` 的 querystring enum，屬整合層）。本檔這兩條測的是**同一條業務規則 BR-010 在前端 store 的落實**：三值固定、預設 `all`、非法值連 API 都不打。標在此處是為了讓 TC-048 的「步驟 1 預設值」與「步驟 3 拒絕非法值」在 unit 層至少有一處真的被斷言，**不是**宣稱後端 service 層已驗 status |
+ *
+ * 另：`TC-009`／`TC-067`（e2e 層、D-017）已由本檔下方兩條時序測試以
+ * `D-017／TC-xxx：` 前綴標註，為 T-0038 所加，不在 T-0042 的 11 條 unit
+ * 層清單內，此處僅說明命名為何有兩種前綴形式。
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -285,7 +299,7 @@ test("setFilter()：合法值會以新 filter 重新取清單", async () => {
   assert.deepEqual(calls.listTodos, ["active"]);
 });
 
-test("setFilter()：非法值不呼叫 API，回 ok:false", async () => {
+test("[TC-048] setFilter()：非法值不呼叫 API，回 ok:false", async () => {
   const { api, calls } = createMockApi();
   const store = createTodoStore(api);
 
@@ -296,7 +310,7 @@ test("setFilter()：非法值不呼叫 API，回 ok:false", async () => {
   assert.equal(store.getState().filter, "all");
 });
 
-test("FILTERS 常數固定三值，預設為 all（BR-010）", () => {
+test("[TC-048] FILTERS 常數固定三值，預設為 all（BR-010）", () => {
   assert.deepEqual(FILTERS, ["all", "active", "completed"]);
   assert.equal(createTodoStore(createMockApi().api).getState().filter, "all");
 });

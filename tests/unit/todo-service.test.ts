@@ -24,6 +24,28 @@
  * - O-002：`updateTodo` 對 `isCompleted` 是「設定目標狀態」，不做任何
  *   toggle 邏輯（本層没有基於現值計算下一個值，直接把目標值轉給
  *   repository，重送同一個值必然是同一個結果，冪等由此保證）。
+ *
+ * ---------------------------------------------------------------------------
+ * TC-ID 對應表（T-0042 補標，關閉測試總結 r3 的殘留風險 R-6）
+ * ---------------------------------------------------------------------------
+ * 標註規則：測試名稱前綴 `[TC-xxx]`，可用 `grep -rn "TC-xxx" tests/unit` 逐條追溯。
+ * **本次只加名稱前綴與註解，未改動任何 `assert`**；因此下表老實區分「完全
+ * 覆蓋」與「部分覆蓋」，並寫明沒被斷言到的是哪一句，不以「有標到就算追溯」
+ * 充數。未覆蓋的子斷言列為 P1 補測建議（見 T-0042 交接檔「下一步建議」）。
+ *
+ * | TC | 對應測試 | 覆蓋程度 |
+ * |----|----------|----------|
+ * | TC-001 | `[TC-001] createTodo：空字串…` ／ `…全空白字串…` | **部分**：預期結果的「三次皆拋 `ValidationError`」已覆蓋空字串與全空白兩組，第三組輸入 `"\t\n "` 未單獨測（`validateAndTrimTitle` 對這三者走同一條 `trim()` 路徑）；「repository 的寫入方法**零次**被呼叫」**未斷言**（測試只驗例外的 code／statusCode，沒有檢查 `db.calls.length === 0`） |
+ * | TC-002 | `[TC-002] createTodo：一般標題會先 trim…` ／ `…剛好 200 字元…` ／ `…201 字元…` ／ `…trim 後才是 201 字元…` | **完全**：步驟 1（200 字元成功）、步驟 2（201 字元 `ValidationError`）皆直接斷言；步驟 3（前後空白 ＋ 200 字元）由「先 trim 再交給 repository」＋「trim 後才是 201 字元仍回 400」兩條夾擊，證明驗證確實發生在 trim 之後 |
+ * | TC-003 | 見 `tests/unit/todo-repository.test.ts` 的 `[TC-003]` 兩條 | 本層不重複斷言：`id`／`createdAt`／`isCompleted` 全由 SQL `RETURNING` 決定，service 只是把 repository 的回傳原樣往上送 |
+ * | TC-012 | 見 `tests/unit/todo-repository.test.ts` 的 `[TC-012]` | 本層 `listTodos` 為純轉發，排序寫在 SQL |
+ * | TC-019 | `[TC-019] updateTodo：title 為全空白…` | **部分**：兩組輸入中的 `"   "` 已覆蓋，`""` **未單獨測**（`updateTodo` 只以 `input.title === undefined` 判斷欄位是否提供，`""` 與 `"   "` 同樣會走到 `validateAndTrimTitle` 並拋 `E_VALIDATION`，見 `src/services/todo-service.ts:92-99`）；「repository 的更新方法**零次**被呼叫」同樣**未斷言** |
+ * | TC-020 | `[TC-020] updateTodo：只給 title…` | **完全**：`db.calls[0].values` 為 `[id, "new title", null]`，第三個參數 `null` 即「`is_completed` 不在異動欄位集合內」（`buildUpdateCommand` 以 `COALESCE` 保留原值）；`created_at`／`id`／`owner_id` 本來就不在 UPDATE 的 SET 子句（由 `[TC-020]` 的 repository 測試釘住） |
+ * | TC-030 | `[TC-030] deleteTodo：刪除成功…` ＋ repository 的 `[TC-030]` | **完全**（跨兩檔）：service 呼叫的是 `delete` 而非帶旗標的更新，SQL 字面由 repository 測試逐字比對；「service 介面不存在還原方法」由本檔的 import 清單即可核對（只匯入五個函式，無 restore／undelete） |
+ * | TC-038 | `[TC-038] updateTodo：只給 isCompleted=true…` ／ `…重送 isCompleted=true 仍是同一個結果…` | **完全**：重送同值兩次 `deepEqual(first, second)`，且兩次傳給 repository 的第三個參數都是 `true`（不翻轉）；「service 不提供 toggle 語意的方法」同樣由 import 清單核對 |
+ * | TC-039 | `[TC-039] updateTodo：只給 isCompleted=true…` ＋ repository 的 `[TC-039]` | **部分**：「異動欄位只含 `is_completed`」已由 `values` 的 `[id, null, true]` 斷言；「回傳物件的 `title`／`createdAt` 不變、不存在 `completedAt`」在本層只斷言了 `result.isCompleted === true`，完整的四欄位 `deepEqual`（可證明沒有 `completedAt`）在 repository 測試 |
+ * | TC-048 | `[TC-048] listTodos：把 status 原樣轉給 repository…` ＋ repository 的 `[TC-048]` ＋ `tests/unit/todo-store.test.mjs` 的 `[TC-048]` | **部分**：步驟 2（`all`／`active`／`completed` 三值皆被接受並轉為查詢條件）由 repository 的 `buildListCommand` 迴圈完全覆蓋；**步驟 1（不帶 `status` 等同 `all`）與步驟 3（`foo`／`ALL`／`""` 拋 `ValidationError`）在後端不落在 `todo-service`**——`listTodos(db, status)` 是純轉發、不做任何驗證，實際落點是 `src/schemas/todo-schema.ts` 的 `StatusFilterQuerystringSchema`（`enum: ["all","active","completed"]` ＋ `default: "all"`），由路由層 schema 擋下並回 400，屬整合層 TC 的覆蓋範圍；前端等效行為由 store 的 `[TC-048]` 兩條斷言 |
+ * | TC-059 | 見 `tests/unit/todo-repository.test.ts` 的 `[TC-059]` | 轉換函式在 repository |
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -87,7 +109,7 @@ async function assertRejectsAppError(promise: Promise<unknown>, code: string, st
 // listTodos：純轉發，狀態原樣交給 repository（後端篩選，O-003）
 // ---------------------------------------------------------------------------
 
-test("listTodos：把 status 原樣轉給 repository，回傳 camelCase 列", async () => {
+test("[TC-048] listTodos：把 status 原樣轉給 repository，回傳 camelCase 列", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   const result = await listTodos(db, "active");
@@ -108,7 +130,7 @@ test("listTodos：把 status 原樣轉給 repository，回傳 camelCase 列", as
 // createTodo：BR-001／BR-002，trim 早於長度檢查（R-07）
 // ---------------------------------------------------------------------------
 
-test("createTodo：一般標題會先 trim 再交給 repository", async () => {
+test("[TC-002] createTodo：一般標題會先 trim 再交給 repository", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   await createTodo(db, "  buy milk  ");
@@ -116,12 +138,12 @@ test("createTodo：一般標題會先 trim 再交給 repository", async () => {
   assert.equal(db.calls[0]?.values[0], "buy milk", "應傳入 trim 後的標題");
 });
 
-test("createTodo：空字串回 E_VALIDATION/400（BR-001）", () => {
+test("[TC-001] createTodo：空字串回 E_VALIDATION/400（BR-001）", () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   return assertRejectsAppError(createTodo(db, ""), "E_VALIDATION", 400);
 });
 
-test("createTodo：全空白字串回 E_VALIDATION/400（schema 的 minLength 擋不掉，業務層再驗一次）", () => {
+test("[TC-001] createTodo：全空白字串回 E_VALIDATION/400（schema 的 minLength 擋不掉，業務層再驗一次）", () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   return assertRejectsAppError(createTodo(db, "   "), "E_VALIDATION", 400);
 });
@@ -134,7 +156,7 @@ test("createTodo：剛好 1 字元（trim 後）視為合法", async () => {
   assert.equal(db.calls[0]?.values[0], "a");
 });
 
-test("createTodo：剛好 200 字元（trim 後）視為合法", async () => {
+test("[TC-002] createTodo：剛好 200 字元（trim 後）視為合法", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   const title200 = "a".repeat(200);
 
@@ -144,12 +166,12 @@ test("createTodo：剛好 200 字元（trim 後）視為合法", async () => {
   assert.equal((db.calls[0]?.values[0] as string).length, 200);
 });
 
-test("createTodo：201 字元（無前後空白）回 E_VALIDATION/400 而非 500", () => {
+test("[TC-002] createTodo：201 字元（無前後空白）回 E_VALIDATION/400 而非 500", () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   return assertRejectsAppError(createTodo(db, "a".repeat(201)), "E_VALIDATION", 400);
 });
 
-test("createTodo：trim 後才是 201 字元（原始字串因前後空白更長）回 400 而非 500（R-07 的核心情境）", () => {
+test("[TC-002] createTodo：trim 後才是 201 字元（原始字串因前後空白更長）回 400 而非 500（R-07 的核心情境）", () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   const rawTitle = "   " + "a".repeat(201) + "   "; // trim 後長度 201
   return assertRejectsAppError(createTodo(db, rawTitle), "E_VALIDATION", 400);
@@ -181,7 +203,7 @@ test("updateTodo：空 body（無 title 也無 isCompleted）回 E_VALIDATION/40
   return assertRejectsAppError(updateTodo(db, SAMPLE_RAW_ROW.id, {}), "E_VALIDATION", 400);
 });
 
-test("updateTodo：只給 title 時 trim 後再驗證長度，isCompleted 傳 undefined 給 repository", async () => {
+test("[TC-020] updateTodo：只給 title 時 trim 後再驗證長度，isCompleted 傳 undefined 給 repository", async () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
 
   await updateTodo(db, SAMPLE_RAW_ROW.id, { title: "  new title  " });
@@ -189,12 +211,12 @@ test("updateTodo：只給 title 時 trim 後再驗證長度，isCompleted 傳 un
   assert.deepEqual(db.calls[0]?.values, [SAMPLE_RAW_ROW.id, "new title", null]);
 });
 
-test("updateTodo：title 為全空白回 E_VALIDATION/400", () => {
+test("[TC-019] updateTodo：title 為全空白回 E_VALIDATION/400", () => {
   const db = createMockDb(() => ({ rows: [SAMPLE_RAW_ROW] }));
   return assertRejectsAppError(updateTodo(db, SAMPLE_RAW_ROW.id, { title: "   " }), "E_VALIDATION", 400);
 });
 
-test("updateTodo：只給 isCompleted=true（設定目標狀態，非 toggle）", async () => {
+test("[TC-038][TC-039] updateTodo：只給 isCompleted=true（設定目標狀態，非 toggle）", async () => {
   const db = createMockDb(() => ({ rows: [{ ...SAMPLE_RAW_ROW, is_completed: true }] }));
 
   const result = await updateTodo(db, SAMPLE_RAW_ROW.id, { isCompleted: true });
@@ -203,7 +225,7 @@ test("updateTodo：只給 isCompleted=true（設定目標狀態，非 toggle）"
   assert.equal(result.isCompleted, true);
 });
 
-test("updateTodo：對已完成的待辦重送 isCompleted=true 仍是同一個結果（冪等，O-002）", async () => {
+test("[TC-038] updateTodo：對已完成的待辦重送 isCompleted=true 仍是同一個結果（冪等，O-002）", async () => {
   const db = createMockDb(() => ({ rows: [{ ...SAMPLE_RAW_ROW, is_completed: true }] }));
 
   const first = await updateTodo(db, SAMPLE_RAW_ROW.id, { isCompleted: true });
@@ -227,7 +249,7 @@ test("updateTodo：查無資料回 E_NOT_FOUND/404（BR-009，且不得因此建
 // deleteTodo：BR-008／BR-009
 // ---------------------------------------------------------------------------
 
-test("deleteTodo：刪除成功不丟例外（由路由層回 204）", async () => {
+test("[TC-030] deleteTodo：刪除成功不丟例外（由路由層回 204）", async () => {
   const db = createMockDb(() => ({ rows: [], rowCount: 1 }));
 
   await assert.doesNotReject(deleteTodo(db, SAMPLE_RAW_ROW.id));
