@@ -9,12 +9,12 @@
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
 | T-0043 | 補 public/favicon.ico（TC-009 Edge console error） | dev-fe／sonnet | 1 | 2026-09-20 19:31 | worktree T-0043；埠 8083／5435 |
-| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-ops／sonnet | 2 | 2026-09-20 19:08 | r1 已合併 main（05c9a1e）但 deploy run 35506278351 紅：CI 服務帳號缺 secretmanager.versions.list。r2 修錯誤訊息／README IAM／06 §6.9；**綠燈需使用者授權或填版本變數** |
 
 ## 審核中
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
+| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試（r2） | dev-tl | 19:33 派審合併；綠燈仍需使用者 IAM 授權或填 SECRET_VERSION_*，否則卡轉 blocked（程式已在 main） |
 | T-0038 | D-017 修正：前端錯誤訊息時序競態 | dev-tl | **初審通過，待合併**（19:2x；D-017 三條斷言 5 次全過）。等 deploy 恢復綠後 dev-tl 合併。TC-009 在 Edge 的失敗為 favicon 404，與本卡無關 → T-0043 |
 
 ## 阻塞
