@@ -6,7 +6,7 @@ team: dev
 role: dev-tl
 model: opus
 phase: dev
-status: todo
+status: review
 round: 1
 depends_on: [T-0038, T-0043]   # T-0039 程式已合併 main（3345022），僅部署綠燈待使用者 IAM，Leader 2026-09-20 20:05 裁決以合併為準；T-0041 因環境限制 blocked（Leader 2026-09-20 19:2x 裁決解除依賴）；Firefox 結果以「已知限制」寫入 Release Notes
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: leader
 branch: task/T-0042-tcid-release-notes
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T18:35:00+08:00
+updated: 2026-09-20T19:58:40+08:00
 blocked_reason: null
 ---
 
