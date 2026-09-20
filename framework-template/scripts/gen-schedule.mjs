@@ -11,7 +11,13 @@ if (!configPath) { console.error("用法：node scripts/gen-schedule.mjs <設定
 const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 const cfg = JSON.parse(readFileSync(configPath, "utf8"));
 const cardsPath = args[1] && !args[1].startsWith("--") ? args[1] : "docs/schedule/cards.txt";
-const date = opt("--date") || new Date().toISOString().slice(0, 10);
+// 「現在」＝產表當下（以設定檔 tz 換算成當地時間，與任務卡／交接檔的時戳同一基準），
+// 寫死進 HTML；頁面開啟時不再重新取時間，因此看報表的人看到的「現在」線永遠是產表時刻。
+const tz = cfg.tz || "+08:00";
+const tzMin = (() => { const m = tz.match(/^([+-])(\d\d):(\d\d)$/); return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0; })();
+const generatedAtUtc = new Date();
+const generatedAtLocal = new Date(generatedAtUtc.getTime() + tzMin * 60000).toISOString().slice(0, 19);
+const date = opt("--date") || generatedAtLocal.slice(0, 10);
 const out = opt("--out") || (cfg.output || "docs/專案時程表_{date}.html").replace("{date}", date.replace(/-/g, ""));
 let mainSha = "";
 try { mainSha = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); } catch { mainSha = "n/a"; }
@@ -39,7 +45,7 @@ for (const line of src) {
 for (const ex of cfg.extraCards || []) cards.unshift(ex);
 for (const c of cards) { c.phase = phaseOf(c); if (!phaseLabel[c.phase]) { phaseLabel[c.phase] = c.phase; phaseOrder[c.phase] = 99; } }
 
-const data = JSON.stringify({ cards, gates: cfg.gates || [], phaseLabel, phaseOrder, date, tz: cfg.tz || "+08:00", notes: cfg.notes || "", generatedAt: new Date().toISOString() });
+const data = JSON.stringify({ cards, gates: cfg.gates || [], phaseLabel, phaseOrder, date, tz: cfg.tz || "+08:00", notes: cfg.notes || "", generatedAt: generatedAtUtc.toISOString(), generatedAtLocal });
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 const html = `<title>${esc(cfg.title || cfg.epic + " 專案時程表")}</title>
@@ -100,6 +106,13 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .axis{position:relative;height:26px}
 .axis .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
 .axis .tick span{position:absolute;top:4px;left:3px;font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+/* 刻度含小時時，時間軸分上下兩列：上列日期（.day，每個日界一格）、下列時間（.tick）；日界線加深 */
+.axis.two{height:42px}
+.axis.two .day{position:absolute;top:0;height:20px;border-left:1px solid var(--axis);border-bottom:1px solid var(--grid);overflow:hidden}
+.axis.two .day span{position:absolute;top:3px;left:4px;font-family:var(--font-mono);font-size:10px;color:var(--ink2);font-weight:500;white-space:nowrap}
+.axis.two .tick{top:20px}
+.axis.two .tick span{top:5px}
+.axis .tick.d0,.tl .grid.d0{border-left-color:var(--axis)}
 .tl .grid{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
 .tl .grid.half{border-left-style:dotted}
 .bar{position:absolute;top:6px;height:14px;border-radius:3px;overflow:hidden;background:var(--plane);border:1px solid var(--ring)}
@@ -112,14 +125,16 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .bar.active .fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
 .mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--gate)}
 .now{position:absolute;top:0;bottom:0;border-left:2px solid var(--now);z-index:2}
-.axis .now span{position:absolute;top:-1px;left:4px;font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--now);font-weight:500;background:var(--paper);padding:0 3px}
-.milestones{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--gate);margin:8px 0 0;font-family:var(--font-mono)}
-.milestones span{display:inline-flex;align-items:center;gap:4px}
-.milestones b{font-size:20px;line-height:1;font-weight:400}
-table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
-.msaxis{height:56px}
-.msaxis .m{position:absolute;top:4px;transform:translateX(-50%);font-size:22px;line-height:1;color:var(--gate);background:var(--paper);padding:0 2px;z-index:3;font-family:var(--font-body)}
-.msaxis .m.alt{top:30px}
+/* 「現在」線只畫在資料列（gridCells）；時間軸刻度列不放線也不放標籤，產表時刻寫在圖例 */
+.legend #now-legend{font-family:var(--font-mono);color:var(--ink);font-weight:500}
+.legend span:has(#now-legend){gap:0}
+.legend span:has(#now-legend) .sw{margin-right:6px}
+/* 里程碑：每筆一列（tr.ms），時間軸上以菱形（.dia）標示時間位置，旁邊附時刻標籤（.dia-lbl） */
+.dia{position:absolute;top:8px;width:10px;height:10px;background:var(--gate);border:1px solid var(--paper);transform:translateX(-50%) rotate(45deg);z-index:3}
+.dia-lbl{position:absolute;top:6px;line-height:14px;font-family:var(--font-mono);font-size:10px;color:var(--gate);white-space:nowrap;background:var(--paper);padding:0 3px;z-index:3}
+table.gantt tr.ms td.name{color:var(--gate)}
+.st.ms{color:var(--gate)}
+.sw.dia-sw{width:10px;height:10px;background:var(--gate);transform:rotate(45deg);border-radius:1px;margin:0 6px}
 @page{size:A4 landscape;margin:10mm}
 @media print{
   :root{--paper:#fff;--plane:#f3f3f0;--ink:#000}
@@ -172,19 +187,17 @@ table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
       <span><i class="sw" style="background:var(--qa)"></i>測試團隊</span>
       <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
       <span><i class="sw rev"></i>審核回合</span>
-      <span><i class="sw" style="background:transparent;border-top:2px dashed var(--gate);height:0"></i>關卡／里程碑（編號見圖下）</span>
-      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在</span>
+      <span><i class="sw dia-sw"></i>里程碑</span>
+      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻：<b id="now-legend"></b>）</span>
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
       <thead>
         <tr><th>卡號</th><th>階段 ／ 任務</th><th class="mono">派工</th><th class="mono">完成</th><th>狀態</th><th style="padding:0"><div class="axis" id="axis"></div></th></tr>
-        <tr class="msrow"><th colspan="5" style="color:var(--gate)">里程碑（編號對照見圖下）</th><th style="padding:0"><div class="axis msaxis" id="msaxis"></div></th></tr>
       </thead>
       <tbody></tbody>
     </table></div>
-    <div class="milestones" id="ms"></div>
-    <p class="note">長條範圍＝執行者實際工作時段（A 段開工 → B 段完工；進行中者到「現在」）；填滿比例＝進度（完成 100%、審核中 90%、進行中 50%、待辦 0%）。斜線細條＝審核者的審核時段。${esc(cfg.notes || "")}</p>
+    <p class="note">長條範圍＝執行者實際工作時段（A 段開工 → B 段完工；進行中者到「現在」，即產表時刻）；填滿比例＝進度（完成 100%、審核中 90%、進行中 50%、待辦 0%）。斜線細條＝審核者的審核時段。${esc(cfg.notes || "")}</p>
   </div>
 
   <div class="foot">
@@ -202,7 +215,6 @@ const teamName = { leader:"Leader", plan:"規劃", dev:"開發", qa:"測試" };
 const stName = { done:"done", in_progress:"進行中", review:"審核中", todo:"待辦", blocked:"阻塞", cancelled:"取消" };
 const startOf = (c) => { const w = c.segs.find(s => !s.review); return w ? w.start : c.created; };
 const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;");
-const circled = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫"];
 
 const root = document.documentElement, tbtn = document.getElementById("theme");
 const applyTheme = (t) => { if (t === "dark") root.setAttribute("data-theme","dark"); else root.removeAttribute("data-theme"); tbtn.textContent = t === "dark" ? "淺色模式" : "深色模式"; tbtn.setAttribute("aria-pressed", t === "dark"); };
@@ -234,53 +246,62 @@ for (const p of phases) {
 }
 document.querySelector("#wbs tbody").innerHTML = rows || '<tr><td colspan="9" style="color:var(--muted)">尚無任務卡。建卡後執行 scripts/extract-cards.sh 再重新產生本表。</td></tr>';
 
-// 時間範圍：資料最早開工 → 最晚完工／現在，向外取整到小時；跨 36 小時改日刻度
-const now = new Date();
+// 時間範圍：資料最早開工 → 最晚完工／產表時刻，向外取整到小時；跨 36 小時改 6 小時刻度，跨 5 天改日刻度
+// 「現在」線固定為產表時刻（DATA.generatedAtLocal，產生器以設定檔 tz 換算），不是開啟頁面的時間。
 const localIso = (d) => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,19);
-const nowIso = localIso(now);
+const nowIso = DATA.generatedAtLocal;
 const times = [];
 for (const c of cards) { for (const s of c.segs) { if (s.start) times.push(s.start); if (s.end) times.push(s.end); } if (c.status !== "todo") times.push(c.created); if (c.status === "done") times.push(c.updated); }
 for (const g of DATA.gates) times.push(g.t);
-const hasActive = cards.some(c => c.status === "in_progress" || c.status === "review");
-// 零卡／零里程碑（例如新專案第一次產表）時以「現在」當時間軸基準，避免空陣列 reduce 失敗整頁空白。
-if (hasActive || !times.length) times.push(nowIso);
+// 產表時刻一律納入範圍：「現在」線永遠可見，最後一筆完工到產表之間的空白就是「無事發生」的時段。
+times.push(nowIso);
 const tMin = new Date(times.reduce((a,b) => a < b ? a : b)), tMax = new Date(times.reduce((a,b) => a > b ? a : b));
 const T0 = new Date(tMin); T0.setMinutes(0,0,0);
 const T1 = new Date(tMax); T1.setMinutes(0,0,0); T1.setHours(T1.getHours() + 1);
 const spanH = (T1 - T0) / 3600000;
-const dayMode = spanH > 36;
+const hourStep = spanH <= 36 ? 1 : spanH <= 120 ? 6 : 0;
+const dayMode = hourStep === 0;
 const pct = (d) => Math.max(0, Math.min(100, ((new Date(d) - T0) / (T1 - T0)) * 100));
 document.getElementById("gtitle").textContent = "甘特圖 · " + localIso(T0).slice(0,16).replace("T"," ") + " – " + localIso(T1).slice(0,16).replace("T"," ");
 const showNow = nowIso >= localIso(T0) && nowIso <= localIso(T1);
 
 const ticks = [];
 if (dayMode) { const d = new Date(T0); d.setHours(0,0,0,0); for (; d <= T1; d.setDate(d.getDate()+1)) ticks.push({ t: localIso(d), label: localIso(d).slice(5,10), half: null }); }
-else { const d = new Date(T0); for (; d <= T1; d.setHours(d.getHours()+1)) { const h = new Date(d); ticks.push({ t: localIso(h), label: localIso(h).slice(11,16), half: localIso(new Date(h.getTime()+1800000)) }); } }
+else { const d = new Date(T0); d.setHours(Math.floor(d.getHours()/hourStep)*hourStep, 0, 0, 0); for (; d <= T1; d.setHours(d.getHours()+hourStep)) { const h = new Date(d); const iso = localIso(h); ticks.push({ t: iso, label: iso.slice(11,16), d0: h.getHours() === 0, half: hourStep === 1 ? localIso(new Date(h.getTime()+1800000)) : null }); } }
+// 上列日期格：每個涵蓋到的日曆日一格，從該日 00:00（早於 T0 者貼齊左緣）延伸到下一個日界。
+const days = [];
+if (!dayMode) { const d = new Date(T0); d.setHours(0,0,0,0); for (; d <= T1; d.setDate(d.getDate()+1)) { const iso = localIso(d); const next = new Date(d); next.setDate(next.getDate()+1); days.push({ t: iso, label: iso.slice(0,10), end: localIso(next) }); } }
 
 let axis = "";
-for (const tk of ticks) axis += '<div class="tick" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
-for (const g of DATA.gates) axis += '<div class="mark" style="left:'+pct(g.t)+'%"></div>';
-if (showNow) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+fmtT(nowIso)+'</span></div>';
+const axisEl = document.getElementById("axis");
+if (!dayMode) axisEl.classList.add("two");
+for (const dy of days) axis += '<div class="day" style="left:'+pct(dy.t)+'%;width:'+(pct(dy.end)-pct(dy.t))+'%"><span>'+dy.label+'</span></div>';
+for (const tk of ticks) axis += '<div class="tick'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
+// 里程碑虛線只畫在資料列（gridCells），不延伸進時間軸刻度列。
+// 時間軸刻度列不放「現在」標籤；產表時刻寫在圖例「現在」項後面（見 #now-legend）。
 document.getElementById("axis").innerHTML = axis;
-
-let ms = "", prevP = -100, prevAlt = false;
-DATA.gates.forEach((g, i) => {
-  const p = pct(g.t); const alt = (p - prevP) < 3 ? !prevAlt : false;
-  ms += '<div class="mark" style="left:'+p+'%"></div><span class="m'+(alt?' alt':'')+'" style="left:'+p+'%" title="'+esc(g.label)+' '+fmtT(g.t)+'">'+circled[i]+'</span>';
-  prevP = p; prevAlt = alt;
-});
-if (showNow) ms += '<div class="now" style="left:'+pct(nowIso)+'%"></div>';
-document.getElementById("msaxis").innerHTML = ms;
+document.getElementById("now-legend").textContent = nowIso.slice(0,16).replace("T"," ");
 
 const gridCells = () => {
   let g = "";
-  for (const tk of ticks) { g += '<div class="grid" style="left:'+pct(tk.t)+'%"></div>'; if (tk.half) g += '<div class="grid half" style="left:'+pct(tk.half)+'%"></div>'; }
+  for (const tk of ticks) { g += '<div class="grid'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"></div>'; if (tk.half) g += '<div class="grid half" style="left:'+pct(tk.half)+'%"></div>'; }
   for (const gt of DATA.gates) g += '<div class="mark" style="left:'+pct(gt.t)+'%"></div>';
   if (showNow) g += '<div class="now" style="left:'+pct(nowIso)+'%"></div>';
   return g;
 };
 
 let grows = "";
+// 里程碑群組：每筆一列，卡號欄以 M-01… 編號；派工欄留「—」、完成欄填時刻；時間軸以菱形標示，
+// 標籤靠右放，靠近右緣（>82%）時改放左側以免溢出。
+if (DATA.gates.length) {
+  grows += '<tr class="phase"><td></td><td colspan="4">里程碑（關卡／事件）</td><td class="tl">'+gridCells()+'</td></tr>';
+  DATA.gates.forEach((g, i) => {
+    const p = pct(g.t);
+    const lbl = (hourStep === 1 ? "" : fmtD(g.t)+" ") + fmtT(g.t);
+    const lblPos = p > 82 ? 'right:calc('+(100-p)+'% + 9px)' : 'left:calc('+p+'% + 9px)';
+    grows += '<tr class="ms"><td class="mono">M-'+String(i+1).padStart(2,"0")+'</td><td class="name" title="'+esc(g.label)+'">'+esc(g.label)+'</td><td class="mono">—</td><td class="mono">'+fmtT(g.t)+'</td><td><span class="st ms">里程碑</span></td><td class="tl">'+gridCells()+'<div class="dia" style="left:'+p+'%" title="'+esc(g.label)+' '+fmtD(g.t)+' '+fmtT(g.t)+'"></div><span class="dia-lbl" style="'+lblPos+'">'+lbl+'</span></td></tr>';
+  });
+}
 for (const p of phases) {
   grows += '<tr class="phase"><td></td><td colspan="4">'+esc(DATA.phaseLabel[p])+'</td><td class="tl">'+gridCells()+'</td></tr>';
   for (const c of sorted(byPhase[p])) {
@@ -306,8 +327,7 @@ for (const p of phases) {
   }
 }
 document.querySelector("#gantt tbody").innerHTML = grows || '<tr><td colspan="5" style="color:var(--muted)">尚無任務卡</td><td class="tl">' + gridCells() + '</td></tr>';
-document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span><b>'+circled[i]+'</b> '+(dayMode ? fmtD(g.t)+" " : "")+fmtT(g.t)+' '+esc(g.label)+'</span>').join("");
-document.getElementById("gen").textContent = "資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC · 「現在」線以開啟頁面時的本機時間計算";
+document.getElementById("gen").textContent = "產表時刻 " + DATA.generatedAtLocal.replace("T"," ").slice(0,16) + "（" + DATA.tz + "）· 「現在」線＝產表時刻，非開啟頁面的時間 · 資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC";
 </script>
 `;
 mkdirSync(dirname(out), { recursive: true });

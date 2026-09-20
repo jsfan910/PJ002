@@ -110,6 +110,9 @@ Haiku 適用範圍：格式檢查與彙整；**不指派給需要操作外部工
 
 - **Bash 指令不得含 ASCII 單引號 `'`**：本環境的 Bash 工具會在含單引號的指令上以「unexpected EOF while looking for matching」失敗（含 heredoc 之外的 `printf '…'`、`$'\t'`）。多檔案、含引號的內容改用 Write 工具寫成腳本再 `bash script.sh`。（2026-09-19，Phase 0 建 agent 定義時連續失敗 3 次後確認）
 - **Bash 裡不要呼叫 `python3`／`python`**：本機未安裝 Python，`python3` 會被 Windows 應用程式執行別名接管而無限等待，整條指令卡到逾時。文字處理一律用 sed／awk／grep，或 Write 工具。（2026-09-19，Leader 裁決寫入時卡 120 秒後以 taskkill 終止）
+- **寫任何時間戳之前先 `date` 實查，不憑印象推算**：Leader 在連續派工時把時間憑感覺往後估，一小時內寫錯七個時戳（最多超前 26 分鐘），事後只能靠 commit 時間逐一改回；qa-lead 同日也在 traceability 寫了超前 21 分鐘的 `updated`。任務卡 `created`／`updated`、Epic 裁決段標題、交接檔 A／B 段、看板派工時間一律取指令輸出。（2026-09-20，T-0038～T-0045 派工期間；T-0048 traceability）
+- **Cloud Monitoring `timeSeries.list` 一律跟著 `nextPageToken` 取完分頁**：單頁預設只回約 1/4 資料，直接 `grep -c` 會嚴重低估取樣數；迴圈時 `pageToken` 一定要真的帶進請求，否則無限重抓第一頁（Leader 第一版驗證腳本漏帶，跑了 262 頁才發現）。（2026-09-20，T-0037 NFR-003 判讀 4 頁 6936 點）
+- **agent 沙盒與使用者本機不是同一個執行環境**：沙盒無法啟動 Firefox（Windows CreateProcess `spawn UNKNOWN`），沙盒裝的 Playwright 瀏覽器使用者本機也看不到；需要 staging 憑證的 e2e 由使用者在自己終端跑，指令用 `node node_modules\@playwright\test\cli.js` 直呼（PowerShell 執行原則會擋 `npm.ps1`），帳密以 `Read-Host` 互動輸入、不進指令列、不進對話。（2026-09-20，T-0041 Firefox 沙盒 68/68 失敗，使用者本機 67/68；D-017 重跑）
 - **PowerShell 管線會吃掉字串尾端換行，且 `Format-Hex` 看不出來**：把值寫進檔案或注入 secret 時，用 `--data-file`／`--out-file` 這類「檔案進、檔案出」的參數，或改用 Git Bash `wc -c` 計位元組驗證長度，不要用管線接 `Format-Hex` 判斷有沒有換行。另：cmd 不認單引號；文件裡的佔位符要含尖括號以免被整段複製貼上。（2026-09-19，T-0027 staging 部署 verify 401，誤判 secret 含 3 個換行，最後以 Git Bash 位元組計數 9/9/147 證偽）
 
 ### git
@@ -122,6 +125,11 @@ Haiku 適用範圍：格式檢查與彙整；**不指派給需要操作外部工
 
 - **GitHub Actions 的 `schedule` cron 不可靠，不得作為可用性採樣的唯一來源**：排程可能長時間零次觸發。可用性（NFR）採樣一律以**平台原生 uptime check**（如 GCP Cloud Monitoring，每 5 分鐘打 `/health`）為主要資料來源，CI 排程降為備援；**採樣起算時間以 uptime check 建立時間為準**並記入 Epic 裁決紀錄。（2026-09-19，monitor-health.yml `*/5` 連續 2 小時 12 分零次自動執行，改建 uptime check 後 NFR-003 起算改為 17:55:07）
 - **Haiku 不指派給需要操作外部工具的角色**：瀏覽器、雲端 CLI、容器等操作，以及「這次失敗是工具限制還是產品缺陷」的判讀，一律 Sonnet 以上。Haiku 只做格式檢查與彙整。（2026-09-19，qa-uat/haiku 兩輪把自動化瀏覽器的認證快取限制誤判為阻擋級缺陷：T-0022 r1 前端 3 則、T-0029 r1 前端 8/10；換 Sonnet 後各一次 10/10 通過）
+- **部署驗證必須讀 `status.traffic` 確認新 revision 拿到 100%，不能只打服務網址；用 `--to-revisions` 釘流量的回滾演練結束後必須 `--to-latest` 還原**：09-19 演練切回舊 revision 後未還原，之後 15 次部署建立的 revision 全部 0% 流量，而 verify 打的是服務網址所以每次全綠，staging 服務舊版超過 28 小時才被發現（D-018）。演練收尾要多做一步「觀察下一次部署是否自動切流量」。（2026-09-20，T-0045 流量釘死事故）
+- **涉及 IAM 權限的 pipeline 變更，本機通過不算數，必須以 CI 的服務帳號身分實跑一次**：本機 gcloud 是專案擁有者，CI 用的是權限最小的 WIF 服務帳號；dev-ops 本機測 `secrets versions list` 通過，CI 立刻 PERMISSION_DENIED。（2026-09-20，T-0039 r1 缺 `roles/secretmanager.viewer`）
+- **多個 agent 需要動根目錄（合併、推送）時由 Leader 序列化；量測部署時由 Leader 統一推送**：dev-tl 合併到一半、dev-ops 要推空 commit 觸發部署，兩者撞在同一個根目錄；改為 dev-ops 只在 worktree 作業並回報「量測就緒」，Leader 等合併完成後推送一次觸發部署。（2026-09-20，T-0044／T-0045 並行）
+- **審核「文件宣稱的雲端資源內容」以 `describe` 讀回為準，不採信敘述**：dev-ops 文件寫告警政策內容「刻意只用英文」，dev-tl 讀回是中文且 `creationRecord.mutateTime == mutationRecord.mutateTime` 證明從未更新，宣稱的動作根本沒發生。（2026-09-20，T-0044 r1 退回）
+- **e2e 前置以 API 建資料後，先等畫面出現再做下一步**：`page.goto` 只等 load 事件，不等清單 API 回應；接著立刻用 API 刪除，慢網路下項目從未出現，測試逾時。24 次執行 2 敗、跨兩種引擎，被誤疑為產品競態。（2026-09-20，TC-037，OBS-8）
 - **多個 QA agent 平行對同一個 staging 操作時，必須錯開時段或做資料隔離**：只動自己建立的資料，否則會互相刪除造成假失敗；測試計畫須載明環境獨占時段。（2026-09-19，T-0028 與 T-0029 同時對 staging 操作互相刪資料，之後改為錯開時段）
 
 ### 安全
