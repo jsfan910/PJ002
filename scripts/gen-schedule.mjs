@@ -126,7 +126,9 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--gate)}
 .now{position:absolute;top:0;bottom:0;border-left:2px solid var(--now);z-index:2}
 /* 「現在」線只畫在資料列（gridCells）；時間軸刻度列不放線也不放標籤，產表時刻寫在圖例 */
-.legend #now-legend{font-family:var(--font-mono);color:var(--ink)}
+.legend #now-legend{font-family:var(--font-mono);color:var(--ink);font-weight:500}
+.legend span:has(#now-legend){gap:0}
+.legend span:has(#now-legend) .sw{margin-right:6px}
 /* 里程碑：每筆一列（tr.ms），時間軸上以菱形（.dia）標示時間位置，旁邊附時刻標籤（.dia-lbl） */
 .dia{position:absolute;top:8px;width:10px;height:10px;background:var(--gate);border:1px solid var(--paper);transform:translateX(-50%) rotate(45deg);z-index:3}
 .dia-lbl{position:absolute;top:6px;line-height:14px;font-family:var(--font-mono);font-size:10px;color:var(--gate);white-space:nowrap;background:var(--paper);padding:0 3px;z-index:3}
@@ -186,7 +188,7 @@ table.gantt tr.ms td.name{color:var(--gate)}
       <span><i class="sw prog"></i>長條＝實際時段，填滿比例＝進度</span>
       <span><i class="sw rev"></i>審核回合</span>
       <span><i class="sw dia-sw"></i>里程碑</span>
-      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻）<b id="now-legend"></b></span>
+      <span><i class="sw" style="background:transparent;border-left:2px solid var(--now);width:0;height:12px"></i>現在（＝產表時刻：<b id="now-legend"></b>）</span>
     </div>
     <div class="gwrap" style="margin-top:8px"><table class="gantt" id="gantt">
       <colgroup><col class="c-id"><col class="c-name"><col class="c-t"><col class="c-t"><col class="c-st"><col></colgroup>
