@@ -388,3 +388,10 @@ updated: 2026-09-19T14:06:43+08:00
 - 影響（Leader 初判，qa-lead 於測試總結 r4 定案）：①staging 一直服務 00003-lt2 = 2026-09-19 16:05 的 main（P0 全功能＋CR 修正），故 AT r3／UAT r4／NFR-003 24h／TC-080 間接證據等結論仍對「P0 程式」有效；②T-0031 的「revision 00008 切換 0 秒不可用」量測無效（流量根本沒切）；AT r3 的 TC-090 兩次部署事件是否真的切過流量存疑 → 退出準則第 12 項需重測；③T-0038、T-0043 尚未上線，D-017 關閉與 favicon 驗證延後；④Release Notes v0.1.0 所述 staging 現況需附註更正。
 - 裁決：建 T-0045（dev-ops）立即量測＋`update-traffic --to-latest` 復原、pipeline 改為驗證新 revision 接到流量、rollback 腳本加 `--to-latest`、真實部署重測 TC-090、06 §6.10 事故紀錄與事故報告。qa-lead 於 r4 立 D-018（pipeline verify 未驗流量指向，S2 等級：驗證失效）。06 §5.1 規格文字修正列 P1 規格同步卡。
 - 使用者側：Playwright 瀏覽器需在自己的機器安裝（`node node_modules\playwright-core\cli.js install chromium`）；待 T-0045 復原流量後再重跑 D-017。
+
+### 2026-09-20T21:36:00+08:00 — T-0045 done（事故結案）；使用者 D-017 重跑 40/40；派 T-0046
+
+- T-0045 done：流量復原（--to-latest）、pipeline 主判準改讀 status.traffic =100、rollback 腳本加 --to-latest、真實部署 run 35513187463 全綠、revision 00019-k5q 100%、226/226 樣本 0 秒（TC-090 有效重測）。dev-tl 兩階段審核，第一階段退 R-1（判準）／R-2（06 §7 標題）後複審通過。事故報告 docs/reports/20260920-2042-流量釘死事故-E001.md；06 §6.10。
+- 使用者於自有機器對 00019-k5q 重跑 TC-067／TC-009 × 4 project × 5 輪：40/40 全過（docs/reports/20260920-2132-D017-staging重跑-使用者實測.md）。
+- 派 T-0046（qa-lead）：測試總結 r4 關 D-017、立 D-018（建議 S2、closed）、退出準則第 1／12 項更新、追溯更新。
+- 待辦追加（plan-sd P1 規格同步卡）：06 §5.1 演練收尾必 --to-latest、觀察下一次部署自動修正、三處「待補」交叉引用。
