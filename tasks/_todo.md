@@ -13,19 +13,18 @@
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
+| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-tl | 使用者已授權 secretmanager.viewer（20:06）；dev-tl 重跑部署確認全綠後收 done |
 
 ## 阻塞
 
 | 卡號／項目 | 阻塞原因 | 解除條件 |
 |---|---|---|
-| T-0039 secret 釘版本（程式已合併 main 3345022） | CI 服務帳號缺 secretmanager.versions.list，deploy run 35507519302 於 resolve secret versions 停住（可讀錯誤） | 使用者授 roles/secretmanager.viewer 或填 SECRET_VERSION_* 三個變數 → 重跑 deploy-staging 全綠 → dev-tl 改 done 並清 worktree |
 | T-0041 Firefox 兩組補跑 | agent 執行環境無法啟動 firefox.exe（Windows CreateProcess `spawn UNKNOWN`；Chromium 對照正常、二進位檔已重下、非 Docker 問題），判工具限制非產品缺陷 | 使用者在自己的終端執行報告 §「單一指令」；結果貼回後由 qa-lead 更新 TC-091。非擋關；T-0042 已解除對本卡的依賴 |
 
 ## 待辦
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
-| — | **CI 服務帳號授權 `roles/secretmanager.viewer`**（或填 3 個 repository variables `SECRET_VERSION_*`） | **使用者** | — | T-0039 deploy 綠燈前置；agent 不修改 IAM。指令見 T-0039 審核紀錄 r1／README |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |
 | — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
 
