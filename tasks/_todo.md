@@ -8,12 +8,12 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
+| T-0044 | 第二個 uptime check＋告警政策；06 §6.1.1／§6.9.1 回填 | dev-ops／sonnet | 1 | 2026-09-20 20:17 | worktree T-0044；通知管道 email 由使用者自綁 |
 
 ## 審核中
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
-| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-tl | 使用者已授權 secretmanager.viewer（20:06）；dev-tl 重跑部署確認全綠後收 done |
 
 ## 阻塞
 
@@ -25,7 +25,8 @@
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
-| — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |
+| — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 對 basic-auth-user／basic-auth-pass 各加新版本後，重跑一次 deploy-staging 即自動釘到最新版（T-0039 已生效） |
+| — | D-017 關閉：staging 重跑 TC-067／TC-009 5 次 | **使用者跑指令**＋qa-lead 判定 | T-0038 已上 staging（revision 00017-qg4） | 指令見 Leader 回覆；摘要貼回後 qa-lead 出測試總結 r4 關閉 D-017、認定 R-6、更新第 10 項 |
 | — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
 
 ## 待辦（Gate 2 後）

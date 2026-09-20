@@ -369,3 +369,9 @@ updated: 2026-09-19T14:06:43+08:00
 
 - T-0042 done：unit 層 11 條 TC-ID 補標（R-6 以「可逐條追溯」關閉，補測交 qa-lead）、Release Notes v0.1.0 released、CHANGELOG 0.1.0；tag v0.1.0 → ddc66bb，連同 main 推送 origin。
 - Gate 2 後待辦五卡：T-0038、T-0040、T-0042、T-0043 done；T-0039 blocked（等使用者 IAM）；T-0041 blocked（等使用者自跑 Firefox）。P1 開卡待這兩項解除或使用者另行裁決。
+
+### 2026-09-20T20:26:00+08:00 — T-0039 done（使用者授權後部署全綠）；建 T-0044
+
+- 使用者授權 roles/secretmanager.viewer 後，dev-tl 以空 commit 重觸發 deploy-staging：run 35509795862 全綠 13 步；revision todo-app-00017-qg4 綁定 database-url:1／basic-auth-user:3／basic-auth-pass:1，無 latest。staging /health 200、/ 401。T-0039 done（r2），worktree 清理。
+- 建 T-0044（dev-ops）：第二個 uptime check（真備援）＋ uptime 告警政策；06 §6.1.1 回填、§6.9.1 追記成功事實；通知管道 email 由使用者自綁。依賴 T-0039、T-0040 皆 done，立即派工。
+- D-017 關閉：T-0038 修正已隨本次部署上 staging；staging 重跑需帶 Basic Auth 憑證，由使用者執行指令並貼摘要，qa-lead 於測試總結 r4 判定。

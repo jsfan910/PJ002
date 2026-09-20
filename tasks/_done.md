@@ -45,3 +45,4 @@
 | T-0043 | 補 public/favicon.ico | dev-fe（sonnet） | 2026-09-20 19:15:18 | 2026-09-20 19:33:36 | 1 | 審核 dev-tl，已合併 1107bbd |
 | T-0040 | 規格變更請求：06 v0.3（cron 定位、secret 釘版本、3xx、IAM 角色）、ADR-0005 附註、SD §7 | plan-sd（opus） | 2026-09-20 19:27:03 | 2026-09-20 19:43:18 | 2 | 審核 leader；r2 為範圍擴充非失敗 |
 | T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl（opus） | 2026-09-20 19:40:02 | 2026-09-20 19:57:11 | 1 | 審核 leader；合併 ddc66bb，tag v0.1.0 |
+| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試 | dev-ops（sonnet） | 2026-09-20 18:36:00 | 2026-09-20 20:22:00 | 2 | 審核 dev-tl；r1 合併後 run 紅（CI 缺 versions.list 權限）→ r2 可讀錯誤＋文件；使用者授權後 run 35509795862 全綠，revision 00017-qg4 |
