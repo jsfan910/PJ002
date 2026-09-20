@@ -11,7 +11,7 @@ round: 1
 depends_on: [T-0046]
 inputs:
   - docs/reports/20260920-2210-完整e2e回歸-使用者實測.md（204 條：201 過、3 敗；失敗細節；Leader 初判）
-  - docs/reports/20260920-HHmm-e2e失敗三條重跑-使用者實測.md（使用者對 TC-037／TC-011／TC-016 × 6 project × 3 輪的重跑；Leader 收到後建檔並補路徑）
+  - docs/reports/20260920-2215-e2e失敗三條重跑-使用者實測.md（3 輪：18/18、18/18、17/18，TC-037 於 chromium-390x844 敗 1；Leader 初判測試前置競態）
   - docs/reports/20260920-2145-測試總結-E001-r4.md（r4 全表，本輪沿用）
   - docs/reports/20260920-1901-AT-E001-r4-firefox.md（TC-091 前次判定 4／6 與環境限制說明）
   - worklog/handoff/20260920-1902-T0038-r1-dev-tl.md 與 CHANGELOG.md 的 T-0038 條目（「動作被較新動作取代時回 stale 且不重新載入清單」的已接受行為改變，dev-tl 建議 qa-lead 評估補 TC）
