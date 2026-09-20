@@ -346,3 +346,9 @@ updated: 2026-09-19T14:06:43+08:00
 
 - dev-tl 審核 T-0038：D-017 三條斷言本機 5 次全過；acceptance 第 4 條（e2e 全過）條件通過，因 msedge 兩尺寸 TC-009 固定失敗於「console 無 error」，21 筆 404 全為 /favicon.ico，且 main（不含 T-0038）同樣重現 → 與本卡無因果。
 - 裁決：採 dev-tl 建議①，建 T-0043（dev-fe）補 public/favicon.ico，不新增路由、仍受 Basic Auth 保護；不放寬 TC-009 斷言。T-0038 維持初審通過，等 deploy 綠後與 T-0043 一併由 dev-tl 合併。D-017 正式關閉仍須 qa-lead 於 staging 重跑 TC-067／TC-009 5 次全過（本機從未重現）。
+
+### 2026-09-20T19:50:00+08:00 — T-0039 r2 blocked（等使用者 IAM）；解除 T-0040 依賴；T-0038／T-0043 合併
+
+- T-0039 r2：離線 5 條 acceptance 通過，程式已合併 main（3345022）；真實 run 35507519302 於 resolve secret versions 以可讀 PERMISSION_DENIED 停住 → 卡 blocked，blocked_reason 等使用者授 roles/secretmanager.viewer 或填 SECRET_VERSION_*。staging 既有 revision 正常服務。
+- 裁決：T-0040 解除對 T-0039 done 的依賴，改以 main 現況為準立即派 plan-sd；加兩項：06 §2 部署服務帳號角色清單補 roles/secretmanager.viewer、§7 三處參數同步表由 :latest 改版本釘定敘述。
+- 裁決：T-0043 派 dev-tl 審核，通過即與 T-0038 一併合併推送；接受在 IAM 授權前部署 run 於同一步驟停住，授權後重跑一次即部署全部。

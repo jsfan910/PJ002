@@ -8,26 +8,26 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
+| T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | 1 | 2026-09-20 19:5x | 依 main 現況（含 T-0039 合併）；另補 06 §2 角色清單 secretmanager.viewer 與 §7 同步表 |
 
 ## 審核中
 
 | 卡號 | 標題 | 審核者 | 備註 |
 |---|---|---|---|
-| T-0039 | 維運：secret 釘具體版本、verify 失敗自動重試（r2） | dev-tl | 19:33 派審合併；綠燈仍需使用者 IAM 授權或填 SECRET_VERSION_*，否則卡轉 blocked（程式已在 main） |
-| T-0043 | 補 public/favicon.ico | dev-tl | review 於 19:4x；排 T-0039 r2 合併後由 dev-tl 審，與 T-0038 一併合併 |
+| T-0043 | 補 public/favicon.ico | dev-tl | 19:5x 派審；通過即與 T-0038 一併合併推送（部署在 IAM 授權前仍會於 resolve secret versions 停住） |
 | T-0038 | D-017 修正：前端錯誤訊息時序競態 | dev-tl | **初審通過，待合併**（19:2x；D-017 三條斷言 5 次全過）。等 deploy 恢復綠後 dev-tl 合併。TC-009 在 Edge 的失敗為 favicon 404，與本卡無關 → T-0043 |
 
 ## 阻塞
 
 | 卡號／項目 | 阻塞原因 | 解除條件 |
 |---|---|---|
+| T-0039 secret 釘版本（程式已合併 main 3345022） | CI 服務帳號缺 secretmanager.versions.list，deploy run 35507519302 於 resolve secret versions 停住（可讀錯誤） | 使用者授 roles/secretmanager.viewer 或填 SECRET_VERSION_* 三個變數 → 重跑 deploy-staging 全綠 → dev-tl 改 done 並清 worktree |
 | T-0041 Firefox 兩組補跑 | agent 執行環境無法啟動 firefox.exe（Windows CreateProcess `spawn UNKNOWN`；Chromium 對照正常、二進位檔已重下、非 Docker 問題），判工具限制非產品缺陷 | 使用者在自己的終端執行報告 §「單一指令」；結果貼回後由 qa-lead 更新 TC-091。非擋關；T-0042 已解除對本卡的依賴 |
 
 ## 待辦
 
 | 卡號 | 標題 | 角色／模型 | 依賴 | 備註 |
 |---|---|---|---|---|
-| T-0040 | 規格變更請求：06 cron 定位、secret 版本文字、D-016 301→3xx | plan-sd／opus | T-0039 | T-0039 done 後派 |
 | T-0042 | unit TC-ID 標註、Release Notes v0.1.0 定版、CHANGELOG | dev-tl／opus | T-0038、T-0039 | 兩卡 done 後派；Firefox 以已知限制寫入 |
 | — | **CI 服務帳號授權 `roles/secretmanager.viewer`**（或填 3 個 repository variables `SECRET_VERSION_*`） | **使用者** | — | T-0039 deploy 綠燈前置；agent 不修改 IAM。指令見 T-0039 審核紀錄 r1／README |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 加新版本（README「部署與 secrets」）；T-0039 綠燈後下一次部署自動釘到最新版 |

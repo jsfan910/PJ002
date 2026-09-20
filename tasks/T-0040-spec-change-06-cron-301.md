@@ -8,7 +8,7 @@ model: opus
 phase: plan
 status: todo
 round: 1
-depends_on: [T-0039]
+depends_on: []   # 原依賴 T-0039 done；T-0039 程式已合併 main（3345022）但因使用者 IAM 授權待辦而 blocked，Leader 2026-09-20 19:5x 裁決解除依賴，以 main 現況為準
 inputs:
   - docs/reports/20260920-1806-測試總結-E001-r3.md#6（裁決事項 C：cron 24 小時內僅 8 次，備援名不副實）
   - tasks/E-001-todo-app.md（2026-09-20T18:18:13 裁決：C 採選項 1；使用者 Gate 2 r2 裁決）
