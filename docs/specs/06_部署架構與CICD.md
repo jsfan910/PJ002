@@ -515,6 +515,87 @@ awk -F, 'NR>1{print $2}' deploy-downtime.csv | sort | uniq -c
 
 ---
 
+### 6.9 實作紀錄：secret 釘版本與 verify 自動重試（T-0039，2026-09-20 18:43）
+
+落實 §6.7 建議一、建議二。**本節僅為實作紀錄，§1～§6.8 文字不動；§7 參數表與「變更紀錄」表仍寫 `:latest`，尚未同步，留待 T-0040（plan-sd）依本節內容一併調整規格文字（非本卡 outputs 範圍）。**
+
+**建議一：釘具體版本**：
+
+- `.github/workflows/deploy-staging.yml` 新增 `resolve secret versions` 步驟（`auth`／`setup-gcloud` 之後、`gcloud auth configure-docker` 之前），對三個 secret 各執行：
+  ```bash
+  gcloud secrets versions list "<secret>" --filter="state=ENABLED" --sort-by="~createTime" --limit=1 --format="value(name)"
+  ```
+  取得目前 `ENABLED` 的最新版本號，寫入 `GITHUB_STEP_SUMMARY`（表格：secret／版本）與 step outputs，供後續 `gcloud run deploy` 步驟以 `NAME=secret:N` 組出 `--set-secrets`（不再用 `:latest`）。可用 repository variables `SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`（選填，只填版本號）覆寫釘定版本，任一 secret 找不到 `ENABLED` 版本時整個 job 以 `::error::` 中止。
+  - `scripts/deploy-staging.sh` 加入同邏輯的 `resolve_version()` 函式（環境變數同名），本機執行時印出三個版本號。
+  - `infra/cloudrun-service.yaml` 的 `secretKeyRef.key` 三項改為 `"<SECRET_VERSION>"` 佔位符（此檔為文件化 IaC、非自動套用，手動套用前需人工查版本號替換，檔內已補註解與指令）。
+  - 三處參數同步的「現況」文字（§7 表格的「機密（Secret Manager 參照）」列）與「變更紀錄」表尚未更新，仍寫 `:latest`——**待 T-0040 一併調整**（本卡 outputs 不含 §7、變更紀錄表）。
+- **實測**（本機已登入之 `gcloud`，帳號 `excalibur.star@gmail.com`，project `pj002-509106`；**僅列版本號與狀態，未讀取任何 secret 值**，符合 CLAUDE.md 安全鐵則）：
+  ```bash
+  for s in database-url basic-auth-user basic-auth-pass; do
+    echo "== $s =="
+    gcloud secrets versions list "$s" --project pj002-509106 --format="table(name,state,createTime)"
+  done
+  ```
+  ```text
+  == database-url ==
+  NAME  STATE    CREATED
+  1     enabled  2026-09-19T07:47:21
+
+  == basic-auth-user ==
+  NAME  STATE     CREATED
+  3     enabled   2026-09-19T08:23:34
+  2     enabled   2026-09-19T07:43:36
+  1     disabled  2026-09-19T07:40:23
+
+  == basic-auth-pass ==
+  NAME  STATE    CREATED
+  1     enabled  2026-09-19T07:46:57
+  ```
+  對照 workflow／腳本內實際使用的 `resolve_version()` 邏輯（`--filter="state=ENABLED" --sort-by="~createTime" --limit=1 --format="value(name)"`）逐一實跑，得到 `database-url:1`、`basic-auth-user:3`、`basic-auth-pass:1`——`basic-auth-user` 正確跳過已停用的版本 1，取狀態為 `ENABLED` 且最新的版本 3（即 T-0027 §6.6/§6.7 事件中 Leader 手動 `update-secrets` 產生的版本），驗證邏輯正確。
+
+**建議二：verify（帶憑證）失敗自動重試一次**：
+
+- 原本 `gcloud run deploy`、`verify（取服務網址）`、`verify（輪詢 /health 至 200）`、`verify（帶憑證呼叫 /api/v1/todos 確認 200）` 四個獨立步驟，合併為單一步驟 `gcloud run deploy ＋ verify（含一次自動重試）`（原因：GitHub Actions 的 step 之間無法乾淨表達「回到上一步重跑」，合併成一個 bash 步驟以函式封裝 `deploy_revision`／`get_service_url`/`verify_health`/`verify_auth` 四個動作，才能在同一個 shell 流程內做「失敗→重新部署→再驗證」）。
+- 邏輯：第 1 次 `deploy_revision` 後，`verify_health` 未過直接依 `set -euo pipefail` 中止（健康檢查失敗不觸發本建議的重試，維持原本行為）；`verify_health` 通過但 `verify_auth`（帶憑證）失敗時，印出 `::warning::` 並重跑一次 `deploy_revision`（相同參數、相同已釘定的 secret 版本）→ 重新 `get_service_url` → 重新 `verify_health` → 重新 `verify_auth`；仍失敗才印 `::error::` 並以非 0 結束（整個 job 判紅）。重試上限固定 1 次（無迴圈，不會無限重試掩蓋真正的設定錯誤）。
+- `GITHUB_STEP_SUMMARY` 的「回填提示」步驟依 `steps.deploy_verify.outputs.retried`／`retry_result` 兩個 output 附加「已重試」段落，區分「重試後通過」與「重試後仍失敗」兩種措辭。
+- `scripts/deploy-staging.sh`（本機手動執行）**不內建自動重試**：本機操作已是人工介入，失敗時使用者自行判斷重跑整支腳本即等同一次人工重試；此為本卡假設與決策，已寫入該檔檔頭註解與 README。
+
+**離線驗證**（無法實際觸發真實 GitHub Actions run，因 GCP WIF／GitHub secrets 屬使用者環境設定，agent 不代填；以下為可離線驗證的語法與邏輯層級檢查）：
+
+```bash
+node -e "const f=require('fs').readFileSync('.github/workflows/deploy-staging.yml','utf8');console.log(f.split('\n').length,'lines')"
+```
+```text
+255 lines
+```
+
+```bash
+npx --yes yaml-lint .github/workflows/deploy-staging.yml .github/workflows/ci.yml .github/workflows/monitor-health.yml infra/cloudrun-service.yaml
+```
+```text
+√ YAML Lint successful.
+```
+
+```bash
+# actionlint v1.7.12（官方 release 二進位，本機 curl 下載，網路可用；與先前任務卡的
+# rhysd/actionlint Docker 映像屬同一 linter 的不同載體，本機 Docker daemon 本次不可用）
+actionlint.exe -color .github/workflows/deploy-staging.yml .github/workflows/ci.yml .github/workflows/monitor-health.yml
+```
+```text
+（無輸出，EXIT=0，零 finding）
+```
+
+```bash
+bash -n scripts/deploy-staging.sh
+```
+```text
+（無輸出，EXIT=0，語法正確）
+```
+
+**遠端待驗（交 dev-tl／Leader 追蹤）**：合併推送 main 後的真實 `deploy-staging` run 是否全綠、`GITHUB_STEP_SUMMARY` 是否確實顯示三個版本號——此條列於任務卡 acceptance 最後一項，由 dev-tl 於審核紀錄勾核，本卡不代為推送 main（依協作協定，開發卡合併只由 dev-tl 在根目錄執行）。
+
+---
+
 ## 7. 三處必須同步的參數表（T-0025，CR S-9，實作紀錄）
 
 Cloud Run 服務參數在三處各寫一份：`infra/cloudrun-service.yaml`（文件化 IaC，第 2 章已註明事實來源為工作流參數）、`.github/workflows/deploy-staging.yml` 的 `gcloud run deploy` 步驟、`scripts/deploy-staging.sh` 的同一段 `gcloud run deploy`。三者本應完全一致；下表逐項對照本卡驗收時的現況，供之後任何一處變更時比對，避免無聲飄移。

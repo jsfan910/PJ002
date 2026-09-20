@@ -179,7 +179,7 @@ npm start                       # 另開一個終端機視窗執行下一步
 
 **`POSTGRES_HOST_PORT`（T-0025，CR S-10）**：`docker-compose.yml` 的 `db` 服務對外埠已改為 `"${POSTGRES_HOST_PORT:-5432}:5432"`（容器內部埠固定 5432 不受影響，`DATABASE_URL` 內的 `db:5432` 也不用改）。本機多專案／多 git worktree 平行開發若撞埠，在 `.env` 設一個未被占用的值（例如 `POSTGRES_HOST_PORT=5433`）即可，未設定時預設仍為 `5432`。
 
-## 部署與 secrets（T-0018）
+## 部署與 secrets（T-0018；secret 釘版本／verify 自動重試見 T-0039 補充）
 
 staging 部署於 **GCP Cloud Run**（`min-instances = 0`，免費額度）＋ **Artifact Registry**（映像存放）＋ **Neon Serverless Postgres（Free）**；CI/CD 為 **GitHub Actions**，GCP 認證採 **Workload Identity Federation（WIF）**，倉庫中不存在任何長期金鑰。完整設計見 `docs/specs/06_部署架構與CICD.md`（第 2～6 章）與 `docs/specs/adr/ADR-0005-雲端平台-CloudRun.md`。**下列指令中的憑證與雲端帳號一律由使用者自行設定，agent 不索取、不代填。**
 
@@ -309,7 +309,7 @@ rm check.txt
    #   gcloud secrets versions add database-url --project "<PROJECT_ID>" --data-file=-
    ```
 
-   `infra/cloudrun-service.yaml` 與 `.github/workflows/deploy-staging.yml` 的 `--set-secrets` 皆以這三個名稱參照（`DATABASE_URL=database-url:latest`、`BASIC_AUTH_USER=basic-auth-user:latest`、`BASIC_AUTH_PASSWORD=basic-auth-pass:latest`）。
+   `infra/cloudrun-service.yaml`、`.github/workflows/deploy-staging.yml`、`scripts/deploy-staging.sh` 的 `--set-secrets`／`secretKeyRef` 皆以這三個名稱參照，**釘具體版本號，不用 `:latest`**（T-0039，06 §6.7 建議一；三處參數同步表見下方「釘定 Secret Manager 版本」一節）。
 
 6. **Neon**：建立專案、複製連線字串，作為 GitHub secret `NEON_DATABASE_URL`（CI migrate 用）與上面 Secret Manager 的 `database-url`（Cloud Run 執行期用，可與 `NEON_DATABASE_URL` 同一條連線字串）。
 
@@ -324,6 +324,9 @@ rm check.txt
 | `GCP_AR_REPOSITORY` | `todo-app` |
 | `GCP_RUN_SERVICE` | `todo-app` |
 | `STAGING_BASE_URL` | 留空；**首次部署成功後**由 dev-ops／使用者回填 Cloud Run 給的 `*.run.app` 網址 |
+| `SECRET_VERSION_DATABASE_URL`（選填，T-0039） | 留空即可；只在要**強制釘定** `database-url` 特定版本（而非自動取最新 ENABLED 版本）時才填版本號，**只填版本號（例如 `2`），不得填 secret 值** |
+| `SECRET_VERSION_BASIC_AUTH_USER`（選填，T-0039） | 同上，對應 `basic-auth-user` |
+| `SECRET_VERSION_BASIC_AUTH_PASS`（選填，T-0039） | 同上，對應 `basic-auth-pass` |
 
 Secrets 分頁新增：
 
@@ -337,6 +340,18 @@ Secrets 分頁新增：
 | `STAGING_BASIC_AUTH_PASSWORD` | staging 的 Basic Auth 密碼（與 Secret Manager `basic-auth-pass` 同值） |
 
 **倉庫可見性（06 §2 對策二選一）**：建議設為**公開**（本專案為框架試跑範例，無機密內容，憑證一律在 secrets），公開倉庫的 Actions 分鐘數不計費，`monitor-health.yml` 每 5 分鐘一次不會超額；若必須私有，改為每 10 分鐘一次並回報 Leader（NFR-003 取樣分母需同步調整）。
+
+### 釘定 Secret Manager 版本與 verify 自動重試（T-0039，06 §6.7）
+
+**背景**：T-0027 部署事件顯示，`--set-secrets` 用 `:latest` 時「哪個 revision 讀到哪個 secret 版本」不透明，難以事後回溯比對；且部署後 verify 有可能一次性失敗、重新部署一次就恢復正常。本卡落實 06 §6.7 的兩項建議：
+
+1. **釘具體版本，不用 `:latest`**：`.github/workflows/deploy-staging.yml`、`scripts/deploy-staging.sh`、`infra/cloudrun-service.yaml` 三處的 secret 參照皆改用 `NAME=secret:N`（`N` 為版本號）。
+   - **預設**：自動取該 secret 目前狀態為 `ENABLED` 的最新版本（`gcloud secrets versions list <secret> --filter="state=ENABLED" --sort-by="~createTime" --limit=1`）。
+   - **可覆寫**：GitHub repository variables `SECRET_VERSION_DATABASE_URL`／`SECRET_VERSION_BASIC_AUTH_USER`／`SECRET_VERSION_BASIC_AUTH_PASS`（見上方 Variables 表；本機腳本對應同名環境變數）——只在需要強制釘住某個舊版本時才填，平時留空即可，**只填版本號，不填 secret 值**。
+   - 每次部署實際使用的三個版本號會寫入該次 run 的 `GITHUB_STEP_SUMMARY`，供事後稽核與回滾比對。
+   - `infra/cloudrun-service.yaml` 是「文件化 IaC」，非自動套用，其 `key` 欄位以 `<SECRET_VERSION>` 佔位符表達，手動套用前需自行查版本號替換（檔案內已有註解與指令）。
+2. **verify（帶憑證）失敗自動重試一次**：`deploy-staging.yml` 的 `gcloud run deploy ＋ verify（含一次自動重試）` 步驟，若帶憑證呼叫 `/api/v1/todos` 第一次驗證失敗，會自動以相同參數（含同一組已釘定的 secret 版本）重新 `gcloud run deploy` 一次、等新 revision 就緒並輪詢 `/health` 通過後再驗證一次；仍失敗才判定整個工作流失敗並輸出 `::error::` 訊息。重試上限 1 次（不會無限重試掩蓋真正的設定錯誤）。是否發生過重試，會在 `GITHUB_STEP_SUMMARY` 的「已重試」段落註明（含最終是否通過）。
+   - `scripts/deploy-staging.sh`（本機手動執行）**不內建自動重試**：本機操作本身已是人工介入，失敗時使用者可自行判斷重跑整支腳本，效果等同一次人工重試。
 
 ### 首次部署後（`.github/workflows/deploy-staging.yml` 自動觸發於 `main` 綠燈）
 

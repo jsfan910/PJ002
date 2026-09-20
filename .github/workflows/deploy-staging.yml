@@ -1,4 +1,5 @@
-# deploy-staging.yml（T-0018，OPS-03，06_部署架構與CICD.md §3.2）
+# deploy-staging.yml（T-0018，OPS-03，06_部署架構與CICD.md §3.2；
+# secret 釘版本／verify 自動重試為 T-0039，06 §6.7 建議一、建議二）
 #
 # main 綠燈（ci.yml 全綠）後自動部署 staging（GCP Cloud Run）。
 # 階段順序固定：auth → migrate → build & push → deploy → verify
@@ -8,6 +9,14 @@
 # 認證：Workload Identity Federation（06 §3.2.1）。**倉庫中不存在任何
 # 長期金鑰**——GCP_WIF_PROVIDER／GCP_SERVICE_ACCOUNT 兩個 repository
 # secrets 只是 WIF 資源名稱與服務帳號 email，本身不是可用於登入的憑證值。
+#
+# T-0039：Secret Manager 參照改釘具體版本（不再用 :latest），版本號
+# 取自「該 secret 目前狀態為 ENABLED 的最新版本」，寫入 STEP SUMMARY
+# 供稽核；可用 repository variables SECRET_VERSION_DATABASE_URL／
+# SECRET_VERSION_BASIC_AUTH_USER／SECRET_VERSION_BASIC_AUTH_PASS 覆寫
+# 釘定版本（見 README「部署與 secrets」）。verify（帶憑證）失敗時，
+# 自動以相同參數重新 `gcloud run deploy` 一次並再驗證一次，仍失敗才
+# 判紅（06 §6.7 建議二）。
 #
 # 本 repo 目前無遠端，本工作流語法已通過 actionlint／YAML 解析檢查，
 # 實際執行待使用者提供 GitHub repo 與下列 GitHub secrets／variables
@@ -68,6 +77,53 @@ jobs:
       - name: setup-gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      # ---- 釘 Secret Manager 版本（T-0039，06 §6.7 建議一） ----
+      - name: resolve secret versions（釘具體版本，不用 :latest）
+        id: secret_versions
+        env:
+          OVERRIDE_DATABASE_URL: ${{ vars.SECRET_VERSION_DATABASE_URL }}
+          OVERRIDE_BASIC_AUTH_USER: ${{ vars.SECRET_VERSION_BASIC_AUTH_USER }}
+          OVERRIDE_BASIC_AUTH_PASS: ${{ vars.SECRET_VERSION_BASIC_AUTH_PASS }}
+        run: |
+          set -euo pipefail
+
+          resolve_version() {
+            local secret_name="$1"
+            local override="$2"
+            if [ -n "${override}" ]; then
+              echo "${override}"
+              return
+            fi
+            gcloud secrets versions list "${secret_name}" \
+              --filter="state=ENABLED" \
+              --sort-by="~createTime" \
+              --limit=1 \
+              --format="value(name)"
+          }
+
+          V_DB="$(resolve_version database-url "${OVERRIDE_DATABASE_URL:-}")"
+          V_USER="$(resolve_version basic-auth-user "${OVERRIDE_BASIC_AUTH_USER:-}")"
+          V_PASS="$(resolve_version basic-auth-pass "${OVERRIDE_BASIC_AUTH_PASS:-}")"
+
+          if [ -z "${V_DB}" ] || [ -z "${V_USER}" ] || [ -z "${V_PASS}" ]; then
+            echo "::error::無法解析 secret 版本（database-url=${V_DB:-空} basic-auth-user=${V_USER:-空} basic-auth-pass=${V_PASS:-空}），請確認 Secret Manager 已建立三個 secret 且至少一個 ENABLED 版本" >&2
+            exit 1
+          fi
+
+          echo "database_url_version=${V_DB}" >> "$GITHUB_OUTPUT"
+          echo "basic_auth_user_version=${V_USER}" >> "$GITHUB_OUTPUT"
+          echo "basic_auth_pass_version=${V_PASS}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### 本次部署釘定的 Secret Manager 版本（06 §6.7 建議一）"
+            echo ""
+            echo "| secret | 版本 |"
+            echo "|---|---|"
+            echo "| database-url | ${V_DB} |"
+            echo "| basic-auth-user | ${V_USER} |"
+            echo "| basic-auth-pass | ${V_PASS} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: gcloud auth configure-docker
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
@@ -92,68 +148,107 @@ jobs:
           docker push "${IMAGE}:${{ github.sha }}"
           docker push "${IMAGE}:latest"
 
-      # ---- deploy（gcloud run deploy，部署一律用 SHA 標籤，不得用 latest） ----
-      - name: gcloud run deploy
+      # ---- deploy（gcloud run deploy，部署一律用 SHA 標籤，不得用 latest）
+      #      ＋ verify（輪詢 /health、帶憑證呼叫 /api/v1/todos）。
+      #      verify（帶憑證）失敗時自動以相同參數重新部署一次再驗證一次，
+      #      仍失敗才判紅（06 §6.7 建議二，重試上限 1 次）。 ----
+      - name: gcloud run deploy ＋ verify（含一次自動重試）
+        id: deploy_verify
         env:
           IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_AR_REPOSITORY }}/todo-app
+          BASIC_USER: ${{ secrets.STAGING_BASIC_AUTH_USER }}
+          BASIC_PASS: ${{ secrets.STAGING_BASIC_AUTH_PASSWORD }}
+          DB_VERSION: ${{ steps.secret_versions.outputs.database_url_version }}
+          USER_VERSION: ${{ steps.secret_versions.outputs.basic_auth_user_version }}
+          PASS_VERSION: ${{ steps.secret_versions.outputs.basic_auth_pass_version }}
         run: |
           set -euo pipefail
-          gcloud run deploy "${GCP_RUN_SERVICE}" \
-            --image "${IMAGE}:${{ github.sha }}" \
-            --region "${GCP_REGION}" \
-            --platform managed \
-            --allow-unauthenticated \
-            --port 8080 \
-            --memory 512Mi \
-            --cpu 1 \
-            --min-instances 0 \
-            --max-instances 2 \
-            --concurrency 80 \
-            --timeout 60s \
-            --set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS=" \
-            --set-secrets "DATABASE_URL=database-url:latest,BASIC_AUTH_USER=basic-auth-user:latest,BASIC_AUTH_PASSWORD=basic-auth-pass:latest"
 
-      # ---- verify（輪詢 /health 至 200，上限 5 分鐘，06 §3.2 verify 階段） ----
-      - name: verify（取服務網址）
-        id: service_url
-        run: |
-          set -euo pipefail
-          URL="$(gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.url)")"
+          deploy_revision() {
+            gcloud run deploy "${GCP_RUN_SERVICE}" \
+              --image "${IMAGE}:${{ github.sha }}" \
+              --region "${GCP_REGION}" \
+              --platform managed \
+              --allow-unauthenticated \
+              --port 8080 \
+              --memory 512Mi \
+              --cpu 1 \
+              --min-instances 0 \
+              --max-instances 2 \
+              --concurrency 80 \
+              --timeout 60s \
+              --set-env-vars "NODE_ENV=production,LOG_LEVEL=info,CORS_ALLOWED_ORIGINS=" \
+              --set-secrets "DATABASE_URL=database-url:${DB_VERSION},BASIC_AUTH_USER=basic-auth-user:${USER_VERSION},BASIC_AUTH_PASSWORD=basic-auth-pass:${PASS_VERSION}"
+          }
+
+          get_service_url() {
+            gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="value(status.url)"
+          }
+
+          verify_health() {
+            BASE_URL="$1" POLL_INTERVAL_SECONDS=10 POLL_TIMEOUT_SECONDS=300 npm run verify:health
+          }
+
+          verify_auth() {
+            local base_url="$1"
+            local code
+            code="$(curl -fsS -o /dev/null -w "%{http_code}" -u "${BASIC_USER}:${BASIC_PASS}" "${base_url}/api/v1/todos")" || return 1
+            echo "GET /api/v1/todos -> ${code}"
+            [ "${code}" = "200" ]
+          }
+
+          echo "== deploy（第 1 次） =="
+          deploy_revision
+          URL="$(get_service_url)"
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
           if [ -n "${STAGING_BASE_URL}" ] && [ "${STAGING_BASE_URL}" != "${URL}" ]; then
             echo "::warning::STAGING_BASE_URL（${STAGING_BASE_URL}）與 Cloud Run 實際網址（${URL}）不一致，請回填 GitHub repository variable STAGING_BASE_URL"
           fi
 
-      - name: verify（輪詢 /health 至 200）
-        env:
-          BASE_URL: ${{ steps.service_url.outputs.url }}
-          POLL_INTERVAL_SECONDS: "10"
-          POLL_TIMEOUT_SECONDS: "300"
-        run: npm run verify:health
+          verify_health "${URL}"
 
-      - name: verify（帶憑證呼叫 /api/v1/todos 確認 200）
-        env:
-          BASE_URL: ${{ steps.service_url.outputs.url }}
-          BASIC_USER: ${{ secrets.STAGING_BASIC_AUTH_USER }}
-          BASIC_PASS: ${{ secrets.STAGING_BASIC_AUTH_PASSWORD }}
-        run: |
-          set -euo pipefail
-          CODE="$(curl -fsS -o /dev/null -w "%{http_code}" \
-            -u "$BASIC_USER:$BASIC_PASS" \
-            "${BASE_URL}/api/v1/todos")"
-          echo "GET /api/v1/todos -> ${CODE}"
-          test "${CODE}" = "200"
+          RETRIED=false
+          if verify_auth "${URL}"; then
+            echo "verify（帶憑證）第 1 次即通過"
+          else
+            RETRIED=true
+            echo "::warning::verify（帶憑證）第 1 次失敗，依 06 §6.7 建議二自動重試一次（相同參數重新部署）"
+            echo "== deploy（第 2 次，自動重試，上限 1 次） =="
+            deploy_revision
+            URL="$(get_service_url)"
+            echo "url=${URL}" >> "$GITHUB_OUTPUT"
+            verify_health "${URL}"
+            if ! verify_auth "${URL}"; then
+              echo "::error::verify（帶憑證）重試 1 次後仍失敗，判定部署失敗"
+              echo "retried=true" >> "$GITHUB_OUTPUT"
+              echo "retry_result=failed" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            echo "verify（帶憑證）重試後通過"
+            echo "retry_result=passed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "retried=${RETRIED}" >> "$GITHUB_OUTPUT"
 
       - name: 回填提示（首次部署後的網址）
-        if: always() && steps.service_url.outputs.url != ''
+        if: always() && steps.deploy_verify.outputs.url != ''
         run: |
           {
             echo "### staging 網址"
             echo ""
-            echo "Cloud Run 服務網址：\`${{ steps.service_url.outputs.url }}\`"
+            echo "Cloud Run 服務網址：\`${{ steps.deploy_verify.outputs.url }}\`"
             echo ""
             echo "首次部署後請 dev-ops 回填三處（06 §1）：本檔對應的"
             echo "GitHub repository variable \`STAGING_BASE_URL\`、"
             echo "\`docs/specs/06_部署架構與CICD.md\` 第 1 章環境清單、"
             echo "\`docs/specs/04_API規格.yaml\` 的 \`servers\` 區塊 staging 項。"
+            if [ "${{ steps.deploy_verify.outputs.retried }}" = "true" ]; then
+              echo ""
+              if [ "${{ steps.deploy_verify.outputs.retry_result }}" = "passed" ]; then
+                echo "**已重試**：verify（帶憑證呼叫 /api/v1/todos）第 1 次失敗，"
+                echo "已依 06 §6.7 建議二自動重新部署並再驗證一次後通過。"
+              else
+                echo "**已重試**：verify（帶憑證呼叫 /api/v1/todos）第 1 次失敗，"
+                echo "已依 06 §6.7 建議二自動重試一次，重試後仍失敗，本次部署判定失敗。"
+              fi
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
