@@ -594,6 +594,38 @@ bash -n scripts/deploy-staging.sh
 
 **遠端待驗（交 dev-tl／Leader 追蹤）**：合併推送 main 後的真實 `deploy-staging` run 是否全綠、`GITHUB_STEP_SUMMARY` 是否確實顯示三個版本號——此條列於任務卡 acceptance 最後一項，由 dev-tl 於審核紀錄勾核，本卡不代為推送 main（依協作協定，開發卡合併只由 dev-tl 在根目錄執行）。
 
+#### 6.9.1 r1 真實 run 紅燈事件與根因（2026-09-20 19:00，dev-tl 初審實測）
+
+r1 合併進 main（`05c9a1e`／`6b27611`）後，實際觸發的 `deploy-staging` run `35506278351`（run #17）**紅燈**：第 8 步 `resolve secret versions（釘具體版本，不用 :latest）` 以 exit code 1 失敗，其後 `gcloud auth configure-docker`／`migrate`／`docker build & push`／`gcloud run deploy ＋ verify`／`回填提示` 全數 `skipped`，`GITHUB_STEP_SUMMARY` 沒有寫入任何版本號。**上一節「離線驗證通過」不代表真實 run 會通過**——這正是本次事件要留下的教訓，故不覆蓋、直接在此追記事實，避免只留通過紀錄變成第二份真相。
+
+**根因**：部署服務帳號 `github-deployer@pj002-509106.iam.gserviceaccount.com` 當時只有 `roles/artifactregistry.writer`／`roles/iam.serviceAccountUser`／`roles/run.admin`／`roles/secretmanager.secretAccessor` 四個角色。`gcloud secrets versions list` 需要 `secretmanager.versions.list` 權限，而 `roles/secretmanager.secretAccessor` 的 `includedPermissions` 只有 `resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.versions.access`（只能「讀值」），`secretmanager.versions.list` 只在 `roles/secretmanager.viewer`。實查指令與輸出：
+
+```bash
+gcloud projects get-iam-policy pj002-509106 --flatten="bindings[].members" \
+  --format="table(bindings.role)" \
+  --filter="bindings.members:github-deployer@pj002-509106.iam.gserviceaccount.com"
+```
+```text
+ROLE
+roles/artifactregistry.writer
+roles/iam.serviceAccountUser
+roles/run.admin
+roles/secretmanager.secretAccessor
+```
+```bash
+gcloud iam roles describe roles/secretmanager.secretAccessor --format="value(includedPermissions)"
+gcloud iam roles describe roles/secretmanager.viewer         --format="value(includedPermissions)"
+```
+```text
+resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.versions.access
+
+resourcemanager.projects.get;resourcemanager.projects.list;secretmanager.locations.get;secretmanager.locations.list;secretmanager.secrets.get;secretmanager.secrets.getIamPolicy;secretmanager.secrets.list;secretmanager.secrets.listEffectiveTags;secretmanager.secrets.listTagBindings;secretmanager.versions.get;secretmanager.versions.list
+```
+
+**教訓（給下一次寫離線驗證的人）：本機 gcloud 身分 ≠ CI 的 WIF 服務帳號身分，本機能列版本不代表 CI 能列。** r1 的本機實測（上一節「實測」段落）之所以顯示成功，是因為本機已登入的 `gcloud` 帳號是專案擁有者 `excalibur.star@gmail.com`，該帳號在專案層級預設具備近乎全權限；而真實 run 用的是 Workload Identity Federation 換來的短期憑證，身分是 `github-deployer@` 服務帳號，兩者的權限集合完全不同。**日後任何「需要新的雲端 API 呼叫」的 workflow 步驟，離線驗證只能證明語法與邏輯正確，不能替代「用實際會執行的服務帳號身分（或至少列出其角色與該角色的 includedPermissions，比對呼叫需要的權限）驗證」這一步**；本機指令成功的證據不得作為「CI 會成功」的結論依據。
+
+**r2 修法**（本次落地，`.github/workflows/deploy-staging.yml` 與 `scripts/deploy-staging.sh` 的 `resolve_version()` 同步修正，維持三處一致）：不再讓 `gcloud secrets versions list` 的非 0 結束碼直接被 `set -e` 吞掉、只留下無意義的 `exit code 1`；改為顯式捕捉 stdout+stderr、失敗時輸出含 gcloud 原始訊息與修復指引（workflow 版：需 `roles/secretmanager.viewer`，或改填 `SECRET_VERSION_*` repository variable 略過查詢）的訊息（workflow 為 `::error::` annotation，本機腳本為一般 stderr）。IAM 授權本身（補上 `roles/secretmanager.viewer`）屬使用者的雲端專案安全設定，dev-ops 依安全鐵則不代為執行，已寫入 README「部署與 secrets」一節的步驟與備援路徑，待使用者執行後 `deploy-staging` 才會恢復綠燈。
+
 ---
 
 ## 7. 三處必須同步的參數表（T-0025，CR S-9，實作紀錄）
