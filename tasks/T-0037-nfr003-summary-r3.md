@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: review
+status: done
 round: 1
 depends_on: [T-0030, T-0031]
 inputs:
@@ -33,7 +33,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T18:03:00+08:00
-updated: 2026-09-20T18:11:52+08:00
+updated: 2026-09-20T18:18:13+08:00
 blocked_reason: null
 ---
 
@@ -74,4 +74,4 @@ curl -sS -G "https://monitoring.googleapis.com/v3/projects/pj002-509106/timeSeri
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | done | Leader 重跑同窗判讀（4 頁、6936 點、0 false、1156 輪、100%）與報告一致；6 條 acceptance 全過；假設 5 條全接受。裁決事項 A／B 交使用者（Gate 2 r2），C 採選項 1。註：抽查指令須跟 nextPageToken 取完分頁 | worklog/handoff/20260920-1813-T0037-r1-leader.md |
