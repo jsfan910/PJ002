@@ -6,7 +6,7 @@ team: dev
 role: dev-tl
 model: opus
 phase: dev
-status: review
+status: done
 round: 1
 depends_on: [T-0045, T-0046]
 inputs:
@@ -26,7 +26,7 @@ acceptance:
 reviewer: leader
 branch: task/T-0047-release-notes-addendum
 created: 2026-09-20T21:55:00+08:00
-updated: 2026-09-20T22:00:30+08:00
+updated: 2026-09-20T22:04:00+08:00
 blocked_reason: null
 ---
 
@@ -48,4 +48,4 @@ Leader：`grep -n "附註" docs/specs/14_ReleaseNotes.md CHANGELOG.md | head`；
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | **done** | 四條 acceptance 全通過。附註只追加不改寫：兩檔 **+111／−1**，唯一刪除行為 Release Notes frontmatter 的 `updated`；`git tag -l` 仍只有 `v0.1.0`（未重打）。**兩項偏離經明文追認**：①acceptance 字面的「21:2x 隨 T-0045 上線（`00019-k5q`／`00020-z8j`）」改為**三個時間點全列並標明 `todo-app-00018-xq4`（2026-09-20 20:44:51）為精確起點**——佐證為 `git merge-base --is-ancestor ddc66bb 854c843`（該 revision 的來源 commit 是定版 commit 的後代）與 `git diff --name-only ddc66bb 712b4a3 -- src public` = 0 行；②「移除 D-017、staging 舊版兩項」改以「§3 原文保留供追溯 ＋ §3 章首與 §7.4 宣告已解除並給取代性清單」實現，不刪除原列。合併 merge commit `41e5ba1`（`--no-ff`），`[Unreleased]` 已補 T-0047 條目，worktree 與分支已清理 | `worklog/handoff/20260920-2154-T0047-r1-dev-tl.md`（dev-tl）／`worklog/handoff/20260920-2158-T0047-r1-leader.md`（leader） |
