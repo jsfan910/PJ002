@@ -8,7 +8,7 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0045 | 事故：staging 流量釘死 00003-lt2；復原、pipeline 驗流量、TC-090 重測 | dev-ops／sonnet | 1 | 2026-09-20 20:46 | worktree T-0045；先量測再 --to-latest |
+| T-0045 | 事故：staging 流量釘死 00003-lt2；復原、pipeline 驗流量、TC-090 重測 | dev-ops／sonnet | 1 | 2026-09-20 20:42 | worktree T-0045；先量測再 --to-latest |
 
 ## 審核中
 

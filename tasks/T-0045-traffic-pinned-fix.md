@@ -10,7 +10,7 @@ status: todo
 round: 1
 depends_on: []
 inputs:
-  - tasks/E-001-todo-app.md（Leader 2026-09-20 20:4x 事故裁決段：實查輸出 spec.traffic 100% → todo-app-00003-lt2、latestCreatedRevisionName todo-app-00018-xq4）
+  - tasks/E-001-todo-app.md（Leader 2026-09-20 20:41 事故裁決段：實查輸出 spec.traffic 100% → todo-app-00003-lt2、latestCreatedRevisionName todo-app-00018-xq4）
   - scripts/rollback-staging.sh（`update-traffic --to-revisions <rev>=100` 會把流量釘死；演練後未還原）
   - docs/specs/06_部署架構與CICD.md#5.1、#5.4（回滾流程與 09-19 演練紀錄）、#3.2（deploy＋verify 單一步驟）、#6.9（T-0039 實作紀錄）
   - .github/workflows/deploy-staging.yml、scripts/deploy-staging.sh（現行 deploy 後只驗 service URL，未驗新 revision 是否接到流量）
@@ -32,8 +32,8 @@ acceptance:
   - 不讀取、不輸出任何 secret 值；只 add outputs
 reviewer: dev-tl
 branch: task/T-0045-traffic-pinned-fix
-created: 2026-09-20T20:45:00+08:00
-updated: 2026-09-20T20:45:00+08:00
+created: 2026-09-20T20:41:00+08:00
+updated: 2026-09-20T20:41:00+08:00
 blocked_reason: null
 ---
 

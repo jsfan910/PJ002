@@ -376,7 +376,7 @@ updated: 2026-09-19T14:06:43+08:00
 - 建 T-0044（dev-ops）：第二個 uptime check（真備援）＋ uptime 告警政策；06 §6.1.1 回填、§6.9.1 追記成功事實；通知管道 email 由使用者自綁。依賴 T-0039、T-0040 皆 done，立即派工。
 - D-017 關閉：T-0038 修正已隨本次部署上 staging；staging 重跑需帶 Basic Auth 憑證，由使用者執行指令並貼摘要，qa-lead 於測試總結 r4 判定。
 
-### 2026-09-20T20:45:00+08:00 — 維運事故：staging 流量釘死在 todo-app-00003-lt2；建 T-0045
+### 2026-09-20T20:41:17+08:00 — 維運事故：staging 流量釘死在 todo-app-00003-lt2；建 T-0045
 
 - 發現經過：使用者在自己終端對 staging 重跑 TC-067／TC-009 五次，msedge 全部因 `/favicon.ico` 404 失敗（T-0043 應已上線），chromium 全部「Executable doesn't exist」（使用者機器未裝 Playwright 瀏覽器，非產品問題）。Leader 實查：
   ```
