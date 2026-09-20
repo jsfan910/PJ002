@@ -44,6 +44,8 @@ blocked_reason: null
 - 必須遵守：CLAUDE.md 協作協定與工作鐵則（Git Bash 呼叫 gcloud 加 `MSYS_NO_PATHCONV=1`、gcloud 用完整路徑、Bash 不含單引號）；角色檔 `.claude/agents/dev-ops.md`；**在 git worktree `<根目錄>-wt/T-0044` 內作業**（雖以 infra／docs 為主，仍依開發卡規則走分支）。
 - 建立監控資源屬使用者 GCP 專案內的可逆操作（可 delete），不屬 IAM／安全設定，agent 可執行；通知管道涉及個人 email，由使用者自行建立。
 
+- **r2 追加（Leader 2026-09-20 20:42）**：outputs 放寬一行——准改 06 §3.3 第 181 行「待 Leader 裁決：要不要建第二個 uptime check」為「已採選項 A（T-0044），見 §6.1.1」；其餘 §1～§6.1 仍不動。r1 退回原因是「宣稱做了但沒做」（政策 documentation.content 實為中文），r2 依 dev-tl 審核紀錄的修法(甲)：改文件敘述與交接檔三處，使其與雲端實際內容一致，不必動雲端資源；重跑 describe 兩組作證。
+
 ## 驗收方式
 
 dev-tl：
