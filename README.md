@@ -376,7 +376,7 @@ Secrets 分頁新增：
 
 ### 本機等效指令（不需 GitHub Actions，直接重現部署／回滾）
 
-- `scripts/deploy-staging.sh`：與 `deploy-staging.yml` 相同的 migrate → build & push → deploy → verify 順序，需先 `export` 好 `GCP_PROJECT_ID`／`GCP_REGION`／`GCP_AR_REPOSITORY`／`GCP_RUN_SERVICE`／`NEON_DATABASE_URL`／`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD`，並已 `gcloud auth login`。**T-0045 起**：verify 之後會額外檢查新 revision 是否真的接到流量（`status.latestReadyRevisionName` 是否等於本次剛部署的 revision），沒接到會自動執行一次 `update-traffic --to-latest` 再重新驗證，仍未接到才判定失敗（見下方回滾／還原一節的事故背景）。
+- `scripts/deploy-staging.sh`：與 `deploy-staging.yml` 相同的 migrate → build & push → deploy → verify 順序，需先 `export` 好 `GCP_PROJECT_ID`／`GCP_REGION`／`GCP_AR_REPOSITORY`／`GCP_RUN_SERVICE`／`NEON_DATABASE_URL`／`STAGING_BASIC_AUTH_USER`／`STAGING_BASIC_AUTH_PASSWORD`，並已 `gcloud auth login`。**T-0045 起**：verify 之後會額外檢查新 revision 是否真的接到 **100%** 流量——主判準讀 `status.traffic` 實際的流量百分比，`status.latestReadyRevisionName` 是否等於本次剛部署的 revision 只作輔助佐證（單看後者會漏判分流／canary 情境）；未達 100% 會自動執行一次 `update-traffic --to-latest` 再重新驗證，仍未達才判定失敗（見下方回滾／還原一節的事故背景）。
 - `scripts/rollback-staging.sh`：回滾程序（06 §5.1）的本機等效。
   - 不帶參數：列出目前 revision 清單與流量分佈，供人判讀選哪一版回滾。
   - 帶一個 revision 名稱參數：把 100% 流量**明確釘死**在該 revision 並驗證（`update-traffic --to-revisions <rev>=100`）。

@@ -207,10 +207,10 @@ jobs:
           }
 
           get_traffic_table() {
-            gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="table[no-heading](status.traffic.revisionName,status.traffic.percent)"
+            gcloud run services describe "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --format="csv[no-heading](status.traffic.revisionName,status.traffic.percent)"
           }
 
-          # ---- T-0045 事故修法：驗證新 revision 是否真的接到流量 ----
+          # ---- T-0045 事故修法：驗證新 revision 是否真的接到 100% 流量 ----
           # 事故根因：09-19 回滾演練以 `update-traffic --to-revisions <rev>=100`
           # 把 spec.traffic 從「一律跟隨最新 revision（latestRevision: true）」
           # 改成「明確釘死在某個具名 revision」；演練後未還原，之後 15 次
@@ -219,32 +219,38 @@ jobs:
           # `gcloud run deploy` 預設不會覆寫這個明確釘定的流量設定。
           # verify_health／verify_auth 只打 service URL（同一個網址不論流量
           # 指到哪個 revision 都會回應），因此每次都「全綠」卻驗不出流量沒切過去。
-          # 判準：`status.latestReadyRevisionName` 在 Cloud Run 的實作中會跟隨
-          # 目前實際接流量的 revision（非單純「最近一次 Ready 的 revision」，
-          # 已於本次事故復原時以 `services describe` 實測確認：流量釘死時
-          # latestReadyRevisionName 停在舊 revision、latestCreatedRevisionName
-          # 已前進到新 revision；`update-traffic --to-latest` 後兩者立即相等）。
+          # 主判準：直接讀 `status.traffic`，加總本次部署的 revision 拿到的
+          # 百分比，要求等於 100（`table[no-heading]` 格式會帶方括號與引號
+          # 無法解析，改用 `csv[no-heading]`，dev-tl r1 初審已實測可解析）。
+          # 只看 latestReadyRevisionName 不夠：分流／canary 情境下它仍可能
+          # 等於新 revision，但新 revision 只拿到部分流量，percent 不檢查會
+          # 漏判。`status.latestReadyRevisionName` 併作輔助佐證——已實測它
+          # 在 Cloud Run 目前實作中會跟隨接流量的 revision（流量釘死時停在
+          # 舊 revision、`update-traffic --to-latest` 後立即等於新 revision），
+          # 但這是平台未文件化行為，不是規格保證，故不單獨作為判準。
           verify_traffic() {
             local expected_revision="$1"
-            local latest_ready
+            local table pct latest_ready
+            table="$(get_traffic_table)"
+            pct="$(echo "${table}" | awk -F, -v r="${expected_revision}" '$1==r {s+=$2} END {print s+0}')"
             latest_ready="$(get_latest_ready_revision)"
-            echo "latestReadyRevisionName=${latest_ready}（預期／新部署的 revision=${expected_revision}）"
-            [ "${latest_ready}" = "${expected_revision}" ]
+            echo "status.traffic=$(echo "${table}" | tr '\n' ';')；${expected_revision} 取得 ${pct}%；latestReadyRevisionName=${latest_ready}（輔助佐證）"
+            [ "${pct}" = "100" ] && [ "${latest_ready}" = "${expected_revision}" ]
           }
 
           ensure_traffic_on_latest() {
             local expected_revision="$1"
             if verify_traffic "${expected_revision}"; then
-              echo "流量已在新 revision（${expected_revision}），無需修正"
+              echo "流量已在新 revision（${expected_revision}，100%），無需修正"
               return 0
             fi
-            echo "::warning::新 revision（${expected_revision}）未拿到流量，目前流量分佈：$(get_traffic_table | tr '\n' ';')。依 T-0045 事故修法自動執行 update-traffic --to-latest 並重新驗證"
+            echo "::warning::新 revision（${expected_revision}）未拿到 100% 流量，目前流量分佈：$(get_traffic_table | tr '\n' ';')。依 T-0045 事故修法自動執行 update-traffic --to-latest 並重新驗證"
             gcloud run services update-traffic "${GCP_RUN_SERVICE}" --region "${GCP_REGION}" --to-latest
             if ! verify_traffic "${expected_revision}"; then
               echo "::error::update-traffic --to-latest 後新 revision（${expected_revision}）仍未拿到 100% 流量，目前流量分佈：$(get_traffic_table | tr '\n' ';')。判定部署失敗，需人工介入（06 §5.1／§6.10）"
               return 1
             fi
-            echo "update-traffic --to-latest 已生效，流量已在新 revision（${expected_revision}）"
+            echo "update-traffic --to-latest 已生效，流量已在新 revision（${expected_revision}，100%）"
           }
 
           verify_health() {
@@ -257,6 +263,11 @@ jobs:
             code="$(curl -fsS -o /dev/null -w "%{http_code}" -u "${BASIC_USER}:${BASIC_PASS}" "${base_url}/api/v1/todos")" || return 1
             echo "GET /api/v1/todos -> ${code}"
             [ "${code}" = "200" ]
+          }
+
+          get_traffic_percent() {
+            local revision="$1"
+            get_traffic_table | awk -F, -v r="${revision}" '$1==r {s+=$2} END {print s+0}'
           }
 
           echo "== deploy（第 1 次） =="
@@ -274,9 +285,9 @@ jobs:
             {
               echo "### 部署流量檢查（T-0045）"
               echo ""
-              echo "| revision | 流量 |"
+              echo "| revision | 流量（status.traffic 實際值） |"
               echo "|---|---|"
-              echo "| ${NEW_REVISION}（本次部署） | 未拿到 100%，見上方 ::error:: |"
+              echo "| ${NEW_REVISION}（本次部署） | $(get_traffic_percent "${NEW_REVISION}")%，未達 100%，見上方 ::error:: |"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
@@ -284,9 +295,9 @@ jobs:
           {
             echo "### 部署流量檢查（T-0045）"
             echo ""
-            echo "| revision | 流量 |"
+            echo "| revision | 流量（status.traffic 實際值） |"
             echo "|---|---|"
-            echo "| ${NEW_REVISION}（本次部署） | 100% |"
+            echo "| ${NEW_REVISION}（本次部署） | $(get_traffic_percent "${NEW_REVISION}")% |"
           } >> "$GITHUB_STEP_SUMMARY"
 
           RETRIED=false
