@@ -6,7 +6,7 @@ version: 0.3           # T-0040 規格變更（cron 定位、secret 版本釘定
 status: frozen         # Gate 1 通過 2026-09-19，變更走「規格變更請求」任務卡
 author: plan-sd        # 設計階段由 plan-sd 起草；開發階段由 dev-ops 補實作細節
 reviewers: [dev-tl, dev-ops]
-updated: 2026-09-20T20:55:08+08:00
+updated: 2026-09-20T21:24:51+08:00
 ---
 
 # 部署架構與 CI/CD：E-001 待辦事項 Web 應用
@@ -790,9 +790,47 @@ awk -F, 'NR>1{print $2}' <輸出檔> | sort | uniq -c
 
 **結論**：`update-traffic --to-latest` 本身是純服務層的流量切換操作（不重建、不重啟容器），復原過程對使用者完全無感，與 §5.1「數秒內生效、無需重新建置」的原理一致。此結果**不能取代** TC-090 對「一次完整 CI/CD 部署（含建置新映像、`gcloud run deploy` 建新 revision）」的不可用時間量測——兩者測的是不同操作；TC-090 重測留待下方「待補：真實部署重測」段落。
 
-**待補：真實部署重測（TC-090）**——本節先以本次流量復原的量測結果佐證「切流量本身不影響可用性」，真實一次完整部署（新映像建置＋`gcloud run deploy`＋pipeline 新增的流量驗證）的 TC-090 重測，將由 Leader 協調根目錄合併排程後另行觸發並補上本段：
+**真實部署重測（TC-090，2026-09-20 21:18～21:22）**：dev-tl 合併 T-0045 修正（R-1／R-2）進 main（`5b28b13`）後，Leader 於根目錄推送 main（`e02f706..95bc4ca`），觸發真實 `deploy-staging` run。dev-ops 於推送前已背景啟動 `scripts/measure-deploy-downtime.sh`（300 秒、1 秒一次），全程涵蓋整次部署。
 
-> （佔位：待 main 推送觸發 `deploy-staging` 真實 run 後，補上 run 連結／結論、`GITHUB_STEP_SUMMARY` 的「部署流量檢查」與 secret 版本表格、`scripts/measure-deploy-downtime.sh`（≥300 秒）量測的最長連續非 200 秒數）
+- **Run 結果**：`Deploy Staging` run [`35513187463`](https://github.com/jsfan910/PJ002/actions/runs/35513187463)（head_sha `95bc4ca`），`status=completed`、`conclusion=success`；`run_started_at=2026-09-20T13:20:01Z`、`updated_at=2026-09-20T13:22:23Z`（耗時約 2 分 22 秒）。所有步驟（含 `resolve secret versions`、`migrate`、`docker build & push`、`gcloud run deploy ＋ verify（含一次自動重試）`）皆 `conclusion=success`；`gcloud run deploy ＋ verify` 這一步在**第 1 次嘗試**即通過（未觸發 R-1 修正後的 `update-traffic --to-latest` 自動補救分支——因為流量已於本卡稍早的復原步驟還原為 `latestRevision: true`，一般部署本就會自動把流量切到新 revision，這正是 R-1 主判準要驗證、且本次驗證為真的行為）。
+- **`services describe` 唯讀複查**（本機已登入之 `gcloud`，帳號 `excalibur.star@gmail.com`）：
+
+  ```bash
+  MSYS_NO_PATHCONV=1 "$GCLOUD" run services describe todo-app --region asia-east1 --project pj002-509106 \
+    --format="yaml(spec.traffic,status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)"
+  ```
+  ```yaml
+  spec:
+    traffic:
+    - latestRevision: true
+      percent: 100
+  status:
+    latestCreatedRevisionName: todo-app-00019-k5q
+    latestReadyRevisionName: todo-app-00019-k5q
+    traffic:
+    - latestRevision: true
+      percent: 100
+      revisionName: todo-app-00019-k5q
+  ```
+  ```bash
+  MSYS_NO_PATHCONV=1 "$GCLOUD" run services describe todo-app --region asia-east1 --project pj002-509106 \
+    --format="csv[no-heading](status.traffic.revisionName,status.traffic.percent)"
+  ```
+  ```text
+  todo-app-00019-k5q,100
+  ```
+  → 新 revision `todo-app-00019-k5q`（此次推送觸發部署產生）拿到 **100%** 流量，`status.traffic` 主判準與 `latestReadyRevisionName` 輔助佐證兩者一致，與 pipeline 的 `verify_traffic()` 判準完全對應。`curl -sS -o /dev/null -w "HTTP %{http_code}\n" https://todo-app-dpevsdhdva-de.a.run.app/health` → `HTTP 200`。
+- **量測結果**（226 樣本，2026-09-20T13:17:39Z～13:22:38Z UTC，涵蓋 run 全程 13:20:01Z～13:22:23Z）：
+
+  ```text
+  最長連續失敗次數（約秒數，取樣間隔 ~1s）：0
+  全程無非 200 回應。
+  ```
+  ```text
+      226 200
+  ```
+
+**結論**：真實一次完整部署（新映像建置＋`gcloud run deploy` 建新 revision＋pipeline 新增的流量驗證）**不可用秒數 = 0 秒**，遠低於 TC-090／NFR-003 的 60 秒門檻，且此次量測涵蓋的是「流量已修復為追蹤最新」狀態下的正常部署，與事故發生前（09-19 16:33 之前）的行為一致，證明 T-0045 的復原與 pipeline 修法皆已生效、未帶來新的可用性風險。GitHub Actions 的原始 job log 因匿名 API 無法讀取（`/actions/jobs/{id}/logs` 回 403，需登入），改以 `services describe` 唯讀複查取代，佐證力等同 `GITHUB_STEP_SUMMARY` 本應顯示的「新 revision 名稱、流量 100%」內容。
 
 #### 6.10.4 Pipeline 修法（本卡落地，落實 D-018）
 
@@ -831,7 +869,7 @@ bash -n scripts/deploy-staging.sh scripts/rollback-staging.sh
 
 | 項目 | 狀態 | 說明 |
 |---|---|---|
-| TC-090（部署不可用時間 < 60 秒） | **需重驗** | 舊結果（T-0031 §6.8.4「0 秒」）量測的是流量已釘死狀態下的部署，未測到真正切流量；本次流量復原量測（152/152、0 秒）只驗證了切流量操作本身，非完整部署流程。需待 6.10.3「待補」段落的真實部署重測 |
+| TC-090（部署不可用時間 < 60 秒） | **已重驗，通過** | 舊結果（T-0031 §6.8.4「0 秒」）量測的是流量已釘死狀態下的部署，未測到真正切流量；本卡已於 2026-09-20 21:18～21:22 對真實 `deploy-staging` run `35513187463`（head_sha `95bc4ca`）重測，226/226 樣本皆 200、最長連續非 200 秒數 = 0，新 revision `todo-app-00019-k5q` 確認拿到 100% 流量。詳見 6.10.3 |
 | TC-080（`/api/v1/todos` 資料筆數直接比對） | **需重驗** | 因流量長期指向 `00003-lt2`，先前任何在此期間對 staging 做的資料筆數比對，比對到的都是同一個舊版本的資料層行為，與新版程式碼（T-0038／T-0043 等）無關；需在流量已確認指向最新 revision 後重新執行 TC-080 原始步驟 |
 | D-017（前端錯誤訊息時序競態，T-0038 修正） | **需重驗** | 使用者於 09-20 20:41 重跑時看到的正是修正前行為，因為當時仍服務 `00003-lt2`；流量已於 20:44 復原到 `00018-xq4`（已含 T-0038 修正），請於流量復原後的網址重新驗證 |
 | TC-009 favicon（T-0043 修正） | **需重驗** | 同上，`00003-lt2` 不含 `public/favicon.ico`；流量復原後應可在 Edge／Chromium 重新確認 404 已消失 |
