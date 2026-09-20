@@ -2,7 +2,7 @@
   "epic": "E-001",
   "title": "E-001 待辦事項 Web 應用 專案時程表",
   "tz": "+08:00",
-  "epicStatus": "gate2 · staging 補驗中",
+  "epicStatus": "gate2 · NFR-003 24 小時採樣中，判讀 2026-09-20 17:55 後",
   "staging": "todo-app-dpevsdhdva-de.a.run.app",
   "artifactUrl": "https://claude.ai/artifact/N1rVG41MPit4djNJEKGZxV",
   "output": "docs/專案時程表_{date}.html",
@@ -33,7 +33,9 @@
     { "t": "2026-09-19T06:57:00", "label": "Gate 1 報告" },
     { "t": "2026-09-19T14:10:00", "label": "Gate 2 報告 r1" },
     { "t": "2026-09-19T16:29:00", "label": "staging 上線" },
-    { "t": "2026-09-19T16:46:00", "label": "NFR-003 採樣起算" }
+    { "t": "2026-09-19T17:55:07", "label": "NFR-003 採樣起算（uptime check 建立）" },
+    { "t": "2026-09-19T18:20:00", "label": "T-0031 合併，E-001 P0 全部 done" },
+    { "t": "2026-09-20T17:55:07", "label": "NFR-003 24 小時判讀時點" }
   ],
-  "notes": "NFR-003 24 小時採樣自 2026-09-19 16:46 起算，判讀時間 2026-09-20 16:46 之後。"
+  "notes": "NFR-003 24 小時採樣以 Cloud Monitoring uptime check 為主要來源，自 2026-09-19 17:55:07 起算（T-0031 裁決，取代原 GitHub cron 的 16:46／17:07 起算），判讀時間 2026-09-20 17:55:07 之後；判讀後由 qa-lead 出測試總結 r3 → Leader Gate 2 報告 r2 → 使用者最終裁決。"
 }

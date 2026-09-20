@@ -1,54 +1,4 @@
-// 產生專案時程表（WBS + 甘特圖）HTML。
-// 用法：node scripts/gen-schedule.mjs <設定檔.json> [cards.txt] [--date yyyy-mm-dd] [--out 路徑]
-// 資料：cards.txt 由 scripts/extract-cards.sh 產生；設定檔見 docs/schedule/E-001.json。
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { execSync } from "node:child_process";
-
-const args = process.argv.slice(2);
-const configPath = args[0];
-if (!configPath) { console.error("用法：node scripts/gen-schedule.mjs <設定檔.json> [cards.txt] [--date yyyy-mm-dd] [--out 路徑]"); process.exit(1); }
-const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
-const cfg = JSON.parse(readFileSync(configPath, "utf8"));
-const cardsPath = args[1] && !args[1].startsWith("--") ? args[1] : "docs/schedule/cards.txt";
-// 「現在」＝產表當下（以設定檔 tz 換算成當地時間，與任務卡／交接檔的時戳同一基準），
-// 寫死進 HTML；頁面開啟時不再重新取時間，因此看報表的人看到的「現在」線永遠是產表時刻。
-const tz = cfg.tz || "+08:00";
-const tzMin = (() => { const m = tz.match(/^([+-])(\d\d):(\d\d)$/); return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0; })();
-const generatedAtUtc = new Date();
-const generatedAtLocal = new Date(generatedAtUtc.getTime() + tzMin * 60000).toISOString().slice(0, 19);
-const date = opt("--date") || generatedAtLocal.slice(0, 10);
-const out = opt("--out") || (cfg.output || "docs/專案時程表_{date}.html").replace("{date}", date.replace(/-/g, ""));
-let mainSha = "";
-try { mainSha = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); } catch { mainSha = "n/a"; }
-
-const phaseOrder = Object.fromEntries((cfg.phases || []).map((p, i) => [p.key, i + 1]));
-const phaseLabel = Object.fromEntries((cfg.phases || []).map((p) => [p.key, p.label]));
-// phase 優先序：任務卡 frontmatter 的 phase → 設定檔 phaseById → phaseByTeam → team
-const phaseOf = (c) => c.phase || (cfg.phaseById || {})[c.id] || (cfg.phaseByTeam || {})[c.team] || c.team;
-
-const src = readFileSync(cardsPath, "utf8").trim().split(/\r?\n/).filter(Boolean);
-const cards = [];
-for (const line of src) {
-  const [id, title, team, role, status, phase, round, deps, created, updated, epic, rounds] = line.split("|");
-  if (cfg.epic && epic && epic.trim() !== cfg.epic) continue;
-  const segs = [];
-  for (const part of (rounds || "").split(";").filter(Boolean)) {
-    const [key, times] = part.split("=");
-    const [s, e] = (times || "").split("~");
-    const m = key.match(/^r(\d+)-(.+)$/);
-    if (!m) continue;
-    if (s) segs.push({ round: Number(m[1]), who: m[2], start: s, end: e || null, review: m[2] !== role });
-  }
-  cards.push({ id, title, team, role, status, phase: (phase || "").trim() || null, round: Number(round), deps: deps.replace(/[\[\]]/g, "").split(",").map((s) => s.trim()).filter(Boolean), created: created.replace(/\+\d\d:\d\d$/, ""), updated: updated.replace(/\+\d\d:\d\d$/, ""), segs });
-}
-for (const ex of cfg.extraCards || []) cards.unshift(ex);
-for (const c of cards) { c.phase = phaseOf(c); if (!phaseLabel[c.phase]) { phaseLabel[c.phase] = c.phase; phaseOrder[c.phase] = 99; } }
-
-const data = JSON.stringify({ cards, gates: cfg.gates || [], phaseLabel, phaseOrder, date, tz: cfg.tz || "+08:00", notes: cfg.notes || "", generatedAt: generatedAtUtc.toISOString(), generatedAtLocal });
-const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
-
-const html = `<title>${esc(cfg.title || cfg.epic + " 專案時程表")}</title>
+<title>E-001 待辦事項 Web 應用 專案時程表</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{
@@ -145,14 +95,14 @@ table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
   <div class="head">
     <div>
       <div style="font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Project schedule · WBS + Gantt</div>
-      <h1>${esc(cfg.title || cfg.epic + " 專案時程表")}</h1>
+      <h1>E-001 待辦事項 Web 應用 專案時程表</h1>
     </div>
     <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
       <div class="meta">
-        <span>日期</span><b>${esc(date)}（${esc(cfg.tz || "+08:00")}）</b>
-        <span>Epic 狀態</span><b>${esc(cfg.epicStatus || "")}</b>
-        <span>main</span><b>${esc(mainSha)}</b>
-        ${cfg.staging ? "<span>staging</span><b>" + esc(cfg.staging) + "</b>" : ""}
+        <span>日期</span><b>2026-09-20（+08:00）</b>
+        <span>Epic 狀態</span><b>gate2 · NFR-003 24 小時採樣中，判讀 2026-09-20 17:55 後</b>
+        <span>main</span><b>1023bb4</b>
+        <span>staging</span><b>todo-app-dpevsdhdva-de.a.run.app</b>
       </div>
       <div class="tools">
         <button id="theme" type="button" aria-pressed="false">深色模式</button>
@@ -190,7 +140,7 @@ table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
       <tbody></tbody>
     </table></div>
     <div class="milestones" id="ms"></div>
-    <p class="note">長條範圍＝執行者實際工作時段（A 段開工 → B 段完工；進行中者到「現在」，即產表時刻）；填滿比例＝進度（完成 100%、審核中 90%、進行中 50%、待辦 0%）。斜線細條＝審核者的審核時段。${esc(cfg.notes || "")}</p>
+    <p class="note">長條範圍＝執行者實際工作時段（A 段開工 → B 段完工；進行中者到「現在」，即產表時刻）；填滿比例＝進度（完成 100%、審核中 90%、進行中 50%、待辦 0%）。斜線細條＝審核者的審核時段。NFR-003 24 小時採樣以 Cloud Monitoring uptime check 為主要來源，自 2026-09-19 17:55:07 起算（T-0031 裁決，取代原 GitHub cron 的 16:46／17:07 起算），判讀時間 2026-09-20 17:55:07 之後；判讀後由 qa-lead 出測試總結 r3 → Leader Gate 2 報告 r2 → 使用者最終裁決。</p>
   </div>
 
   <div class="foot">
@@ -199,7 +149,7 @@ table.gantt tr.msrow th{height:56px;border-bottom:1px solid var(--axis)}
   </div>
 </div>
 <script>
-const DATA = ${data};
+const DATA = {"cards":[{"id":"T-0000","title":"團隊協作計畫書（Phase 0 框架）","team":"leader","role":"leader","status":"done","round":1,"deps":[],"created":"2026-09-19T04:01:00","updated":"2026-09-19T05:12:00","segs":[{"round":1,"who":"leader","start":"2026-09-19T04:01:00","end":"2026-09-19T05:12:00","review":false}],"phase":"plan"},{"id":"T-0002","title":"需求規格書 SRS、需求澄清紀錄、追溯矩陣初版","team":"plan","role":"plan-ba","status":"done","phase":"plan","round":1,"deps":[],"created":"2026-09-19T05:28:50","updated":"2026-09-19T05:44:12","segs":[{"round":1,"who":"plan-ba","start":"2026-09-19T05:29:41","end":"2026-09-19T05:35:31","review":false},{"round":1,"who":"plan-sa","start":"2026-09-19T05:41:54","end":"2026-09-19T05:44:12","review":true}]},{"id":"T-0003","title":"系統分析書 SA","team":"plan","role":"plan-sa","status":"done","phase":"plan","round":1,"deps":["T-0002"],"created":"2026-09-19T05:28:50","updated":"2026-09-19T06:02:11","segs":[{"round":1,"who":"plan-sa","start":"2026-09-19T05:46:10","end":"2026-09-19T05:54:31","review":false},{"round":1,"who":"plan-sd","start":"2026-09-19T05:58:23","end":"2026-09-19T06:02:11","review":true}]},{"id":"T-0004","title":"系統設計書、OpenAPI、資料庫設計、部署架構、ADR","team":"plan","role":"plan-sd","status":"done","phase":"plan","round":1,"deps":["T-0003"],"created":"2026-09-19T05:28:50","updated":"2026-09-19T06:31:41","segs":[{"round":1,"who":"plan-sd","start":"2026-09-19T06:03:40","end":"2026-09-19T06:22:45","review":false},{"round":1,"who":"plan-sa","start":"2026-09-19T06:28:42","end":"2026-09-19T06:31:41","review":true}]},{"id":"T-0005","title":"反向審核 SD 覆蓋度、追溯矩陣定稿","team":"plan","role":"plan-ba","status":"done","phase":"plan","round":1,"deps":["T-0004"],"created":"2026-09-19T05:28:50","updated":"2026-09-19T06:52:15","segs":[{"round":1,"who":"plan-ba","start":"2026-09-19T06:37:58","end":"2026-09-19T06:47:19","review":false}]},{"id":"T-0006","title":"SRS 小修：S-1 第 6 章狀態同步、S-2 NFR-003 數值矛盾、S-3 AC-009-5 備註","team":"plan","role":"plan-ba","status":"done","phase":"plan","round":1,"deps":["T-0005"],"created":"2026-09-19T06:52:15","updated":"2026-09-19T06:57:18","segs":[{"round":1,"who":"plan-ba","start":"2026-09-19T06:52:39","end":"2026-09-19T06:54:15","review":false}]},{"id":"T-0007","title":"SD/API 小修：D-1 OpenAPI 補標 UC-014、D-2 SD-02 文字對齊","team":"plan","role":"plan-sd","status":"done","phase":"plan","round":1,"deps":["T-0005"],"created":"2026-09-19T06:52:15","updated":"2026-09-19T06:57:18","segs":[{"round":1,"who":"plan-sd","start":"2026-09-19T06:52:51","end":"2026-09-19T06:54:16","review":false}]},{"id":"T-0008","title":"開發計畫 WBS、分支策略、開發卡草案","team":"dev","role":"dev-tl","status":"done","phase":"dev-plan","round":1,"deps":["T-0007"],"created":"2026-09-19T07:17:55","updated":"2026-09-19T07:39:07","segs":[{"round":1,"who":"dev-tl","start":"2026-09-19T07:18:58","end":"2026-09-19T07:38:00","review":false}]},{"id":"T-0009","title":"測試計畫、測試案例、追溯矩陣 TC 欄","team":"qa","role":"qa-lead","status":"done","phase":"qa-plan","round":1,"deps":["T-0007"],"created":"2026-09-19T07:18:48","updated":"2026-09-19T07:40:06","segs":[{"round":1,"who":"qa-lead","start":"2026-09-19T07:22:16","end":"2026-09-19T07:35:42","review":false}]},{"id":"T-0010","title":"規格變更請求：雲端平台改 GCP Cloud Run（保留 Neon Free）","team":"plan","role":"plan-sd","status":"done","phase":"plan","round":1,"deps":["T-0007"],"created":"2026-09-19T07:29:49","updated":"2026-09-19T07:43:43","segs":[{"round":1,"who":"plan-sd","start":"2026-09-19T07:30:22","end":"2026-09-19T07:40:30","review":false}]},{"id":"T-0011","title":"專案骨架 ＋ CI ＋ 本機可跑 /health ＋ README 初版","team":"dev","role":"dev-ops","status":"done","phase":"dev","round":1,"deps":["T-0010"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T08:24:00","segs":[{"round":1,"who":"dev-ops","start":"2026-09-19T07:44:59","end":"2026-09-19T08:09:35","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T08:14:15","end":"2026-09-19T08:22:00","review":true}]},{"id":"T-0012","title":"統一錯誤處理器與錯誤契約","team":"dev","role":"dev-be","status":"done","phase":"dev","round":1,"deps":["T-0011"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T08:46:00","segs":[{"round":1,"who":"dev-be","start":"2026-09-19T08:22:00","end":"2026-09-19T08:39:04","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T08:43:06","end":"2026-09-19T08:52:00","review":true}]},{"id":"T-0013","title":"資料層：連線池、migration runner、todo repository","team":"dev","role":"dev-be","status":"done","phase":"dev","round":1,"deps":["T-0011"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T08:50:01","segs":[{"round":1,"who":"dev-be","start":"2026-09-19T08:22:00","end":"2026-09-19T08:37:00","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T08:47:00","end":"2026-09-19T08:58:00","review":true}]},{"id":"T-0014","title":"前端版面與 API 用戶端","team":"dev","role":"dev-fe","status":"done","phase":"dev","round":1,"deps":["T-0011"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T08:53:48","segs":[{"round":1,"who":"dev-fe","start":"2026-09-19T08:23:00","end":"2026-09-19T08:32:16","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T08:53:00","end":"2026-09-19T09:02:00","review":true}]},{"id":"T-0015","title":"全站 Basic Auth、/health 唯一豁免、靜態託管","team":"dev","role":"dev-be","status":"done","phase":"dev","round":1,"deps":["T-0011","T-0012","T-0014"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T09:30:00","segs":[{"round":1,"who":"dev-be","start":"2026-09-19T08:57:00","end":"2026-09-19T09:08:02","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T09:12:07","end":"2026-09-19T09:30:00","review":true}]},{"id":"T-0016","title":"待辦 API 與業務規則","team":"dev","role":"dev-be","status":"done","phase":"dev","round":1,"deps":["T-0012","T-0013","T-0015"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T09:45:00","segs":[{"round":1,"who":"dev-be","start":"2026-09-19T09:22:00","end":"2026-09-19T09:34:12","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T09:38:00","end":"2026-09-19T09:52:00","review":true}]},{"id":"T-0017","title":"前端狀態與呈現（單向資料流）","team":"dev","role":"dev-fe","status":"done","phase":"dev","round":1,"deps":["T-0014","T-0016"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T11:32:00","segs":[{"round":1,"who":"dev-fe","start":"2026-09-19T09:48:00","end":"2026-09-19T11:05:00","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T11:30:05","end":"2026-09-19T11:32:00","review":true}]},{"id":"T-0018","title":"staging 部署（Cloud Run）、健康監測、回滾演練","team":"dev","role":"dev-ops","status":"done","phase":"dev","round":1,"deps":["T-0010","T-0011","T-0015","T-0016"],"created":"2026-09-19T07:39:05","updated":"2026-09-19T11:42:00","segs":[{"round":1,"who":"dev-ops","start":"2026-09-19T09:49:00","end":"2026-09-19T11:40:00","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T11:33:00","end":"2026-09-19T11:40:00","review":true}]},{"id":"T-0019","title":"測試計畫與案例同步 Cloud Run；追溯矩陣 NFR 對應與狀態欄補填；NFR-004 改寫","team":"qa","role":"qa-lead","status":"done","phase":"qa-plan","round":1,"deps":["T-0010"],"created":"2026-09-19T07:40:06","updated":"2026-09-19T07:52:16","segs":[{"round":1,"who":"qa-lead","start":"2026-09-19T07:45:48","end":"2026-09-19T07:49:36","review":false}]},{"id":"T-0020","title":"P0 全量 Code Review（阻擋級為 0 才通過）","team":"qa","role":"qa-cr","status":"done","phase":"qa","round":2,"deps":["T-0017","T-0018"],"created":"2026-09-19T09:24:01","updated":"2026-09-19T13:58:00","segs":[{"round":1,"who":"qa-cr","start":"2026-09-19T11:46:00","end":"2026-09-19T11:59:16","review":false},{"round":2,"who":"qa-cr","start":"2026-09-19T13:01:02","end":"2026-09-19T13:16:00","review":false}]},{"id":"T-0021","title":"自動化測試：整合／E2E／效能腳本、README 15 分鐘實測、AT 報告","team":"qa","role":"qa-at","status":"done","phase":"qa","round":2,"deps":["T-0017","T-0018"],"created":"2026-09-19T09:24:01","updated":"2026-09-19T13:58:00","segs":[{"round":1,"who":"qa-at","start":"2026-09-19T11:46:00","end":"2026-09-19T12:29:21","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T13:01:08","end":"2026-09-19T13:45:00","review":true},{"round":2,"who":"qa-at","start":"2026-09-19T13:14:00","end":"2026-09-19T13:25:04","review":false}]},{"id":"T-0022","title":"使用者測試 UAT：依 P0 使用者故事逐步操作 staging","team":"qa","role":"qa-uat","status":"done","phase":"qa","round":2,"deps":["T-0018"],"created":"2026-09-19T09:24:01","updated":"2026-09-19T13:58:00","segs":[{"round":1,"who":"qa-uat","start":"2026-09-19T11:47:00","end":"2026-09-19T12:30:00","review":false}]},{"id":"T-0023","title":"缺陷清單、CR/AT/UAT 彙整、測試總結報告（Gate 2 建議）","team":"qa","role":"qa-lead","status":"done","phase":"qa","round":1,"deps":["T-0020","T-0021","T-0022"],"created":"2026-09-19T09:24:01","updated":"2026-09-19T14:06:43","segs":[{"round":1,"who":"qa-lead","start":"2026-09-19T13:29:30","end":"2026-09-19T14:00:00","review":false}]},{"id":"T-0024","title":"CR 修正（後端）：B-1 豁免比對不正規化、B-2 啟動時自動 migration、S-1 關閉型別脅迫、S-2 豁免限 GET/HEAD","team":"dev","role":"dev-be","status":"done","phase":"dev-fix","round":1,"deps":["T-0020"],"created":"2026-09-19T12:03:12","updated":"2026-09-19T12:36:00","segs":[{"round":1,"who":"dev-be","start":"2026-09-19T12:04:48","end":"2026-09-19T12:17:07","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T12:27:27","end":"2026-09-19T12:35:00","review":true}]},{"id":"T-0025","title":"CR 修正（DevOps）：S-3 secrets 經 env、S-7 監測保留狀態碼、S-10 compose 埠可配、S-11 dev 腳本與 engines、S-4 tests 型別檢查、S-9 三處參數同步表","team":"dev","role":"dev-ops","status":"done","phase":"dev-fix","round":1,"deps":["T-0020"],"created":"2026-09-19T12:03:12","updated":"2026-09-19T12:45:00","segs":[{"round":1,"who":"dev-ops","start":"2026-09-19T12:04:00","end":"2026-09-19T12:19:31","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T12:36:00","end":"2026-09-19T12:45:00","review":true}]},{"id":"T-0026","title":"CR 修正（前端）：S-5 load 請求序列化防競態、S-6 編輯中草稿不被重繪吃掉","team":"dev","role":"dev-fe","status":"done","phase":"dev-fix","round":1,"deps":["T-0020"],"created":"2026-09-19T12:03:12","updated":"2026-09-19T12:53:00","segs":[{"round":1,"who":"dev-fe","start":"2026-09-19T12:04:00","end":"2026-09-19T12:16:36","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T12:46:00","end":"2026-09-19T12:53:00","review":true}]},{"id":"T-0027","title":"staging 首次部署、網址回填、回滾演練、24 小時監測啟動","team":"dev","role":"dev-ops","status":"done","phase":"staging","round":1,"deps":["T-0018","T-0025"],"created":"2026-09-19T15:50:02","updated":"2026-09-19T16:45:02","segs":[{"round":1,"who":"dev-ops","start":"2026-09-19T15:51:00","end":"2026-09-19T16:05:00","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T16:40:22","end":"2026-09-19T17:05:00","review":true}]},{"id":"T-0028","title":"自動化測試 r3：對 staging 重跑三類測試、補 8 條阻擋 TC、NFR-003 24 小時採樣判讀","team":"qa","role":"qa-at","status":"done","phase":"qa-staging","round":1,"deps":["T-0027"],"created":"2026-09-19T16:31:34","updated":"2026-09-19T17:38:24","segs":[{"round":1,"who":"qa-at","start":"2026-09-19T16:42:38","end":"2026-09-19T17:26:49","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T17:33:22","end":"2026-09-19T17:40:00","review":true}]},{"id":"T-0029","title":"UAT r3：於 staging 逐 P0 使用者故事操作","team":"qa","role":"qa-uat","status":"done","phase":"qa-staging","round":2,"deps":["T-0027"],"created":"2026-09-19T16:31:34","updated":"2026-09-19T17:38:24","segs":[{"round":2,"who":"qa-uat","start":"2026-09-19T16:55:34","end":"2026-09-19T17:12:47","review":false}]},{"id":"T-0030","title":"測試總結 r2（含 staging 證據）與 Gate 2 最終建議","team":"qa","role":"qa-lead","status":"done","phase":"qa-staging","round":1,"deps":["T-0028","T-0029"],"created":"2026-09-19T16:31:34","updated":"2026-09-19T17:47:01","segs":[{"round":1,"who":"qa-lead","start":"2026-09-19T17:31:10","end":"2026-09-19T17:38:24","review":false}]},{"id":"T-0031","title":"維運：NFR-003 採樣來源補強（Cloud Monitoring uptime check）、GitHub cron 診斷、TC-080 直接量測","team":"dev","role":"dev-ops","status":"done","phase":"ops","round":1,"deps":["T-0027"],"created":"2026-09-19T17:47:01","updated":"2026-09-19T18:20:00","segs":[{"round":1,"who":"dev-ops","start":"2026-09-19T17:50:14","end":"2026-09-19T18:09:10","review":false},{"round":1,"who":"dev-tl","start":"2026-09-19T18:14:01","end":"2026-09-19T18:20:00","review":true}]}],"gates":[{"t":"2026-09-19T06:57:00","label":"Gate 1 報告"},{"t":"2026-09-19T14:10:00","label":"Gate 2 報告 r1"},{"t":"2026-09-19T16:29:00","label":"staging 上線"},{"t":"2026-09-19T17:55:07","label":"NFR-003 採樣起算（uptime check 建立）"},{"t":"2026-09-19T18:20:00","label":"T-0031 合併，E-001 P0 全部 done"},{"t":"2026-09-20T17:55:07","label":"NFR-003 24 小時判讀時點"}],"phaseLabel":{"plan":"規劃階段（規格包，Gate 1）","dev-plan":"開發準備（WBS）","qa-plan":"測試準備（測試計畫、案例、追溯）","dev":"開發（五批次）","qa":"測試（CR / AT / UAT / 總結）","dev-fix":"Code Review 修正","staging":"staging 部署","qa-staging":"staging 補驗（Gate 2 r2）","ops":"維運"},"phaseOrder":{"plan":1,"dev-plan":2,"qa-plan":3,"dev":4,"qa":5,"dev-fix":6,"staging":7,"qa-staging":8,"ops":9},"date":"2026-09-20","tz":"+08:00","notes":"NFR-003 24 小時採樣以 Cloud Monitoring uptime check 為主要來源，自 2026-09-19 17:55:07 起算（T-0031 裁決，取代原 GitHub cron 的 16:46／17:07 起算），判讀時間 2026-09-20 17:55:07 之後；判讀後由 qa-lead 出測試總結 r3 → Leader Gate 2 報告 r2 → 使用者最終裁決。","generatedAt":"2026-09-20T09:09:08.443Z","generatedAtLocal":"2026-09-20T17:09:08"};
 const fmtT = (iso) => iso ? iso.slice(11,16) : "—";
 const fmtD = (iso) => iso ? iso.slice(5,10) : "";
 const mins = (a,b) => (new Date(b) - new Date(a)) / 60000;
@@ -315,7 +265,3 @@ document.querySelector("#gantt tbody").innerHTML = grows || '<tr><td colspan="5"
 document.getElementById("ms").innerHTML = DATA.gates.map((g, i) => '<span><b>'+circled[i]+'</b> '+(dayMode ? fmtD(g.t)+" " : "")+fmtT(g.t)+' '+esc(g.label)+'</span>').join("");
 document.getElementById("gen").textContent = "產表時刻 " + DATA.generatedAtLocal.replace("T"," ").slice(0,16) + "（" + DATA.tz + "）· 「現在」線＝產表時刻，非開啟頁面的時間 · 資料快照 " + DATA.generatedAt.replace("T"," ").slice(0,16) + " UTC";
 </script>
-`;
-mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, html, "utf8");
-console.log("written", out, html.length, "bytes;", cards.length, "cards; range auto");
