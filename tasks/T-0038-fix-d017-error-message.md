@@ -6,7 +6,7 @@ team: dev
 role: dev-fe
 model: sonnet
 phase: dev-fix
-status: todo
+status: review
 round: 1
 depends_on: []
 inputs:
@@ -30,7 +30,7 @@ acceptance:
 reviewer: dev-tl
 branch: task/T-0038-fix-d017
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T18:35:00+08:00
+updated: 2026-09-20T19:10:27+08:00
 blocked_reason: null
 ---
 
@@ -63,4 +63,4 @@ git diff --stat main...task/T-0038-fix-d017   # 只含 outputs 三檔
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | dev-tl | **初審通過，待合併**（依 Leader 本輪裁決不合併、不推送，卡維持 `status: review`） | acceptance 1／2／3／5 通過：根因引用行號屬實（`requestSeq` 只覆蓋 `load()`、142 行無條件 `error: null`、171／192 行同步驗證失敗不佔號），修正改為共用 `opSeq`／`beginOp()`／`isStale()`；我以隔離副本獨立複驗新測試「修正前紅、修正後綠」（非空測試）；lint EXIT=0、unit 78/78；diff 僅 outputs 2 檔＋任務卡＋交接檔，無硬編碼密鑰、未用 staging 憑證。**acceptance 4 判「條件通過」**：Docker daemon 本輪就緒，已於 8081／5433 起 compose 連跑 5 次（chromium／msedge × 1280x800／390x844，`-g "TC-067\|TC-009"`），5 次結果一致「6 過 2 敗」；2 敗固定為 msedge 兩尺寸的 **TC-009**，且失敗點是該 TC 最後一行「console 應無 error」被 `/favicon.ico` 404 觸發（21 筆 404 的 reqId 全對應 `/favicon.ico`），**D-017 的三條斷言（error-message 可見／非空／todo-item=0）5 次全過**；再以 `git worktree add --detach main` 獨立建置 main（修正前）跑同一測試 → **完全相同的 favicon 404 失敗**，證明與本卡無因果關係，故不退回。安全：`/health` 200，`/./health`／`/%2e/health`／`//health`／`/health/`／`/HEALTH`／`/api/v1/todos` 全 401，無豁免路徑繞過。合併風險：CI（`qa-tests.yml:126`）只跑 chromium，合併不會因 favicon 轉紅。**待辦**：①合併＋CHANGELOG＋worktree 清理（等 deploy-staging 綠燈）；②`/favicon.ico` 404 請 qa-lead 另立缺陷；③D-017 正式關閉仍須 staging 重跑 5 次（本機從未重現該缺陷） | worklog/handoff/20260920-1902-T0038-r1-dev-tl.md |
