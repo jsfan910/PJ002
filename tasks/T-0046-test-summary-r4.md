@@ -6,7 +6,7 @@ team: qa
 role: qa-lead
 model: opus
 phase: qa-staging
-status: review
+status: done
 round: 1
 depends_on: [T-0045]
 inputs:
@@ -32,7 +32,7 @@ acceptance:
 reviewer: leader
 branch: null
 created: 2026-09-20T21:33:00+08:00
-updated: 2026-09-20T21:50:03+08:00
+updated: 2026-09-20T21:55:00+08:00
 blocked_reason: null
 ---
 
@@ -54,4 +54,4 @@ Leader：核對第 1、12 項數字與引用路徑存在；`grep -n "D-018" docs
 
 | 輪次 | 審核者 | 結果 | 摘要 | 交接檔 |
 |---|---|---|---|---|
-| | | | | |
+| r1 | leader | done | 七條 acceptance 全過（D-017 closed 40/40、D-018 S2 closed、第 1 項 104/105、第 12 項證據整批更換、追溯與孤兒檢查）。裁決：A 交使用者提供 CI log、不立缺陷；B 使用者跑完整 e2e；C 追認 D-018 來源欄，07 §5.3 列框架待辦；D 建 T-0047 Release Notes 附註。 | worklog/handoff/20260920-2152-T0046-r1-leader.md |

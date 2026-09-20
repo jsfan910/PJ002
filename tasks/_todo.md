@@ -8,7 +8,7 @@
 
 | 卡號 | 標題 | 角色／模型 | 回合 | 派工時間 | 備註 |
 |---|---|---|---|---|---|
-| T-0046 | 測試總結 r4：關 D-017、立 D-018、TC-090 重測、退出準則更新 | qa-lead／opus | 1 | 2026-09-20 21:35 | 文件卡（main）；不索取憑證 |
+| T-0047 | Release Notes v0.1.0 附註更正＋CHANGELOG 附註 | dev-tl／opus | 1 | 2026-09-20 21:56 | worktree T-0047；追加不改寫 |
 
 ## 審核中
 
@@ -27,7 +27,8 @@
 |---|---|---|---|---|
 | — | 告警通知管道：建立 email 通知管道並綁定政策 8479925612924794663 | **使用者** | — | 步驟見 README「告警通知管道」小節；未綁定前告警只進 incident 不會主動通知 |
 | — | staging Basic Auth 帳密輪換 | **使用者** | — | Gate 2 r2 條件；Secret Manager 對 basic-auth-user／basic-auth-pass 各加新版本後，重跑一次 deploy-staging 即自動釘到最新版（T-0039 已生效） |
-| — | QA Tests workflow run #17（sha 6b27611）integration-qa 步驟紅 | qa-at | — | dev-tl 證實與 T-0039 無因果（src/tests 無差異）；job log 需 repo admin；先由使用者貼 log 或 qa-at 本機重跑 test:integration:qa 判 flaky |
+| — | QA Tests workflow 連續 8 次紅（integration-qa 步驟） | **使用者提供 log** | — | r4 R-16／裁決 A：轉紅前後程式碼零差異、不立缺陷；該工作流綠燈暫不作判定依據；請使用者貼失敗步驟 log 給 Leader |
+| — | 完整 e2e 回歸（4 個既有 project ＋ Firefox 2 組）於 staging 00020-z8j | **使用者跑指令**＋qa-lead 更新 | — | r4 裁決 B；過則第 1 項 105/105；指令見 Leader 回覆 |
 
 ## 待辦（Gate 2 後）
 
@@ -37,4 +38,4 @@
 | P1：US-011～US-013 多使用者帳號 | 依 WBS §8 | 使用者裁決③ A：待辦五卡清完後開；第一張卡含 CR N-1 互斥鎖與 002 migration TRUNCATE（SD-02） |
 | 20_測試案例 TC-079 判準文字 301→3xx；SD 變更紀錄表錯置的 SD-05 列 | qa-lead／plan-sd | 隨 P1 規格與測試計畫同步卡處理（T-0040 已改 06／ADR／SD §7） |
 | TC-080 直接比對、D-017 staging 重跑、Firefox staging 重跑 | qa-at（需憑證） | 留 P1 staging 測試輪 |
-| 07 §4 第 1 項判準改為「不通過 0 且未達通過者皆有裁決處置」 | E-002 框架 v1.2 | T-0037 裁決事項 A 選項 3；不在本 Epic 改 |
+| 07 §4 第 1 項判準改為「不通過 0 且未達通過者皆有裁決處置」；07 §5.3 缺陷來源增列「維運事故實查」 | E-002 框架 v1.2 | T-0037 裁決事項 A 選項 3；T-0046 裁決 C；不在本 Epic 改 |
