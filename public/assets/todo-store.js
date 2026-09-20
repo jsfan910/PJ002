@@ -102,11 +102,38 @@ export function createTodoStore(apiClient = defaultApiClient) {
 
   const listeners = new Set();
 
-  // S-5（CR-E001）：`load()` 的請求序列化保護。單調遞增，每次 `load()` 開頭取號；
-  // await 回來後只有仍是「最新一次」發出的請求才寫入 state，避免快速連續切換篩選時
-  // 先發後到的舊回應覆蓋較新的結果（BR-011：事實來源永遠是後端，但競態下必須是
-  // 「最新一次」的後端回應）。
-  let requestSeq = 0;
+  // D-017 修正：所有會寫入 loading／error（含 todos）的動作共用同一個單調遞增序號，
+  // 不再只保護 `load()` 彼此之間的先發後到（原 S-5／CR-E001 的 `requestSeq` 只涵蓋
+  // `load()` vs `load()`）。
+  //
+  // 根因（修正前）：`add()/updateTitle()/setCompleted()/remove()` 完全不佔用序號，
+  // 且 `add()/updateTitle()` 的同步驗證失敗分支也不佔用序號；因此當頁面啟動時的
+  // 初始 `load()`（todo-view.js 訂閱後呼叫的第一次 `actions.load()`）因真實網路延遲
+  // 仍在飛行中，使用者這時觸發的 `add()` 錯誤（不論是同步驗證失敗、或後端回應失敗）
+  // 會先把 `state.error` 設成可讀錯誤並通知 view 顯示；但稍後那個較舊、仍在飛行中的
+  // `load()` 一旦 resolve，其成功分支會無條件 `setState({ todos, loading: false,
+  // error: null })`，把剛顯示的錯誤蓋回 `null`。本機 docker compose 延遲極低，初始
+  // `load()` 幾乎必定早於使用者操作完成而不會踩到這個視窗；staging 的真實網路延遲
+  // 讓這個視窗變得可觀察（D-017／TC-067／TC-009 於 staging 間歇性失敗的根因）。
+  //
+  // 修正後的狀態轉移規則：任何一個「會決定目前 loading／error／todos 是什麼」的動作
+  // （`load()` 本身、或 `add()/updateTitle()/setCompleted()/remove()` 的同步驗證失敗、
+  // 或它們的非同步完成）一律先呼叫 `beginOp()` 取得屬於自己的 token；非同步結果回來
+  // 後先用 `isStale(token)` 確認「這段期間沒有更新的動作已經開始」，是才允許寫入
+  // state。只要有更新的動作已經開始（不論該動作自己是同步或非同步），較舊動作的
+  // 非同步結果一律視為過期並直接放棄寫入（不觸發 `setState`，因此也不會多一次
+  // render），較新動作寫入的 `error`／`loading` 就不會被較舊、後到的結果覆蓋。
+  let opSeq = 0;
+
+  /** 佔用一個新的操作序號，代表「從現在起，我是最新、有權寫入 state 的動作」。 */
+  function beginOp() {
+    return ++opSeq;
+  }
+
+  /** 判斷 token 對應的動作是否已經被更新的動作取代（因而不再有權寫入 state）。 */
+  function isStale(token) {
+    return token !== opSeq;
+  }
 
   function getState() {
     return state;
@@ -131,18 +158,19 @@ export function createTodoStore(apiClient = defaultApiClient) {
    */
   async function load(filter) {
     const targetFilter = filter ?? state.filter;
-    const seq = ++requestSeq;
+    const token = beginOp();
     setState({ filter: targetFilter, loading: true, error: null });
     try {
       const todos = await apiClient.listTodos(targetFilter);
-      // S-5：非最新一次的請求，其回應不再寫入 state（已被之後發出的請求取代）。
-      if (seq !== requestSeq) {
+      // D-017／S-5：這段期間若已有更新的動作開始（另一次 load()、或 add() 等動作
+      // 的同步驗證失敗／非同步結果），這次的回應已經過期，不得寫入 state。
+      if (isStale(token)) {
         return { ok: true, stale: true };
       }
       setState({ todos, loading: false, error: null });
       return { ok: true };
     } catch (err) {
-      if (seq !== requestSeq) {
+      if (isStale(token)) {
         return { ok: false, stale: true };
       }
       setState({ loading: false, error: toDisplayError(err) });
@@ -168,15 +196,25 @@ export function createTodoStore(apiClient = defaultApiClient) {
   async function add(rawTitle) {
     const validation = validateTitle(rawTitle);
     if (!validation.ok) {
+      // D-017：同步失敗也要佔用新 token，讓稍早仍在飛行中的 load() 之後 resolve 時
+      // 能判斷自己已過期而放棄寫入，不會把這裡剛設定的驗證錯誤蓋回 null。
+      beginOp();
       setState({ error: { kind: "validation", code: "E_VALIDATION", message: validation.message } });
       return { ok: false };
     }
+    const token = beginOp();
     setState({ loading: true, error: null });
     try {
       await apiClient.createTodo(validation.value);
     } catch (err) {
+      if (isStale(token)) {
+        return { ok: false, stale: true };
+      }
       setState({ loading: false, error: toDisplayError(err) });
       return { ok: false };
+    }
+    if (isStale(token)) {
+      return { ok: true, stale: true };
     }
     return load(state.filter);
   }
@@ -189,15 +227,24 @@ export function createTodoStore(apiClient = defaultApiClient) {
   async function updateTitle(id, rawTitle) {
     const validation = validateTitle(rawTitle);
     if (!validation.ok) {
+      // D-017：理由同 add()，見上方註解。
+      beginOp();
       setState({ error: { kind: "validation", code: "E_VALIDATION", message: validation.message } });
       return { ok: false };
     }
+    const token = beginOp();
     setState({ loading: true, error: null });
     try {
       await apiClient.updateTodo(id, { title: validation.value });
     } catch (err) {
+      if (isStale(token)) {
+        return { ok: false, stale: true };
+      }
       setState({ loading: false, error: toDisplayError(err) });
       return { ok: false };
+    }
+    if (isStale(token)) {
+      return { ok: true, stale: true };
     }
     return load(state.filter);
   }
@@ -208,12 +255,19 @@ export function createTodoStore(apiClient = defaultApiClient) {
    * @param {boolean} isCompleted
    */
   async function setCompleted(id, isCompleted) {
+    const token = beginOp();
     setState({ loading: true, error: null });
     try {
       await apiClient.updateTodo(id, { isCompleted });
     } catch (err) {
+      if (isStale(token)) {
+        return { ok: false, stale: true };
+      }
       setState({ loading: false, error: toDisplayError(err) });
       return { ok: false };
+    }
+    if (isStale(token)) {
+      return { ok: true, stale: true };
     }
     return load(state.filter);
   }
@@ -223,12 +277,19 @@ export function createTodoStore(apiClient = defaultApiClient) {
    * @param {string} id
    */
   async function remove(id) {
+    const token = beginOp();
     setState({ loading: true, error: null });
     try {
       await apiClient.deleteTodo(id);
     } catch (err) {
+      if (isStale(token)) {
+        return { ok: false, stale: true };
+      }
       setState({ loading: false, error: toDisplayError(err) });
       return { ok: false };
+    }
+    if (isStale(token)) {
+      return { ok: true, stale: true };
     }
     return load(state.filter);
   }
