@@ -6,7 +6,7 @@ team: qa
 role: qa-at
 model: sonnet
 phase: qa
-status: todo
+status: blocked
 round: 1
 depends_on: []
 inputs:
@@ -28,8 +28,8 @@ acceptance:
 reviewer: qa-lead
 branch: null
 created: 2026-09-20T18:35:00+08:00
-updated: 2026-09-20T18:35:00+08:00
-blocked_reason: null
+updated: 2026-09-20T19:01:08+08:00
+blocked_reason: 本機 docker compose（PORT=8082/POSTGRES_HOST_PORT=5434）下 Firefox 兩個 project 仍 68/68 於 browser.launch 階段失敗（spawn UNKNOWN），與沙盒環境的 E-B-09 同一錯誤；已 --force 重新下載二進位檔、對照 Chromium 4/4 正常、Node 直接 spawn 重現定位為 Windows CreateProcess 層級失敗、確認本機無系統版 Firefox 可替代，判定為工具/執行環境限制而非產品缺陷。需使用者在自己機器（非本工具沙盒）執行報告內提供的單一指令補跑。
 ---
 
 ## 目標
