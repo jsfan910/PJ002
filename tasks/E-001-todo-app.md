@@ -1,10 +1,10 @@
 ---
 id: E-001
 title: 待辦事項 Web 應用（Phase 1 試跑範例）
-status: gate2             # planning | gate1 | developing | testing | gate2 | done
+status: gate2             # planning | gate1 | developing | testing | gate2 | done —— Gate 2（P0）已於 2026-09-20T22:38 使用者裁決通過；P1 第一批開卡後改 developing
 owner: leader
 created: 2026-09-19T05:28:50+08:00
-updated: 2026-09-19T14:06:43+08:00
+updated: 2026-09-20T22:38:00+08:00
 ---
 
 # E-001 待辦事項 Web 應用
@@ -414,3 +414,9 @@ updated: 2026-09-19T14:06:43+08:00
 - r5：第 1 項 105/105（TC-091 改判 6/6，Firefox 於使用者機器 67/68、重跑全過）、第 10 項 6/6；TC-037 判測試前置競態（OBS-8，不立 D-019；qa-lead 讀碼否證 T-0038 stale 假設）、OBS-9（stale 行為待補 TC）；建議「可發布」，唯一剩餘條件帳密輪換。
 - 裁決：A 追認；B 出 Gate 2 r3；C 接受（UAT 現行碼重跑列 P1 首輪）。瑕疵：traceability updated 22:52 超前實際 22:31，列 P1 同步卡更正。
 - Gate 2 報告 r3：docs/reports/20260920-2233-Gate2-E001-r3.md。建議判通過；P1 建議明早以「三張同步卡＋第一張開發卡」平行開。等使用者裁決。
+
+### 2026-09-20T22:38:00+08:00 — 使用者裁決 Gate 2 r3：① A 通過 ② C 收工、明早開 P1
+
+- **Gate 2（P0）通過**（12 項退出準則全達標；測試總結 r5）。發布前維運動作：staging Basic Auth 帳密輪換（使用者）。Epic status 維持 gate2（P0 已通過、P1 未開），P1 第一批開卡後改 developing。
+- 明早 P1 第一批（裁決② A 方式）：plan-sd 同步卡（06 §5.1 回滾演練收尾必 --to-latest、觀察下一次部署自動修正、三處「待補」交叉引用、OBS-9 規格變更請求）；qa-lead 同步卡（20_測試案例 TC-079 判準 3xx、OBS-9 補 TC、traceability updated 時戳更正、P1 測試計畫確認）；qa-at 卡（tests/e2e TC-037 前置補 await expect(item).toBeVisible()）；dev 第一張開發卡依 WBS §8（含 CR N-1 互斥鎖 D-014 與 002 migration TRUNCATE，SD-02）。
+- 待使用者：帳密輪換、QA Tests 8 連紅 job log、告警 email 通知管道綁定。

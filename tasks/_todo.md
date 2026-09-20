@@ -33,7 +33,7 @@
 | 項目 | 角色 | 備註 |
 |---|---|---|
 | 06 §5.1 回滾流程規格文字：演練後必 --to-latest 還原；演練收尾加「觀察下一次部署是否被自動修正」；三處「待補」交叉引用（06 第 717／791／843 行） | plan-sd | 隨 P1 規格同步卡（dev-tl T-0045 審核建議） |
-| P1：US-011～US-013 多使用者帳號 | 依 WBS §8 | 使用者裁決③ A：待辦五卡清完後開；第一張卡含 CR N-1 互斥鎖與 002 migration TRUNCATE（SD-02） |
+| **P1 第一批（2026-09-21 早上開）**：plan-sd 同步卡、qa-lead 同步卡、qa-at TC-037 測試修正卡、WBS §8 第一張開發卡（含 CR N-1 互斥鎖 D-014 與 002 migration TRUNCATE） | leader 派工 | 使用者 Gate 2 r3 裁決② C；Gate 2 已通過 |
 | 20_測試案例 TC-079 判準文字 301→3xx；SD 變更紀錄表錯置的 SD-05 列；traceability updated 時戳更正；OBS-9 補 TC（規格變更）；TC-037 前置補 toBeVisible（qa-at） | qa-lead／plan-sd／qa-at | P1 第一批同步卡（Gate 2 r3 裁決②建議 A） |
 | TC-080 直接比對、D-017 staging 重跑、Firefox staging 重跑 | qa-at（需憑證） | 留 P1 staging 測試輪 |
 | 07 §4 第 1 項判準改為「不通過 0 且未達通過者皆有裁決處置」；07 §5.3 缺陷來源增列「維運事故實查」 | E-002 框架 v1.2 | T-0037 裁決事項 A 選項 3；T-0046 裁決 C；不在本 Epic 改 |
