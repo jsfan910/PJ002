@@ -125,7 +125,8 @@ table.gantt td.tl{padding:0;position:relative;border-left:1px solid var(--axis)}
 .bar.active .fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
 .mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--gate)}
 .now{position:absolute;top:0;bottom:0;border-left:2px solid var(--now);z-index:2}
-.axis .now span{position:absolute;top:-1px;left:4px;font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--now);font-weight:500;background:var(--paper);padding:0 3px}
+/* 時間軸刻度列只放「現在」的文字標籤（.now-lbl），不畫線；線只畫在資料列（gridCells） */
+.axis .now-lbl{position:absolute;top:-1px;font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--now);font-weight:500;background:var(--paper);padding:0 3px;z-index:2}
 /* 里程碑：每筆一列（tr.ms），時間軸上以菱形（.dia）標示時間位置，旁邊附時刻標籤（.dia-lbl） */
 .dia{position:absolute;top:8px;width:10px;height:10px;background:var(--gate);border:1px solid var(--paper);transform:translateX(-50%) rotate(45deg);z-index:3}
 .dia-lbl{position:absolute;top:6px;line-height:14px;font-family:var(--font-mono);font-size:10px;color:var(--gate);white-space:nowrap;background:var(--paper);padding:0 3px;z-index:3}
@@ -275,7 +276,7 @@ if (!dayMode) axisEl.classList.add("two");
 for (const dy of days) axis += '<div class="day" style="left:'+pct(dy.t)+'%;width:'+(pct(dy.end)-pct(dy.t))+'%"><span>'+dy.label+'</span></div>';
 for (const tk of ticks) axis += '<div class="tick'+(tk.d0?' d0':'')+'" style="left:'+pct(tk.t)+'%"><span>'+tk.label+'</span></div>';
 // 里程碑虛線只畫在資料列（gridCells），不延伸進時間軸刻度列。
-if (showNow) axis += '<div class="now" style="left:'+pct(nowIso)+'%"><span>現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span></div>';
+if (showNow) axis += '<span class="now-lbl" style="left:calc('+pct(nowIso)+'% + 2px)">現在 '+(hourStep === 1 ? "" : fmtD(nowIso)+" ")+fmtT(nowIso)+'</span>';
 document.getElementById("axis").innerHTML = axis;
 
 const gridCells = () => {
